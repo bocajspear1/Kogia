@@ -8,7 +8,7 @@ class PluginManager():
     def __init__(self, plugin_dir="./plugins"):
         self._plugin_dir = plugin_dir
         self.plugins = {}
-        self.plugins_sorted = {}
+
         self.docker = docker.from_env()
 
     def load(self):
@@ -21,8 +21,21 @@ class PluginManager():
                 self.plugins[shortname] = temp.__PLUGIN__(self)
                 self.plugins[shortname].check()
 
-                self.plugins_sorted[self.plugins[shortname].PLUGIN_TYPE] = shortname
-        print(self.plugins_sorted)
+        print(self.plugins)
+
+    def get_plugin_list(self, type_string):
+        return_list = []
+        for plugin in self.plugins:
+            if plugin.PLUGIN_TYPE == type_string:
+                return_list.append(plugin)
+        return return_list
+
+    def get_plugin(self, plugin_name):
+        if plugin_name in self.plugins:
+            return self.plugins[plugin_name]
+        else:
+            return None
+
 
 
         # self.logger.info("Local ModuleManager loaded successfully")

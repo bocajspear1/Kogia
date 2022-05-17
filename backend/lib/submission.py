@@ -61,6 +61,30 @@ class SubmissionFile(VertexObject):
         self._name = ""
         self._uuid = uuid
         self._parent_path = ""
+        self._mime_type = ""
+        self._unpacked_archive = False
+        self._exec_format = "" # e.g. elf or pe
+        self._exec_type = "" # library or executable
+        self._exec_arch = ""
+        self._exec_bits = ""
+
+    def to_dict(self):
+        return {
+            "uuid": self._uuid,
+            "name": self._name,
+            "parent_path": self._parent_path,
+            "mime_type": self._mime_type,
+            "unpacked_archive": self._unpacked_archive,
+            "exec_format": self._exec_format,
+            "exec_type": self._exec_type,
+            "exec_arch": self._exec_arch,
+            "exec_bits": self._exec_bits,
+        }
+
+    @property
+    def extension(self):
+        _, ext = os.path.splitext(self._name)
+        return ext
 
     @property
     def file_path(self):
@@ -84,11 +108,7 @@ class SubmissionFile(VertexObject):
             return False
 
     def save(self, db):
-        self.save_doc(db, {
-            "uuid": self._uuid,
-            "name": self._name,
-            "parent_path": self._parent_path
-        })
+        self.save_doc(db, self.to_dict())
 
 
 class Submission(VertexObject):

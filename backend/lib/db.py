@@ -1,4 +1,5 @@
 from arango import ArangoClient
+from threading import RLock
 
 class ArangoConnectionFactory():
 
@@ -22,6 +23,7 @@ class ArangoConnection():
         self._password = password
         self._ssl = ssl
         self._db_name = db_name
+        self._db_lock = RLock()
 
         self._db = None
         self._conn = None
@@ -39,6 +41,12 @@ class ArangoConnection():
     @property
     def db(self):
         return self._db
+
+    def lock(self):
+        self._db_lock.acquire()
+
+    def unlock(self):
+        self._db_lock.release()
 
     def _get_graph(self, graph_name):
         if not self._db.has_graph(graph_name):
@@ -76,7 +84,8 @@ class ArangoConnection():
     def get_vertex_by_match(self, graph_name, collection, field, value):
         col = self._get_vertexes(graph_name, collection)
         cursor = col.find({field: value}, skip=0, limit=1)
-        return cursor.next()
+        item = cursor.next()
+        return item
 
     def get_vertex_by_id(self, graph_name, collection, id):
         col = self._get_vertexes(graph_name, collection)

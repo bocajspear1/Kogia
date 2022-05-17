@@ -2,7 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-from threading import RLock
 import sys 
 import sqlite3
 import sys
@@ -23,6 +22,7 @@ from werkzeug.utils import secure_filename
 from backend.lib.plugin_manager import PluginManager
 from backend.lib.submission import Submission
 from backend.lib.db import ArangoConnection, ArangoConnectionFactory
+from backend.lib.workers import PluginListWorkerManager
 
 VERSION = '0.0.1'
 
@@ -53,9 +53,13 @@ def create_app():
         )
 
         app._db = app._db_factory.new()
-        app._db_lock = RLock()
 
         app._db.connect()
+
+        app._unarchive_queue = queue.Queue()
+        app._identify_queue = queue.Queue()
+        identify_plugins = app._manager.get_plugin_list('identify')
+        app._unarchive_thread = PluginListWorkerManager(identify_plugins, app._identify_queue, app._db_factory.new(), next_queue=)
 
         submission_dir = app._config['kogia']['submission_dir']
         if not os.path.exists(submission_dir):
@@ -138,15 +142,21 @@ def sumbit_sample():
 
     new_submission = Submission.new(submission_dir)
 
+    app._db.lock()
+    new_submission.save(app._db)
+    app._db.unlock()
+
     for file in file_list:
         filename = secure_filename(file.filename)
         new_file = new_submission.add_file(filename)
+        app._db.lock()
         file.save(new_file.file_path)
+        app._db.unlock()
         new_file.set_read_only()
 
-    app._db_lock.acquire()
-    new_submission.save(app._db)
-    app._db_lock.release()
+        app._identify_queue.put((new_submission, new_file))
+    
+    
 
     return jsonify({
         "ok": True,
@@ -159,9 +169,9 @@ def sumbit_sample():
 @app.route('/api/v1/submission/<uuid>/info', methods=['GET'])
 def get_submission_info(uuid):
     submission = Submission(uuid=uuid)
-    app._db_lock.acquire()
+    app._db.lock()
     submission.load(app._db)
-    app._db_lock.release()
+    app._db.unlock()
     return jsonify({
         "ok": True,
         "result": {
