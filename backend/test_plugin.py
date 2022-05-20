@@ -59,8 +59,10 @@ class DBStub():
         print(json.dumps(document, indent=4))
         return f"{collection}/{get_number()}"
         
-    def update_replace(self, collection, id, data):
-        pass 
+    def update_vertex(self, graph_name, collection, id, document):
+        print(f"Graph: {graph_name}, Collection: {collection}")
+        print(f"{collection}/{id}: " + json.dumps(document, indent=4))
+        return f"{collection}/{get_number()}" 
 
     def delete(self, collection, query):
         pass 
@@ -74,6 +76,7 @@ def main():
     parser.add_argument('--file', help='File(s) to test with', action='append', required=True)
     parser.add_argument('--plugin', help='Plugin to test', required=True)
     parser.add_argument('--meta', help='Metadata to add to submission', action='append')
+    parser.add_argument('--mimetype', help='Set mimetype of file')
 
     args = parser.parse_args()
 
@@ -105,6 +108,17 @@ def main():
     if plugin is None:
         print(f"Invalid plugin {args.plugin}")
 
-    plugin.run(submission, primary)
+    print(f"Primary file is {primary.file_path}")
+    if args.mimetype is not None:
+        primary.mime_type = args.mimetype
+
+    if plugin.operates_on(primary):
+        new_files = plugin.run(submission, primary)
+        submission.save(db)
+    else:
+        print("Does not operate on this file type")
+    
+
+    
 
 main()

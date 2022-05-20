@@ -20,7 +20,7 @@ class PluginBase():
         found = False
         if hasattr(self, 'MIME_TYPES'):
             found = True
-            if file_obj.mime_type in self.MIME_TYPE:
+            if file_obj.mime_type in self.MIME_TYPES:
                 operates = True
 
         if hasattr(self, 'EXTENSIONS'):
@@ -42,6 +42,7 @@ class DockerPluginBase(PluginBase):
         self._network = False
         self._name = name
         self._running_name = ""
+        self._tmp_dirs = []
     
     def docker_image_exists(self):
         try:
@@ -73,7 +74,6 @@ class DockerPluginBase(PluginBase):
 
         tmp_dir = '/tmp/' + ''.join(random.choice(string.ascii_lowercase) for i in range(8))
 
-        print(share_dir)
         vols = {
             share_dir: {"bind": tmp_dir, 'mode': 'ro'}
         }
@@ -97,12 +97,14 @@ class DockerPluginBase(PluginBase):
         # self._logger.info(f"Started container {self._running_name}")
         print(f"Started container {self._running_name}")
 
-    def wait_and_stop(self):
+    def wait_and_stop(self, timeout=180):
         i = 0
         done = False
+
+        rounds = timeout/5
         
-        while i < 12 and not done:
-            time.sleep(15)
+        while i < rounds and not done:
+            time.sleep(5)
             container = self.pm.docker.containers.get(self._running_name)
             if container.status != "running":
                 done = True
@@ -114,7 +116,21 @@ class DockerPluginBase(PluginBase):
             container = self.pm.docker.containers.get(self._running_name)
             container.stop()
 
-    def extract(self, cont_path, out_path):
+    def remove_container(self):
+        container = self.pm.docker.containers.get(self._running_name)
+        if container.status == "running":
+            container.stop()
+        if os.getenv("KOGIA_DEBUG") is not None:
+            return
+        container.remove()
+
+    def remove_tmp_dirs(self):
+        if os.getenv("KOGIA_DEBUG") is not None:
+            return
+        for tmp_dir in self._tmp_dirs:
+            shutil.rmtree(tmp_dir)
+
+    def extract(self, cont_path, out_path=None):
         container = self.pm.docker.containers.get(self._running_name)
         strm, stat = container.get_archive(cont_path)
         tar_path = f"/tmp/{self._running_name}-extract-data.tar"
@@ -123,16 +139,21 @@ class DockerPluginBase(PluginBase):
             results.write(chunk)
         results.close()
 
+        if out_path is None:
+            out_path = tempfile.mkdtemp()
+            self._tmp_dirs.append(out_path)
+
         results_tar = tarfile.open(tar_path, "r")
         results_tar.extractall(path=out_path)
         results_tar.close()
 
         os.remove(tar_path)
+        return out_path
 
     def extract_single_file(self, cont_path, bin=False):
         filename = os.path.basename(cont_path)
         temp_dir = tempfile.mkdtemp()
-        self.extract(cont_path, temp_dir)
+        self.extract(cont_path, out_path=temp_dir)
         file_contents = None
         if not bin:
             file_out = open(os.path.join(temp_dir, filename), 'r')
@@ -142,5 +163,6 @@ class DockerPluginBase(PluginBase):
             file_out = open(os.path.join(temp_dir, filename), 'rb')
             file_contents = file_out.read()
             file_out.close()
-        shutil.rmtree(temp_dir)
+        if os.getenv("KOGIA_DEBUG") is None:
+            shutil.rmtree(temp_dir)
         return file_contents

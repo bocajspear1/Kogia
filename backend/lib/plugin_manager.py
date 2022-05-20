@@ -21,7 +21,7 @@ class PluginManager():
                 self.plugins[shortname] = temp.__PLUGIN__(self)
                 self.plugins[shortname].check()
 
-        print(self.plugins)
+        # print(self.plugins)
 
     def get_plugin_list(self, type_string):
         return_list = []

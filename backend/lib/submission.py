@@ -30,7 +30,7 @@ class VertexObject():
         if self._id is None:
             self._id = db.insert_vertex(self._graph_name, self._collection, data)
         else:
-            db.update(self._collection, self._id, data)
+            db.update_vertex(self._graph_name, self._collection, self._id, data)
 
     def load_doc(self, db, field=None, value=None):
         if field is not None:
@@ -44,6 +44,36 @@ class VertexObject():
     def insert_edge(self, db, collection, to_item, data=None):
         db.insert_edge(self._graph_name, collection, self._id, to_item, data=data)
 
+class Metadata(VertexObject):
+
+    def __init__(self, key=None, id=None):
+        super().__init__('metadata', id)
+        self._key = key 
+        self._value = ""
+
+    @property
+    def key(self):
+        return self._key 
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        self._value = value
+
+    def to_dict(self):
+        return {
+            "key": self._key,
+            "value": self._value
+        }
+
+    def save(self, db):
+        self.save_doc(db, self.to_dict())
+
+    def load(self, db):
+        pass
 
 class SubmissionFile(VertexObject):
 
@@ -67,6 +97,7 @@ class SubmissionFile(VertexObject):
         self._exec_type = "" # library or executable
         self._exec_arch = ""
         self._exec_bits = ""
+        self._metadata = []
 
     def to_dict(self):
         return {
@@ -109,6 +140,76 @@ class SubmissionFile(VertexObject):
 
     def save(self, db):
         self.save_doc(db, self.to_dict())
+        for data in self._metadata:
+            data.save(db)
+
+    @property
+    def mime_type(self):
+        return self._mime_type
+
+    @mime_type.setter
+    def mime_type(self, mime_type):
+        if "/" not in mime_type:
+            raise ValueError("Invalid MIME type (missing /)")
+        self._mime_type = mime_type
+
+    @property
+    def exec_format(self):
+        return self._exec_format
+
+    @exec_format.setter
+    def exec_format(self, exec_format):
+        self._exec_format = exec_format
+
+    @property
+    def exec_type(self):
+        return self._exec_type
+
+    @exec_type.setter
+    def exec_type(self, exec_type):
+        if exec_type not in ('library', 'executable', 'script'):
+            raise ValueError("Invalid exec type, should be 'library', 'executable', or 'script'")
+        self._exec_type = exec_type
+
+    @property
+    def exec_arch(self):
+        return self._exec_arch
+
+    @exec_arch.setter
+    def exec_arch(self, exec_arch):
+        self._exec_arch = exec_arch
+
+    @property
+    def exec_bits(self):
+        return self._exec_bits
+
+    @exec_bits.setter
+    def exec_bits(self, exec_bits):
+        if exec_bits not in ('64', '32', '16'):
+            raise ValueError("Invalid bit, should string of '64', '32', or '16'")
+        self._exec_bits = exec_bits
+
+    def is_unpacked_archive(self):
+        self._unpacked_archive = True
+
+    def is_not_unpacked_archive(self):
+        self._unpacked_archive = False
+
+    def add_metadata(self, key, value):
+        found = False
+        for data in self._metadata:
+            if data.key == key:
+                found = True
+                data.value = value 
+        
+        if not found:
+            new_data = Metadata(key=key)
+            new_data.value = value
+            self._metadata.append(new_data)
+
+            
+
+
 
 
 class Submission(VertexObject):
