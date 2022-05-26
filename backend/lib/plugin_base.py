@@ -130,7 +130,7 @@ class DockerPluginBase(PluginBase):
         for tmp_dir in self._tmp_dirs:
             shutil.rmtree(tmp_dir)
 
-    def extract(self, cont_path, out_path=None):
+    def extract(self, submission, file_obj, cont_path, out_path=None):
         container = self.pm.docker.containers.get(self._running_name)
         strm, stat = container.get_archive(cont_path)
         tar_path = f"/tmp/{self._running_name}-extract-data.tar"
@@ -150,19 +150,33 @@ class DockerPluginBase(PluginBase):
         os.remove(tar_path)
         return out_path
 
-    def extract_single_file(self, cont_path, bin=False):
+    def extract_single_file(self, submission, file_obj, cont_path, bin=False):
         filename = os.path.basename(cont_path)
-        temp_dir = tempfile.mkdtemp()
-        self.extract(cont_path, out_path=temp_dir)
+
+        dir_path = os.path.join(submission.submission_dir, file_obj.uuid)
+
+        if not os.path.exists(dir_path):
+            os.mkdir(dir_path)
+
+        tmp_dir = tempfile.mkdtemp()
+
+        self.extract(submission, file_obj, cont_path, out_path=tmp_dir)
+        out_file_path = os.path.join(dir_path, f"{self._name}-{filename}")
         file_contents = None
         if not bin:
-            file_out = open(os.path.join(temp_dir, filename), 'r')
+            file_out = open(os.path.join(tmp_dir, filename), 'r')
             file_contents = file_out.read()
+            out_file = open(out_file_path, "w")
+            out_file.write(file_contents)
+            out_file.close()
             file_out.close()
         else:
-            file_out = open(os.path.join(temp_dir, filename), 'rb')
+            file_out = open(os.path.join(tmp_dir, filename), 'rb')
             file_contents = file_out.read()
+            out_file = open(out_file_path, "wb")
+            out_file.write(file_contents)
+            out_file.close()
             file_out.close()
-        if os.getenv("KOGIA_DEBUG") is None:
-            shutil.rmtree(temp_dir)
+
+        shutil.rmtree(tmp_dir)
         return file_contents

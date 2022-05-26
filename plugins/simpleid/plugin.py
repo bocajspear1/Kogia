@@ -11,23 +11,24 @@ class SimpleIDPlugin(DockerPluginBase):
     def __init__(self, plugin_manager):
         super().__init__(self.DOCKER_IMAGE, plugin_manager)
 
-    def run(self, submission, file_obj):
+    def run(self, job, file_obj):
+        submission = job.submission
        
         self.run_image(submission.submission_dir, file_obj)
 
         self.wait_and_stop()
 
-        file_out = self.extract_single_file("/tmp/file-out.txt")
+        file_out = self.extract_single_file(submission, file_obj, "/tmp/file-out.txt")
         print("Output:")
         file_out_split = file_out.split("\n")
         file_string = file_out_split[0]
         mime_type = file_out_split[1]
 
-        file_obj.set_mime_type(mime_type)
+        file_obj.mime_type = mime_type
         file_obj.add_metadata("FILE_STRING", file_string)
 
         if "PE32" in file_string:
-            readpe_out = self.extract_single_file("/tmp/readpe-out.json")
+            readpe_out = self.extract_single_file(submission, file_obj, "/tmp/readpe-out.json")
             readpe_data = json.loads(readpe_out)
 
             machine = readpe_data["COFF/File header"]['Machine']
@@ -50,7 +51,7 @@ class SimpleIDPlugin(DockerPluginBase):
 
             
         elif "ELF" in file_string:
-            readelf_data = self.extract_single_file("/tmp/readelf-out.txt")
+            readelf_data = self.extract_single_file(submission, file_obj, "/tmp/readelf-out.txt")
             readelf_lines = readelf_data.strip().split("\n")
 
             data = {}

@@ -2,47 +2,10 @@ import uuid
 import os
 import stat
 import time
+import hashlib
 
 
-class VertexObject():
-
-    def __init__(self, collection, id=None):
-        self._graph_name = 'kogia-graph'
-        self._modified = False 
-        # self._db = db
-        self._collection = collection
-        self._id = id
-
-    @property
-    def id (self):
-        return self._id
-
-    def set_modified(self):
-        self._modified = True 
-
-    def reset_modified(self):
-        self._modified = False
-
-    def to_json(self):
-        raise NotImplementedError
-
-    def save_doc(self, db, data):
-        if self._id is None:
-            self._id = db.insert_vertex(self._graph_name, self._collection, data)
-        else:
-            db.update_vertex(self._graph_name, self._collection, self._id, data)
-
-    def load_doc(self, db, field=None, value=None):
-        if field is not None:
-            return db.get_vertex_by_match(self._graph_name, self._collection, field, value)
-        else:
-            if self._id is not None:
-                return db.get_by_id(self._graph_name, self._collection, self._id)
-            else:
-                return None
-
-    def insert_edge(self, db, collection, to_item, data=None):
-        db.insert_edge(self._graph_name, collection, self._id, to_item, data=data)
+from .objects import VertexObject
 
 class Metadata(VertexObject):
 
@@ -64,16 +27,29 @@ class Metadata(VertexObject):
         self._value = value
 
     def to_dict(self):
+        my_uuid  = hashlib.sha256((self._key + ":" + self._value).encode())
         return {
             "key": self._key,
-            "value": self._value
+            "value": self._value,
+            "uuid": my_uuid.hexdigest()
         }
+
+    def from_dict(self, data_obj):
+        self._uuid = data_obj.get('uuid', '')
+        self._key = data_obj.get('name', '')
+        self._value = data_obj.get('value', '')
 
     def save(self, db):
         self.save_doc(db, self.to_dict())
 
     def load(self, db):
-        pass
+        document = {}
+        if self.id is None:
+            document = self.load_doc(db, field='key', value=self._key)
+        else:
+            document = self.load_doc(db)
+
+        self.from_dict(document)
 
 class SubmissionFile(VertexObject):
 
@@ -112,6 +88,17 @@ class SubmissionFile(VertexObject):
             "exec_bits": self._exec_bits,
         }
 
+    def from_dict(self, data_obj):
+        self._uuid = data_obj.get('uuid', '')
+        self._name = data_obj.get('name', '')
+        self._parent_path = data_obj.get('parent_path', '')
+        self._mime_type = data_obj.get('mime_type', '')
+        self._unpacked_archive = data_obj.get('unpacked_archive', False)
+        self._exec_format = data_obj.get('exec_format', '')
+        self._exec_type = data_obj.get('exec_type', '')
+        self._exec_arch = data_obj.get('exec_arch', '')
+        self._exec_bits = data_obj.get('exec_bits', '')
+
     @property
     def extension(self):
         _, ext = os.path.splitext(self._name)
@@ -142,6 +129,23 @@ class SubmissionFile(VertexObject):
         self.save_doc(db, self.to_dict())
         for data in self._metadata:
             data.save(db)
+            self.insert_edge(db, 'has_metadata', data.id)
+
+
+    def load(self, db):
+        document = {}
+        if self.id is None:
+            document = self.load_doc(db, field='uuid', value=self._uuid)
+        else:
+            document = self.load_doc(db)
+
+        self.from_dict(document)
+
+        items = self.get_connected_to(db, 'has_metadata')
+        for item in items:
+            load_data = Metadata(id=item['_to'])
+            load_data.load(db)
+            self._metadata.append(load_data)
 
     @property
     def mime_type(self):
@@ -207,10 +211,6 @@ class SubmissionFile(VertexObject):
             new_data.value = value
             self._metadata.append(new_data)
 
-            
-
-
-
 
 class Submission(VertexObject):
     
@@ -223,7 +223,6 @@ class Submission(VertexObject):
             os.mkdir(base_dir)
         new_cls._modified = True
         new_cls._base_dir = base_dir
-        print(new_cls.submission_dir)
         return new_cls
 
     @property
@@ -244,6 +243,7 @@ class Submission(VertexObject):
         self._submit_time = int(time.time())
         self._owner = ""
         self._base_dir = ""
+        self._description = ""
 
         self._files = []
         self._modified = False
@@ -255,7 +255,7 @@ class Submission(VertexObject):
             os.mkdir(full_path)
         return full_path
 
-    def _get_file(self, name=None, uuid=None):
+    def get_file(self, name=None, uuid=None):
         for file in self._files:
             if name is not None and file.name == name:
                 return file
@@ -264,9 +264,12 @@ class Submission(VertexObject):
 
         return None
 
+    def get_files(self):
+        return self._files
+
     def add_file(self, filename):
         
-        found = self._get_file(filename)
+        found = self.get_file(filename)
         if found is None:
             self._modified = True
             new_file = SubmissionFile.new(self.submission_dir, filename)
@@ -282,14 +285,38 @@ class Submission(VertexObject):
         else:
             document = self.load_doc(db)
 
-        print(document)
+        self.from_dict(document)
 
-    def save(self, db):
-        self.save_doc(db, {
+        items = self.get_connected_to(db, 'has_file')
+        for item in items:
+            load_file = SubmissionFile(id=item['_to'])
+            load_file.load(db)
+            self._files.append(load_file)
+
+    def to_dict(self, full=False):
+        data_dict = {
             "uuid": self._uuid,
             "owner": self._owner,
-            "submit_time": self._submit_time
-        })
+            "submit_time": self._submit_time,
+            'description': self._description
+        }
+        if full:
+            files_list = []
+            for file in self._files:
+                files_list.append(file.to_dict())
+            data_dict['files'] = files_list
+            return data_dict
+        else:
+            return data_dict
+
+    def from_dict(self, data_obj):
+        self._uuid = data_obj.get('uuid', '')
+        self._owner = data_obj.get('owner', '')
+        self._submit_time = data_obj.get('submit_time', 0)
+        
+
+    def save(self, db):
+        self.save_doc(db, self.to_dict())
 
         for file in self._files:
             file.save(db)

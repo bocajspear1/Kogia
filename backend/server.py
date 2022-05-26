@@ -22,7 +22,9 @@ from werkzeug.utils import secure_filename
 from backend.lib.plugin_manager import PluginManager
 from backend.lib.submission import Submission
 from backend.lib.db import ArangoConnection, ArangoConnectionFactory
-from backend.lib.workers import PluginListWorkerManager
+from backend.lib.workers import JobWorker
+from backend.lib.job import Job
+
 
 VERSION = '0.0.1'
 
@@ -33,6 +35,8 @@ def create_app():
     app.secret_key = os.environ['FLASK_KEY']
 
     with app.app_context():
+
+        app._workers = []
 
         app._queue = queue.Queue()
         app._manager = PluginManager()
@@ -53,13 +57,6 @@ def create_app():
         )
 
         app._db = app._db_factory.new()
-
-        app._db.connect()
-
-        app._unarchive_queue = queue.Queue()
-        app._identify_queue = queue.Queue()
-        identify_plugins = app._manager.get_plugin_list('identify')
-        app._unarchive_thread = PluginListWorkerManager(identify_plugins, app._identify_queue, app._db_factory.new(), next_queue=)
 
         submission_dir = app._config['kogia']['submission_dir']
         if not os.path.exists(submission_dir):
@@ -154,9 +151,18 @@ def sumbit_sample():
         app._db.unlock()
         new_file.set_read_only()
 
-        app._identify_queue.put((new_submission, new_file))
     
-    
+
+    new_job = Job.new(new_submission, None, app._db_factory.new())
+    identify_plugins = app._manager.get_plugin_list('identify')
+    new_job.add_plugin_list(identify_plugins)
+    unarchive_plugins = app._manager.get_plugin_list('unarchive')
+    new_job.add_plugin_list(unarchive_plugins)
+    new_job.save()
+
+    new_worker = JobWorker(new_job)
+    app._workers.append(new_worker)
+    new_worker.start()
 
     return jsonify({
         "ok": True,
@@ -174,10 +180,7 @@ def get_submission_info(uuid):
     app._db.unlock()
     return jsonify({
         "ok": True,
-        "result": {
-            "uuid": submission.uuid,
-            "owner": submission.owner,
-        }
+        "result": submission.to_dict(full=True)
     })
 
 if __name__== '__main__':
