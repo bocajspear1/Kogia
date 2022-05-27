@@ -167,7 +167,8 @@ def sumbit_sample():
     return jsonify({
         "ok": True,
         "result": {
-            "uuid": str(new_submission.uuid)
+            "submission_uuid": str(new_submission.uuid),
+            "job_uuid": str(new_job.uuid)
         }
     })
 
@@ -182,6 +183,19 @@ def get_submission_info(uuid):
         "ok": True,
         "result": submission.to_dict(full=True)
     })
+
+@app.route('/api/v1/job/<uuid>/info', methods=['GET'])
+def get_job_status(uuid):
+    app._db.lock()
+    job = Job(app._db, uuid=uuid)
+    job.load(app._manager)
+    resp = job.to_dict()
+    app._db.unlock()
+    return jsonify({
+        "ok": True,
+        "result": resp
+    })
+
 
 if __name__== '__main__':
     app.run()

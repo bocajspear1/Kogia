@@ -25,17 +25,17 @@ class CollectionObject():
 
     def save_doc(self, db, data):
         if self._id is None:
-            self._id = db.insert_vertex(self._graph_name, self._collection, data)
+            self._id = db.insert(self._collection, data)
         else:
-            db.update_vertex(self._graph_name, self._collection, self._id, data)
+            db.update(self._collection, self._id, data)
 
     def load_doc(self, db, field=None, value=None):
         doc = None
         if field is not None:
-            doc = db.get_vertex_by_match(self._graph_name, self._collection, field, value)
+            doc = db.get_by_match(self._collection, field, value)
         else:
             if self._id is not None:
-                doc = db.get_vertex_by_id(self._graph_name, self._collection, self._id)
+                doc = db.get_by_id(self._collection, self._id)
             else:
                 return None
         

@@ -42,7 +42,7 @@ class DockerPluginBase(PluginBase):
         self._network = False
         self._name = name
         self._running_name = ""
-        self._tmp_dirs = []
+        self._tmp_dirs = []   
     
     def docker_image_exists(self):
         try:

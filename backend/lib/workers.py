@@ -37,17 +37,18 @@ class JobWorker(threading.Thread):
 
     def run(self):
         
-            plugin_list = self._job.get_plugin_list()
-            workers = []
-            for file_obj in self._job.submission.get_files():
-                new_file_worker = FileWorker(plugin_list, self._job, file_obj)
-                new_file_worker.start()
-                workers.append(new_file_worker)
+        plugin_list = self._job.get_plugin_list()
+        workers = []
+        for file_obj in self._job.submission.get_files():
+            new_file_worker = FileWorker(plugin_list, self._job, file_obj)
+            new_file_worker.start()
+            workers.append(new_file_worker)
 
-            for worker in workers:
-                worker.join()
+        for worker in workers:
+            worker.join()
 
-            self._job.save()
+        self._job.complete = True
+        self._job.save()
                 
 
 # class JobWorkerManager(threading.Thread):

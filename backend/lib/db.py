@@ -154,8 +154,19 @@ class ArangoConnection():
             return None
         
 
-    def update_replace(self, collection, id, data):
-        pass 
+    def update(self, collection, id, document):
+        col = self._get_collection(collection) 
+        col.update_match({"_id": id}, document)
+
+    def get_by_match(self, collection, field, value):
+        col = self._get_collection(collection) 
+        cursor = col.find({field: value}, skip=0, limit=1)
+        item = cursor.next()
+        return item
+
+    def get_by_id(self, collection, id):
+        col = self._get_collection(collection) 
+        return col.get(id)
 
     def delete(self, collection, query):
         pass 

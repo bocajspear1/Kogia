@@ -17,7 +17,7 @@ class PluginManager():
             dir_list = os.listdir(os.path.join(self._plugin_dir, module_dir))
             if "plugin.py" in dir_list:
                 temp = importlib.import_module("plugins." + module_dir + ".plugin")
-                shortname = module_dir
+                shortname = temp.__PLUGIN__.__name__
                 self.plugins[shortname] = temp.__PLUGIN__
                 temp = self.plugins[shortname](self)
                 temp.check()
