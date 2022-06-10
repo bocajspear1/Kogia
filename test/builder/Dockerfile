@@ -6,7 +6,7 @@ RUN apt-get -qq update \
 WORKDIR /opt
 
 RUN apt-get -qq update \
-&& DEBIAN_FRONTEND="noninteractive" apt-get -q install -y  wget
+&& DEBIAN_FRONTEND="noninteractive" apt-get -q install -y wget
 RUN wget https://go.dev/dl/go1.18.linux-amd64.tar.gz
 RUN rm -rf /usr/local/go && tar -C /usr/local -xzf go1.18.linux-amd64.tar.gz
 

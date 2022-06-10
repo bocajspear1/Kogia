@@ -13,6 +13,7 @@ sys.path.append(os.curdir)
 
 from lib.submission import Submission, SubmissionFile
 from lib.plugin_manager import PluginManager
+from lib.job import Job
 
 
 TEST_SUBMISSION_DIR = "/tmp/kodiatest"
@@ -82,6 +83,8 @@ def main():
 
     db = DBStub()
 
+    
+
     submission = Submission.new(TEST_SUBMISSION_DIR)
 
     if os.path.exists(TEST_SUBMISSION_DIR):
@@ -107,13 +110,17 @@ def main():
     plugin = manager.get_plugin(args.plugin)
     if plugin is None:
         print(f"Invalid plugin {args.plugin}")
+        return
 
     print(f"Primary file is {primary.file_path}")
+
+    job = Job.new(submission, primary, db)
+
     if args.mimetype is not None:
         primary.mime_type = args.mimetype
 
     if plugin.operates_on(primary):
-        new_files = plugin.run(submission, primary)
+        new_files = plugin.run(job, primary)
         submission.save(db)
     else:
         print("Does not operate on this file type")

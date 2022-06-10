@@ -19,7 +19,6 @@ class SimpleIDPlugin(DockerPluginBase):
         self.wait_and_stop()
 
         file_out = self.extract_single_file(submission, file_obj, "/tmp/file-out.txt")
-        print("Output:")
         file_out_split = file_out.split("\n")
         file_string = file_out_split[0]
         mime_type = file_out_split[1]
@@ -47,6 +46,19 @@ class SimpleIDPlugin(DockerPluginBase):
                     file_obj.exec_type = "library"
                 else:
                     file_obj.exec_type = "executable"
+
+            if "Data directories" in readpe_data:
+                found = False
+                for item in readpe_data["Data directories"]:
+                    if "IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR" in item:
+                        file_obj.exec_interpreter = 'dotnet'
+                        found = True
+                
+                if not found:
+                    file_obj.exec_interpreter = 'native'
+                
+            else:
+                file_obj.exec_interpreter = 'native'
 
 
             

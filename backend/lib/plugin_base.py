@@ -7,11 +7,27 @@ import time
 import tarfile
 import tempfile
 import shutil
+import json
 
 class PluginBase():
     def __init__(self, plugin_manager):
         self.pm = plugin_manager
+        self._enabled = True
+        self.config = {}
+        config_path = os.path.join(self.get_plugin_dir(), "plugin.json")
+        if os.path.exists(config_path):
+            config_file = open(config_path, "r")
+            config_data = config_file.read()
+            self.config = json.loads(config_data)
+            if "enabled" in self.config:
+                self._enabled = self.config['enabled']
+                del self.config['enabled']
+        print(self.config)
 
+    @property
+    def enabled(self):
+        return self._enabled
+        
     def get_plugin_dir(self):
         return os.path.dirname(sys.modules[self.__class__.__module__].__file__)
 

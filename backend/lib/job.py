@@ -10,10 +10,9 @@ class Job(CollectionObject):
 
     @classmethod
     def new(cls, submission, primary, db):
-        new_cls = cls(uuid=str(uuid.uuid4()))
+        new_cls = cls(db, uuid=str(uuid.uuid4()))
         new_cls._submission = submission
         new_cls._primary = primary
-        new_cls._db = db
         return new_cls
 
 

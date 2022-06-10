@@ -73,6 +73,8 @@ class SubmissionFile(VertexObject):
         self._exec_type = "" # library or executable
         self._exec_arch = ""
         self._exec_bits = ""
+        self._exec_interpreter = ""
+        self._exec_packer = ""
         self._metadata = []
 
     def to_dict(self):
@@ -86,6 +88,8 @@ class SubmissionFile(VertexObject):
             "exec_type": self._exec_type,
             "exec_arch": self._exec_arch,
             "exec_bits": self._exec_bits,
+            "exec_interpreter": self._exec_interpreter,
+            "exec_packer": self._exec_packer
         }
 
     def from_dict(self, data_obj):
@@ -98,6 +102,7 @@ class SubmissionFile(VertexObject):
         self._exec_type = data_obj.get('exec_type', '')
         self._exec_arch = data_obj.get('exec_arch', '')
         self._exec_bits = data_obj.get('exec_bits', '')
+        self._exec_interpreter = data_obj.get('exec_interpreter', '')
 
     @property
     def extension(self):
@@ -188,10 +193,26 @@ class SubmissionFile(VertexObject):
         return self._exec_bits
 
     @exec_bits.setter
-    def exec_bits(self, exec_bits):
-        if exec_bits not in ('64', '32', '16'):
-            raise ValueError("Invalid bit, should string of '64', '32', or '16'")
-        self._exec_bits = exec_bits
+    def exec_bits(self, new_exec_bits):
+        if new_exec_bits not in ('64', '32', '16', 'any'):
+            raise ValueError("Invalid bit, should string of '64', '32', '16' or 'any'")
+        self._exec_bits = new_exec_bits
+
+    @property
+    def exec_interpreter(self):
+        return self._exec_interpreter
+
+    @exec_interpreter.setter
+    def exec_interpreter(self, new_exec_interpreter):
+        self._exec_interpreter = new_exec_interpreter
+
+    @property
+    def exec_packer(self):
+        return self._exec_packer
+
+    @exec_packer.setter
+    def exec_packer(self, new_exec_packer):
+        self._exec_packer = new_exec_packer
 
     def is_unpacked_archive(self):
         self._unpacked_archive = True

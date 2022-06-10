@@ -5,8 +5,11 @@ submissions/
 __pycache__/
 *.pem
 *.log
+*.exe
 test/builder/out
 test/metasploit/out
+test/mono/out
+test/packer/out
 *.zip
 config.json
 logs/
