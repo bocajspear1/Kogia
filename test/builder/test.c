@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <wchar.h>
 
 int main() {
     FILE * f;
@@ -7,19 +8,26 @@ int main() {
 
     // List of Macros/defines here: https://sourceforge.net/p/predef/wiki/Architectures/
 #if defined(__amd64__)
-    printf("Hello there from x86-64\n");
+    printf("Hello there from x86-64!\n");
+    wprintf(L"UTF16 hello there from x86-64\n");
 #elif defined(__arm__)
     printf("Hello there from ARM32\n");
+    wprintf(L"UTF16 hello there from ARM32\n");
 #elif defined(__aarch64__)
-    printf("Hello there from ARM64\n");    
+    printf("Hello there from ARM64\n");
+    wprintf(L"UTF16 hello there from ARM64\n");    
 #elif defined(__i386__)
-    printf("Hello there from i386\n");    
+    printf("Hello there from i386\n");  
+    wprintf(L"UTF16 hello there from i386\n");  
 #elif defined(__mips64)
-    printf("Hello there from MIPS64\n");    
+    printf("Hello there from MIPS64\n");
+    wprintf(L"UTF16 hello there from MIPS64\n");    
 #elif defined(__mips__)&&defined(__BYTE_ORDER__)&&(__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
-    printf("Hello there from MIPS32\n");    
+    printf("Hello there from MIPS32\n");
+    wprintf(L"UTF16 hello there from MIPS32\n");    
 #elif defined(__mips__)&&defined(__BYTE_ORDER__)&&(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
-    printf("Hello there from MIPSEL32\n");    
+    printf("Hello there from MIPSEL32\n"); 
+    wprintf(L"UTF16 hello there from MIPSEL32\n");   
 #endif 
 
     system("touch /tmp/hello");

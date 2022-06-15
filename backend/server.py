@@ -145,11 +145,12 @@ def sumbit_sample():
 
     for file in file_list:
         filename = secure_filename(file.filename)
-        new_file = new_submission.add_file(filename)
+        new_file = new_submission.generate_file(filename)
         app._db.lock()
         file.save(new_file.file_path)
         app._db.unlock()
         new_file.set_read_only()
+        new_submission.add_file(new_file)
 
     
 

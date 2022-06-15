@@ -1,6 +1,7 @@
 import argparse 
 import json 
 import os
+from re import sub
 import shutil
 
 import sys
@@ -97,8 +98,10 @@ def main():
         filename = os.path.basename(item)
         new_path = os.path.join(TEST_SUBMISSION_DIR, filename)
         
-        new_file = submission.add_file(filename)
+        new_file = submission.generate_file(filename)
         shutil.copy(item, new_file.file_path)
+        submission.add_file(new_file)
+        
         if primary is None:
             primary = new_file
 

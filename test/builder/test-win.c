@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <wchar.h>
 
 int main() {
     FILE * f;
@@ -8,8 +9,10 @@ int main() {
     // List of Macros/defines here: https://sourceforge.net/p/predef/wiki/Architectures/
 #if defined(__amd64__)
     printf("Hello there from x86-64\n");   
+    wprintf(L"UTF16 hello there from x86-64\n");   
 #elif defined(__i386__)
     printf("Hello there from i386\n");       
+    wprintf(L"UTF16 hello there from i386\n");       
 #endif 
 
 

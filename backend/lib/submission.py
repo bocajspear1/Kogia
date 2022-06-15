@@ -76,6 +76,8 @@ class SubmissionFile(VertexObject):
         self._exec_interpreter = ""
         self._exec_packer = ""
         self._metadata = []
+        self._hash = ""
+        self._parent = ""
 
     def to_dict(self):
         return {
@@ -89,7 +91,8 @@ class SubmissionFile(VertexObject):
             "exec_arch": self._exec_arch,
             "exec_bits": self._exec_bits,
             "exec_interpreter": self._exec_interpreter,
-            "exec_packer": self._exec_packer
+            "exec_packer": self._exec_packer,
+            "hash": self._hash
         }
 
     def from_dict(self, data_obj):
@@ -103,6 +106,24 @@ class SubmissionFile(VertexObject):
         self._exec_arch = data_obj.get('exec_arch', '')
         self._exec_bits = data_obj.get('exec_bits', '')
         self._exec_interpreter = data_obj.get('exec_interpreter', '')
+        self._hash = data_obj.get('hash', '')
+
+    def update_hash(self):
+        sha256 = hashlib.sha256()
+
+        with open(self.file_path, 'rb') as f:
+            while True:
+                data = f.read(65536)
+                if not data:
+                    break
+                sha256.update(data)
+
+        self._hash = sha256.hexdigest()
+    
+
+    @property
+    def hash(self):
+        return self._hash
 
     @property
     def extension(self):
@@ -121,6 +142,9 @@ class SubmissionFile(VertexObject):
     def name(self):
         return self._name
 
+    def set_parent(self, parent_file):
+        self._parent = parent_file.id
+
     def set_read_only(self):
         path = self.file_path
 
@@ -135,6 +159,9 @@ class SubmissionFile(VertexObject):
         for data in self._metadata:
             data.save(db)
             self.insert_edge(db, 'has_metadata', data.id)
+
+        if self._parent != "":
+            self.insert_edge(db, 'has_parent', self._parent)
 
 
     def load(self, db):
@@ -151,6 +178,10 @@ class SubmissionFile(VertexObject):
             load_data = Metadata(id=item['_to'])
             load_data.load(db)
             self._metadata.append(load_data)
+
+        parent = self.get_connected_to(db, 'has_parent')
+        if len(parent) != 0:
+            self._parent = parent[0]['_to']
 
     @property
     def mime_type(self):
@@ -288,16 +319,24 @@ class Submission(VertexObject):
     def get_files(self):
         return self._files
 
-    def add_file(self, filename):
-        
+
+    def generate_file(self, filename):
         found = self.get_file(filename)
         if found is None:
             self._modified = True
             new_file = SubmissionFile.new(self.submission_dir, filename)
-            self._files.append(new_file)
             return new_file
         else:
             return None
+
+    def add_file(self, new_file):
+        new_file.update_hash()
+        for file in self._files:
+            if new_file.hash == file.hash:
+                return
+        self._files.append(new_file)
+        
+        
 
     def load(self, db):
         document = {}
