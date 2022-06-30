@@ -1,6 +1,7 @@
 from multiprocessing.sharedctypes import Value
 import time
 import uuid
+import copy
 
 from backend.lib.submission import Submission
 from .objects import CollectionObject
@@ -70,16 +71,16 @@ class Job(CollectionObject):
     def add_plugin(self, new_plugin):
         found = False
         for plugin in self._plugins:
-            if plugin.__class__.__name__ == new_plugin.__class__.__name__:
+            if plugin.__name__ == new_plugin.__name__:
                 found = True
         
         if not found:
             self._plugins.append(new_plugin)
-
+            
     def to_dict(self):
         plugin_list = []
         for plugin in self._plugins:
-            plugin_list.append(plugin.__class__.__name__)
+            plugin_list.append(plugin.__name__)
         return {
             "uuid": self._uuid,
             "user": self._user,
@@ -114,7 +115,7 @@ class Job(CollectionObject):
 
 
     def get_plugin_list(self):
-        return self._plugins
+        return copy.deepcopy(self._plugins)
 
     def save(self):
         self.save_doc(self._db, self.to_dict())

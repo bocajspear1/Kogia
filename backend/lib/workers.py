@@ -5,6 +5,7 @@ import time
 class FileWorker (threading.Thread):
     def __init__(self, plugin_list, job, file_obj):
         threading.Thread.__init__(self)
+        
         self._file_obj = file_obj
         self._job = job
         self._plugin_list = plugin_list 
@@ -13,6 +14,8 @@ class FileWorker (threading.Thread):
 
     def run(self):
         order = ('identify', 'unarchive', 'unpack', 'syscalls', 'metadata', 'signature')
+
+        print(self._plugin_list)
 
         for i in range(len(order)):
             stage = order[i]
@@ -31,16 +34,21 @@ class FileWorker (threading.Thread):
                 
 
 class JobWorker(threading.Thread):
-    def __init__(self, job):
+    def __init__(self, plugin_manager, job):
         threading.Thread.__init__(self)
         self._job = job
+        self._pm = plugin_manager
 
     def run(self):
         
-        plugin_list = self._job.get_plugin_list()
+        
         workers = []
-        for file_obj in self._job.submission.get_files():
-            new_file_worker = FileWorker(plugin_list, self._job, file_obj)
+        file_list = self._job.submission.get_files()
+        for i in range(len(file_list)):
+            print(self._job.get_plugin_list())
+            plugin_list = self._pm.initialize_plugins(self._job.get_plugin_list())
+            print(plugin_list)
+            new_file_worker = FileWorker(plugin_list, self._job, file_list[i])
             new_file_worker.start()
             workers.append(new_file_worker)
 
@@ -49,6 +57,7 @@ class JobWorker(threading.Thread):
 
         self._job.complete = True
         self._job.save()
+        print(f"Job {self._job.uuid} done")
                 
 
 # class JobWorkerManager(threading.Thread):

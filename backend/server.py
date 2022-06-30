@@ -98,11 +98,30 @@ def version():
         }
     })
 
+@app.route('/api/v1/stats')
+def stats():
+
+    app._db.lock()
+    submission_count = app._db.count('submissions')
+    file_count = app._db.count('files')
+    unique_file_count = app._db.count('files', unique_by='')
+    app._db.unlock()
+    return jsonify({
+        "ok": True,
+        "result": {
+            "submission_count": submission_count
+        }
+    })
+
+
+
 @app.route('/api/v1/submission/new', methods=['POST'])
 def sumbit_sample():
 
     single_param = 'submission'
-    multi_param = 'submissions'
+    multi_param = 'submissions[]'
+
+    print(request.files)
 
     if single_param not in request.files and multi_param not in request.files:   
         return jsonify({
@@ -151,17 +170,20 @@ def sumbit_sample():
         app._db.unlock()
         new_file.set_read_only()
         new_submission.add_file(new_file)
+        print(new_file.uuid)
 
     
 
     new_job = Job.new(new_submission, None, app._db_factory.new())
     identify_plugins = app._manager.get_plugin_list('identify')
+    print(identify_plugins)
     new_job.add_plugin_list(identify_plugins)
     unarchive_plugins = app._manager.get_plugin_list('unarchive')
+    print(unarchive_plugins)
     new_job.add_plugin_list(unarchive_plugins)
     new_job.save()
 
-    new_worker = JobWorker(new_job)
+    new_worker = JobWorker(app._manager, new_job)
     app._workers.append(new_worker)
     new_worker.start()
 

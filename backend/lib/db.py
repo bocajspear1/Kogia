@@ -140,6 +140,8 @@ class ArangoConnection():
     def get_connected_to(self, graph_name, collection, from_item):
         from_col = self._extract_collection_from_id(from_item)
         col = self._get_edges(graph_name, collection, from_col, None)
+        if col is None:
+            return []
         items = list(col.find({"_from": from_item}))
         return items
         
@@ -170,6 +172,37 @@ class ArangoConnection():
 
     def delete(self, collection, query):
         pass 
+
+
+    def count(self, collection, filter=None, unique_by=None):
+        if filter == None and unique_by == None:
+            col = self._get_collection(collection)
+            return col.count()
+        elif filter is not None and unique_by is None:
+
+            pass
+
+            # for item in filter:
+#              query = """
+# FOR doc IN @collection COLLECT WITH COUNT INTO length
+# AGGREGATE minAge = MIN(u.age), maxAge = MAX(u.age)
+#             """
+
+        else:
+
+            if filter is None:
+                query = """
+FOR doc IN @collection COLLECT 
+AGGREGATE uniqueCount = UNIQUE(doc.@unique_by)
+RETURN { "uniqueCount": uniqueCount }
+                """
+
+                cursor = self._db.aql.execute(query, 
+                    bind_vars={
+                        'collection': collection,
+                        'unique_by': unique_by,
+                    })
+                print(cursor.next())
 
 
 
