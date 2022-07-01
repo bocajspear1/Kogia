@@ -23,6 +23,9 @@ class CollectionObject():
     def from_dict(self):
         raise NotImplementedError
 
+    def get_list(self):
+        pass
+
     def save_doc(self, db, data):
         if self._id is None:
             self._id = db.insert(self._collection, data)
@@ -47,8 +50,9 @@ class CollectionObject():
 
 class VertexObject():
 
+    GRAPH_NAME = 'kogia-graph'
+
     def __init__(self, collection, id=None):
-        self._graph_name = 'kogia-graph'
         self._modified = False 
         # self._db = db
         self._collection = collection
@@ -69,17 +73,17 @@ class VertexObject():
 
     def save_doc(self, db, data):
         if self._id is None:
-            self._id = db.insert_vertex(self._graph_name, self._collection, data)
+            self._id = db.insert_vertex(self.GRAPH_NAME, self._collection, data)
         else:
-            db.update_vertex(self._graph_name, self._collection, self._id, data)
+            db.update_vertex(self.GRAPH_NAME, self._collection, self._id, data)
 
     def load_doc(self, db, field=None, value=None):
         doc = None
         if field is not None:
-            doc = db.get_vertex_by_match(self._graph_name, self._collection, field, value)
+            doc = db.get_vertex_by_match(self.GRAPH_NAME, self._collection, field, value)
         else:
             if self._id is not None:
-                doc = db.get_vertex_by_id(self._graph_name, self._collection, self._id)
+                doc = db.get_vertex_by_id(self.GRAPH_NAME, self._collection, self._id)
             else:
                 return None
         
@@ -88,8 +92,11 @@ class VertexObject():
         
         return doc
 
+    def get_list(self):
+        pass
+
     def insert_edge(self, db, collection, to_item, data=None):
-        db.insert_edge(self._graph_name, collection, self._id, to_item, data=data)
+        db.insert_edge(self.GRAPH_NAME, collection, self._id, to_item, data=data)
 
     def get_connected_to(self, db, edge_collection):
-        return db.get_connected_to(self._graph_name, edge_collection, self._id)
+        return db.get_connected_to(self.GRAPH_NAME, edge_collection, self._id)

@@ -129,7 +129,7 @@ export default {
         this.dragging = false;
     },
     submitFiles(e) {
-        this.$refs.submitButton.classList.add('is-loading');
+        // this.$refs.submitButton.classList.add('is-loading');
 
         this.$emit('uploadfiles', this.file_list);
     }

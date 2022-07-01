@@ -103,6 +103,22 @@ class ArangoConnection():
         col = self._get_vertexes(graph_name, collection)
         return col.get(id)
 
+    def get_vertex_list(self, graph_name, collection, filter=None, limit=None, skip=0):
+        col = self._get_vertexes(graph_name, collection)
+        cursor = None
+        if filter:
+            if not limit:
+                cursor = col.find(filter,skip=skip)
+            else:
+                cursor = col.find(filter,skip=skip, limit=1)
+        else:
+            if not limit:
+                cursor = col.all(skip=skip)
+            else:
+                cursor = col.all(skip=skip, limit=1)
+
+        return list(cursor)
+
     def insert_vertex(self, graph_name, collection, document):
         col = self._get_vertexes(graph_name, collection)
         try:

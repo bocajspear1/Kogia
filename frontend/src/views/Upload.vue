@@ -1,12 +1,30 @@
 <script setup>
 import FileUploadList from '@/components/FileUploadList.vue'
 import JobWait from '@/components/JobWait.vue'
+import Notifications from '@/components/Notifications.vue'
 </script>
 
 <template>
     <div class="container">
-        <FileUploadList @uploadfiles="submitFiles" v-if="stage == 'add'" ref="uploadListItem"></FileUploadList>
-        <JobWait v-if="stage == 'wait'" ref="waitItem" :job_uuid="job_uuid"></JobWait>
+        <Notifications ref="notifications"></Notifications>
+        
+        <div id="add-details" v-if="stage == 'add'" class="box">
+            <div class="field">
+                <label class="label">Submission Name (required)</label>
+                <div class="control">
+                    <input class="input" type="text" ref="nameInput">
+                </div>
+            </div>
+            <div class="field">
+                <label class="label">Description (optional)</label>
+                <div class="control">
+                    <textarea class="textarea" ref="descriptionInput"></textarea>
+                </div>
+            </div>
+            <FileUploadList v-if="stage == 'add'" @uploadfiles="submitFiles" ref="uploadListItem"></FileUploadList>
+        </div>
+        
+        <JobWait v-if="stage == 'wait'" ref="waitItem" :job_uuid="job_uuid" @jobdone="onJobDone" ></JobWait>
     </div>
 </template>
 
@@ -28,6 +46,11 @@ export default {
     
   },
   methods: {
+    onJobDone(job_data) {
+        var self = this;
+        self.stage = "new_job";
+        console.log(job_data);
+    },
     submitFiles(file_list) {
 
         let formData = new FormData();
@@ -36,6 +59,14 @@ export default {
         }
 
         var self = this;
+
+        var name = self.$refs.nameInput.value;
+        console.log('name', name);
+        formData.append('name', name);
+        var description = self.$refs.descriptionInput.value;
+        formData.append('description', description);
+
+
 
         axios.post('api/v1/submission/new',
         formData,
@@ -57,6 +88,8 @@ export default {
                 // self.stage = "wait";
                 // self.$refs.waitItem.startWait(job_uuid);
                 
+            } else {
+                self.$refs.notifications.addNotification("error", "Upload Error: " + resp_data['error']);
             }
             // this.$refs.waitItem.startWait();
 

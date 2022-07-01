@@ -22,7 +22,7 @@ class PluginBase():
             if "enabled" in self.config:
                 self._enabled = self.config['enabled']
                 del self.config['enabled']
-        print(self.config)
+        # print(self.config)
 
     @property
     def enabled(self):

@@ -74,8 +74,6 @@ class SimpleIDPlugin(DockerPluginBase):
                 value = line_split[1].strip().lower()
                 data[key] = value
 
-            print(data)
-
             if data["class"] == 'elf32':
                 file_obj.exec_bits = "32"
                 file_obj.exec_format = "elf"

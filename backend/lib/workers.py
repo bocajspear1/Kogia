@@ -15,8 +15,6 @@ class FileWorker (threading.Thread):
     def run(self):
         order = ('identify', 'unarchive', 'unpack', 'syscalls', 'metadata', 'signature')
 
-        print(self._plugin_list)
-
         for i in range(len(order)):
             stage = order[i]
             for plugin in self._plugin_list:
@@ -45,9 +43,7 @@ class JobWorker(threading.Thread):
         workers = []
         file_list = self._job.submission.get_files()
         for i in range(len(file_list)):
-            print(self._job.get_plugin_list())
             plugin_list = self._pm.initialize_plugins(self._job.get_plugin_list())
-            print(plugin_list)
             new_file_worker = FileWorker(plugin_list, self._job, file_list[i])
             new_file_worker.start()
             workers.append(new_file_worker)

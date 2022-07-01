@@ -266,6 +266,7 @@ class SubmissionFile(VertexObject):
 
 class Submission(VertexObject):
     
+    COLLECTION_NAME = 'submissions'
 
     @classmethod
     def new(cls, base_dir):
@@ -277,6 +278,10 @@ class Submission(VertexObject):
         new_cls._base_dir = base_dir
         return new_cls
 
+    @classmethod
+    def list_dict(cls, db):
+        return db.get_vertex_list(cls.GRAPH_NAME, cls.COLLECTION_NAME)
+
     @property
     def uuid(self):
         return self._uuid
@@ -285,8 +290,24 @@ class Submission(VertexObject):
     def owner(self):
         return self._owner
 
+    @property
+    def description(self):
+        return self._description
+
+    @description.setter
+    def description(self, description):
+        self._description = description
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        self._name = name
+
     def __init__(self, uuid=None, id=None):
-        super().__init__('submissions', id)
+        super().__init__(self.COLLECTION_NAME, id)
 
         if uuid == None and self.id == None:
             raise ValueError("Either id or uuid must be set")
@@ -296,6 +317,7 @@ class Submission(VertexObject):
         self._owner = ""
         self._base_dir = ""
         self._description = ""
+        self._name = ""
 
         self._files = []
         self._modified = False
@@ -358,6 +380,7 @@ class Submission(VertexObject):
             "uuid": self._uuid,
             "owner": self._owner,
             "submit_time": self._submit_time,
+            "name": self._name,
             'description': self._description
         }
         if full:
@@ -373,6 +396,8 @@ class Submission(VertexObject):
         self._uuid = data_obj.get('uuid', '')
         self._owner = data_obj.get('owner', '')
         self._submit_time = data_obj.get('submit_time', 0)
+        self._name = data_obj.get('name', '')
+        self._description = data_obj.get('description', '')
         
 
     def save(self, db):

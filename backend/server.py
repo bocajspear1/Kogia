@@ -121,8 +121,6 @@ def sumbit_sample():
     single_param = 'submission'
     multi_param = 'submissions[]'
 
-    print(request.files)
-
     if single_param not in request.files and multi_param not in request.files:   
         return jsonify({
             "ok": False,
@@ -148,15 +146,22 @@ def sumbit_sample():
         file_list = [single_sample]
 
 
-    # if multiple and 'primary' not in request.form:
-    #     return jsonify({
-    #         "ok": False,
-    #         "error": "Multiple files submitted, but not primary executable set with 'primary'"
-    #     })
+    if 'name' not in request.form:
+        return jsonify({
+            "ok": False,
+            "error": "Name not set for submission"
+        })
+
+    
     
     submission_dir = app._config['kogia']['submission_dir']
 
     new_submission = Submission.new(submission_dir)
+
+    if 'description' in request.form:
+        new_submission.description = request.form['description']
+
+    new_submission.name = request.form['name']
 
     app._db.lock()
     new_submission.save(app._db)
@@ -170,16 +175,12 @@ def sumbit_sample():
         app._db.unlock()
         new_file.set_read_only()
         new_submission.add_file(new_file)
-        print(new_file.uuid)
 
-    
 
     new_job = Job.new(new_submission, None, app._db_factory.new())
     identify_plugins = app._manager.get_plugin_list('identify')
-    print(identify_plugins)
     new_job.add_plugin_list(identify_plugins)
     unarchive_plugins = app._manager.get_plugin_list('unarchive')
-    print(unarchive_plugins)
     new_job.add_plugin_list(unarchive_plugins)
     new_job.save()
 
@@ -205,6 +206,17 @@ def get_submission_info(uuid):
     return jsonify({
         "ok": True,
         "result": submission.to_dict(full=True)
+    })
+
+@app.route('/api/v1/submission/list', methods=['GET'])
+def get_submission_list():
+    
+    app._db.lock()
+    submissions = Submission.list_dict(app._db)
+    app._db.unlock()
+    return jsonify({
+        "ok": True,
+        "result": submissions
     })
 
 @app.route('/api/v1/job/<uuid>/info', methods=['GET'])
