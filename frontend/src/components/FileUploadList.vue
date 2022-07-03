@@ -27,7 +27,7 @@
                 <div class="navbar-end">
                     <div class="navbar-item">
                         <div class="buttons">
-                            <button class="button is-primary" @click.stop.prevent="submitFiles" ref="submitButton">
+                            <button class="button is-primary" @click.stop.prevent="submitFiles" ref="submitButton" disabled>
                                 <mdicon name="cloud-upload-outline" /> &nbsp;&nbsp;Upload
                             </button>
                         </div>
@@ -93,7 +93,11 @@ export default {
         for (var i in file_array) {
             this.file_list.push(file_array[i])
         }
-        console.log(this.file_list)
+        if (this.file_list.length >= 1) {
+            this.$refs.submitButton.disabled = false;
+        } else {
+            this.$refs.submitButton.disabled = true;
+        }
     },
     onDrop(e) {
         console.log("file dropped")

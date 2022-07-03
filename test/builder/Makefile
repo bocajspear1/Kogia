@@ -24,3 +24,8 @@ all:
 	GOOS=linux GOARCH=amd64 go build -o /tmp/out/test-go.x64 test.go
 	GOOS=windows GOARCH=386 go build -o /tmp/out/test-go.x86.exe test-win.go
 	GOOS=windows GOARCH=amd64 go build -o /tmp/out/test-go.x64.exe test-win.go
+	GOOS=freebsd GOARCH=amd64 go build -o /tmp/out/test-go-freebsd.x64 test.go
+	GOOS=openbsd GOARCH=amd64 go build -o /tmp/out/test-go-openbsd.x64 test.go
+	GOOS=solaris GOARCH=amd64 go build -o /tmp/out/test-go-solaris.x64 test.go
+	GOOS=illumos GOARCH=amd64 go build -o /tmp/out/test-go-illumos.x64 test.go
+	GOOS=aix GOARCH=ppc64 go build -o /tmp/out/test-go-aix.x64 test.go

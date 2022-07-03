@@ -146,7 +146,7 @@ def sumbit_sample():
         file_list = [single_sample]
 
 
-    if 'name' not in request.form:
+    if 'name' not in request.form or request.form['name'].strip() == "":
         return jsonify({
             "ok": False,
             "error": "Name not set for submission"

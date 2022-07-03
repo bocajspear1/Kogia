@@ -20,7 +20,7 @@ class UnzipPlugin(DockerPluginBase):
         tmp_dir = self.extract(submission, file_obj, "/tmp/out")
         out_dir = os.path.join(tmp_dir, "out")
         items = os.listdir(out_dir)
-        if len(items) > 1:
+        if len(items) >= 1:
             file_obj.is_unpacked_archive()
 
         uuid_list = []

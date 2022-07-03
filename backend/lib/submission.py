@@ -75,6 +75,7 @@ class SubmissionFile(VertexObject):
         self._exec_bits = ""
         self._exec_interpreter = ""
         self._exec_packer = ""
+        self._target_os = ""
         self._metadata = []
         self._hash = ""
         self._parent = ""
@@ -92,6 +93,7 @@ class SubmissionFile(VertexObject):
             "exec_bits": self._exec_bits,
             "exec_interpreter": self._exec_interpreter,
             "exec_packer": self._exec_packer,
+            "target_os": self._target_os,
             "hash": self._hash
         }
 
@@ -106,6 +108,7 @@ class SubmissionFile(VertexObject):
         self._exec_arch = data_obj.get('exec_arch', '')
         self._exec_bits = data_obj.get('exec_bits', '')
         self._exec_interpreter = data_obj.get('exec_interpreter', '')
+        self._target_os = data_obj.get('target_os', '')
         self._hash = data_obj.get('hash', '')
 
     def update_hash(self):
@@ -244,6 +247,14 @@ class SubmissionFile(VertexObject):
     @exec_packer.setter
     def exec_packer(self, new_exec_packer):
         self._exec_packer = new_exec_packer
+
+    @property
+    def target_os(self):
+        return self._target_os
+
+    @target_os.setter
+    def target_os(self, new_target_os):
+        self._target_os = new_target_os
 
     def is_unpacked_archive(self):
         self._unpacked_archive = True

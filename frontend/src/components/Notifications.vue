@@ -1,20 +1,20 @@
 <template>
-    <div id="notification-panel" class="is-overlay p-3">
+    <div id="notification-panel" class="is-overlay">
         <div v-for="(notification, index) in notifications">
             <template v-if="notification.importance=='debug'">
-            <div class="notification">
+            <div class="notification m-3">
                 <button class="delete" @click="closeNotification(index)"></button>
                 {{ notification.message }}
             </div>
             </template>
             <template v-if="notification.importance=='error'">
-            <div class="notification is-danger">
+            <div class="notification is-danger  m-3">
                 <button class="delete" @click="closeNotification(index)"></button>
                 {{ notification.message }}
             </div>
             </template>
             <template v-if="notification.importance=='info'">
-            <div class="notification is-info">
+            <div class="notification is-info  m-3">
                 <button class="delete" @click="closeNotification(index)"></button>
                 {{ notification.message }}
             </div>

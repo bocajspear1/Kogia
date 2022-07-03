@@ -60,18 +60,26 @@ class SimpleIDPlugin(DockerPluginBase):
             else:
                 file_obj.exec_interpreter = 'native'
 
-
+            file_obj.target_os = 'windows'
             
         elif "ELF" in file_string:
             readelf_data = self.extract_single_file(submission, file_obj, "/tmp/readelf-out.txt")
             readelf_lines = readelf_data.strip().split("\n")
 
+            file_obj.exec_interpreter = 'native'
+
             data = {}
 
             for line in readelf_lines:
                 line_split = line.split(":", 1)
+                if len(line_split) < 2:
+                    continue
                 key = line_split[0].strip().lower()
+                if key.startswith("["):
+                    key = key[1:]
                 value = line_split[1].strip().lower()
+                if value.endswith("]"):
+                    value = value[:-1]
                 data[key] = value
 
             if data["class"] == 'elf32':
@@ -102,6 +110,19 @@ class SimpleIDPlugin(DockerPluginBase):
                  file_obj.exec_arch = 'arm32'
             elif 'aarch64' in data['machine']:
                  file_obj.exec_arch = 'aarch64'
+
+            if 'system v' in data['os/abi']:
+                file_obj.target_os = "generic-system-v"
+            elif 'freebsd' in data['os/abi']:
+                file_obj.target_os = "freebsd"
+            elif 'openbsd' in data['os/abi']:
+                file_obj.target_os = "openbsd"
+            elif 'netbsd' in data['os/abi']:
+                file_obj.target_os = "netbsd"
+            elif 'aix' in data['os/abi']:
+                file_obj.target_os = "aix"
+            else:
+                file_obj.target_os = "unknown"
 
         self.remove_container()
 
