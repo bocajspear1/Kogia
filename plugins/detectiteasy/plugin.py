@@ -7,6 +7,7 @@ class DetectItEasyPlugin(DockerPluginBase):
     PLUGIN_TYPE = 'identify'
     INGESTS = []
     DOCKER_IMAGE = 'detectiteasy'
+    AUTHOR = "Jacob Hartman"
 
     def __init__(self, plugin_manager):
         super().__init__(self.DOCKER_IMAGE, plugin_manager)
@@ -34,5 +35,8 @@ class DetectItEasyPlugin(DockerPluginBase):
     def check(self):
         if not self.docker_image_exists():
             self.docker_rebuild()
+
+    def action_get_version(self):
+        return {"version": "1.0"}
 
 __PLUGIN__ = DetectItEasyPlugin

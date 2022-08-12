@@ -1,0 +1,12 @@
+[
+    {
+        "title": "main",
+        "items": [
+            {
+                "type": "databar",
+                "action": "action_get_version",
+                "on": "load"
+            }
+        ]
+    }
+]

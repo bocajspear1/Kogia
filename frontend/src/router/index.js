@@ -3,6 +3,8 @@ import Home from "@/views/Home.vue";
 import Submissions from "@/views/Submissions.vue";
 import Upload from "@/views/Upload.vue";
 import SubmissionSingle from "@/views/SubmissionSingle.vue";
+import Plugins from "@/views/Plugins.vue";
+import PluginSingle from "@/views/PluginSingle.vue";
 
 const routes = [
   {
@@ -24,6 +26,16 @@ const routes = [
     path: "/submission/:submission_uuid",
     name: "SubmissionSingle",
     component: SubmissionSingle,
+  },
+  {
+    path: "/plugins",
+    name: "Plugins",
+    component: Plugins,
+  },
+  {
+    path: "/plugin/:plugin_name",
+    name: "PluginSingle",
+    component: PluginSingle,
   },
 ];
 

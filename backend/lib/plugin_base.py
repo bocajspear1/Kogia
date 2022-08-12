@@ -10,10 +10,14 @@ import shutil
 import json
 
 class PluginBase():
+
+    AUTHOR = ""
+
     def __init__(self, plugin_manager):
         self.pm = plugin_manager
         self._enabled = True
         self.config = {}
+        self._display = {}
         config_path = os.path.join(self.get_plugin_dir(), "plugin.json")
         if os.path.exists(config_path):
             config_file = open(config_path, "r")
@@ -22,7 +26,24 @@ class PluginBase():
             if "enabled" in self.config:
                 self._enabled = self.config['enabled']
                 del self.config['enabled']
+            config_file.close()
+        display_path = os.path.join(self.get_plugin_dir(), "display.json")
+        if os.path.exists(display_path):
+            display_file = open(display_path, "r")
+            display_data = display_file.read()
+            self._display = json.loads(display_data)
+            display_file.close()
+            
         # print(self.config)
+
+    def to_dict(self):
+        return {
+            "name": str(self.__class__.__name__),
+            "config": self.config,
+            "type": self.PLUGIN_TYPE,
+            "author": self.AUTHOR,
+            "display": self._display
+        }
 
     @property
     def enabled(self):

@@ -34,7 +34,7 @@ class PluginManager():
         return_list = []
         for plugin_name in self.plugins:
             plugin = self.plugins[plugin_name]
-            if plugin.PLUGIN_TYPE == type_string:
+            if plugin.PLUGIN_TYPE == type_string or type_string == '*':
                 return_list.append(plugin)
         return return_list
 
@@ -43,6 +43,7 @@ class PluginManager():
             return self.plugins[plugin_name]
         else:
             return None
+        
 
 
 

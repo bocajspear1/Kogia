@@ -22,6 +22,7 @@
           <router-link class="navbar-item" to="/"><mdicon name="home" :size="20" />&nbsp;&nbsp;Home</router-link>
           <router-link class="navbar-item" to="/upload"><mdicon name="cloud-upload-outline" :size="20" />&nbsp;&nbsp;Upload</router-link>
           <router-link class="navbar-item" to="/submissions"><mdicon name="view-list-outline" :size="20" />&nbsp;&nbsp;Submissions</router-link>
+          <router-link class="navbar-item" to="/plugins"><mdicon name="video-input-component" :size="20" />&nbsp;&nbsp;Plugins</router-link>
           
         </div>
 
