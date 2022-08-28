@@ -20,7 +20,7 @@ from flask import Flask, g, jsonify, current_app, request, render_template, send
 from werkzeug.utils import secure_filename
 
 from backend.lib.plugin_manager import PluginManager
-from backend.lib.submission import Submission
+from backend.lib.submission import Submission, SubmissionFile
 from backend.lib.db import ArangoConnection, ArangoConnectionFactory
 from backend.lib.workers import JobWorker
 from backend.lib.job import Job
@@ -113,7 +113,48 @@ def stats():
         }
     })
 
+@app.route('/api/v1/file/<uuid>/info', methods=['GET'])
+def get_file_info(uuid):
+    file_info = SubmissionFile(uuid=uuid)
+    app._db.lock()
+    file_info.load(app._db)
+    app._db.unlock()
 
+    return jsonify({
+        "ok": True,
+        "result": file_info.to_dict()
+    })
+
+@app.route('/api/v1/file/<uuid>/resubmit', methods=['POST'])
+def resumbit_file(uuid):
+    resub_file = SubmissionFile(uuid=uuid)
+    app._db.lock()
+    resub_file.load(app._db)
+    app._db.unlock()
+
+    
+
+    # submission_dir = app._config['kogia']['submission_dir']
+
+    # re_submission = Submission.new(submission_dir)
+
+    # filename = secure_filename(resub_file.name)
+    # new_file = re_submission.generate_file(filename)
+    # app._db.lock()
+    # file.save(new_file.file_path)
+    # app._db.unlock()
+    # new_file.set_read_only()
+    # new_submission.add_file(new_file)
+
+    
+    # re_submission.description = "Resubmit of "
+
+    # re_submission.name = request.form['name']
+
+    return jsonify({
+        "ok": True,
+        "result": resub_file.to_dict(full=True)
+    })
 
 @app.route('/api/v1/submission/new', methods=['POST'])
 def sumbit_sample():

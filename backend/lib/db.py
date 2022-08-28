@@ -103,9 +103,37 @@ class ArangoConnection():
         col = self._get_vertexes(graph_name, collection)
         return col.get(id)
 
-    def get_vertex_list(self, graph_name, collection, filter=None, limit=None, skip=0):
+    def get_vertex_list_sorted(self, collection, sort_field, sort_dir, filter=None, limit=None, skip=0):
+
+        aql_query = f"FOR doc IN {collection}"
+        bind_vars = {
+            
+        }
+
+        aql_query += f" SORT doc.{sort_field} {sort_dir}"
+
+
+        if filter is not None:
+            aql_query += " FILTER doc." + filter['filter'] + " " + filter['cond'] + " " + filter['value']
+
+        if limit is not None:
+            aql_query += f" LIMIT {skip}, {limit}"
+
+        aql_query += " RETURN doc"
+
+        cursor = self._db.aql.execute(
+            aql_query,
+            bind_vars=bind_vars
+        )
+
+        items = list(cursor)
+        return items
+
+    def get_vertex_list(self, graph_name, collection, filter=None, limit=None, skip=0, order=None):
         col = self._get_vertexes(graph_name, collection)
         cursor = None
+
+        
         if filter:
             if not limit:
                 cursor = col.find(filter,skip=skip)
@@ -117,7 +145,8 @@ class ArangoConnection():
             else:
                 cursor = col.all(skip=skip, limit=1)
 
-        return list(cursor)
+        items = list(cursor)
+        return items
 
     def insert_vertex(self, graph_name, collection, document):
         col = self._get_vertexes(graph_name, collection)

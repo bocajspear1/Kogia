@@ -1,19 +1,19 @@
 <template>
     <div class="box">
-      <h1 class="title">Submission: {{ submission.name }}</h1>
-      <h4 class="subtitle is-4">{{ submission.uuid }}</h4>
+      <h1 class="title is-spaced">Submission: {{ submission.name }}</h1>
+      <h5 class="subtitle is-5 is-spaced">{{ submission.description }}</h5>
       
       <div class="level">
         <div class="level-item has-text-centered">
           <div>
-            <p class="heading">Submit Date</p>
-            <p class="title">{{ submission.submit_time }}</p>
+            <p class="title is-6 is-spaced">Submit Date</p>
+            <p class="subtitle is-6">{{ submission.submit_time }}</p>
           </div>
         </div>
         <div class="level-item has-text-centered">
           <div>
-            <p class="heading">File Count</p>
-            <p class="title">{{ fileCount() }}</p>
+            <p class="title is-6 is-spaced">File Count</p>
+            <p class="subtitle is-6">{{ fileCount() }}</p>
           </div>
         </div>
       </div>

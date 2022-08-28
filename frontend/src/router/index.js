@@ -5,6 +5,8 @@ import Upload from "@/views/Upload.vue";
 import SubmissionSingle from "@/views/SubmissionSingle.vue";
 import Plugins from "@/views/Plugins.vue";
 import PluginSingle from "@/views/PluginSingle.vue";
+import FileSingle from "@/views/FileSingle.vue";
+import JobCreate from "@/views/JobCreate.vue";
 
 const routes = [
   {
@@ -36,6 +38,16 @@ const routes = [
     path: "/plugin/:plugin_name",
     name: "PluginSingle",
     component: PluginSingle,
+  },
+  {
+    path: "/file/:file_uuid",
+    name: "FileSingle",
+    component: FileSingle,
+  },
+  {
+    path: "/newjob/:submission_uuid",
+    name: "JobCreate",
+    component: JobCreate,
   },
 ];
 

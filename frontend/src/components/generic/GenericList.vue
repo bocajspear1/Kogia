@@ -22,9 +22,9 @@ export default {
       "data_list": []
     }
   },
-  props: ["plugin_name", "data_action"],
+  props: ["data"],
   mounted() {
-    
+    console.log("GenericList loaded")
   },
   methods: {
     doAction() {

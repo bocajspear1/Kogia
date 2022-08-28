@@ -1,5 +1,5 @@
 <script setup>
-
+import DynamicPanel from '@/components/DynamicPanel.vue'
 </script>
 
 <template>
@@ -22,7 +22,7 @@
                 </div>
                 <template v-for="display_tab in plugin.display">
                     <div v-if="current_tab == display_tab.title">
-
+                        <DynamicPanel :panel_data="display_tab" :plugin_name="plugin_name"></DynamicPanel>
                     </div>
                 </template>
             </div>
@@ -42,12 +42,14 @@
 <script>
 import axios from 'axios';
 
+
 export default {
   data() {
     return {
       plugin: {},
       current_tab: "",
-      has_display: false
+      has_display: false,
+      plugin_name: ""
     }
   },
   mounted() {
@@ -56,9 +58,9 @@ export default {
   methods: {
     getPlugin() {
       var self = this;
-      var plugin_name = self.$route.params.plugin_name;
+      this.plugin_name = self.$route.params.plugin_name;
       
-      axios.get("/api/v1/plugin/" + plugin_name + "/info").then(function(resp){
+      axios.get("/api/v1/plugin/" + this.plugin_name + "/info").then(function(resp){
             var resp_data = resp['data'];
 
             if (resp_data['ok'] == true) {

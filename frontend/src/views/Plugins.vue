@@ -1,7 +1,8 @@
 <template>
     <div class="list has-hoverable-list-items">
-        <div v-for="plugin in plugins" class="list-item is-clickable">
-            <div class="list-item-image p-2">
+        <div v-for="plugin in plugins" class="list-item">
+            
+            <div class="list-item-image p-2" :title="plugin.type">
             <template v-if="plugin.type == 'unpack'">
                 <mdicon name="gift-open" :size="40" />
             </template>
@@ -18,7 +19,7 @@
                 <mdicon name="console" :size="40" />
             </template>
             <template v-else-if="plugin.type == 'signature'">
-                <mdicon name="alert-outline" :size="40" />
+                <mdicon name="file-alert" :size="40" />
             </template>
             <template v-else>
                 <mdicon name="help-circle-outline" :size="40" />
@@ -33,6 +34,7 @@
                 </div>
             </div>
         </div>
+        
     </div>
 </template>
 

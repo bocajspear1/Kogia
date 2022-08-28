@@ -39,4 +39,9 @@ class UnipackerPlugin(DockerPluginBase):
         if not self.docker_image_exists():
             self.docker_rebuild()
 
+    def action_get_version(self):
+        version = self.run_image_with_cmd("unipacker --version").decode("utf-8").strip()
+        ver_split = version.split(" ", 1)
+        return [{"Unipacker Version": ver_split[1]}]
+
 __PLUGIN__ = UnipackerPlugin

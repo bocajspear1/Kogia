@@ -111,7 +111,8 @@ def main():
     manager.load()
 
     plugin = manager.get_plugin(args.plugin)
-    if plugin is None:
+    plugin_obj = manager.initialize_plugins([plugin])[0]
+    if plugin_obj is None:
         print(f"Invalid plugin {args.plugin}")
         return
 
@@ -122,8 +123,8 @@ def main():
     if args.mimetype is not None:
         primary.mime_type = args.mimetype
 
-    if plugin.operates_on(primary):
-        new_files = plugin.run(job, primary)
+    if plugin_obj.operates_on(primary):
+        new_files = plugin_obj.run(job, primary)
         submission.save(db)
     else:
         print("Does not operate on this file type")

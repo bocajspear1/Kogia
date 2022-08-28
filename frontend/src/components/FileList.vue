@@ -1,30 +1,12 @@
+<script setup>
+import FileIcon from '@/components/FileIcon.vue'
+</script>
 <template>
-    <div class="list has-hoverable-list-items">
-        <div v-for="file in files" class="list-item is-clickable">
+    <div class="list has-hoverable-list-items has-visible-pointer-controls">
+        <div v-for="file in files" class="list-item is-clickable" @click="clickFile(file.uuid)" :ref="file.uuid">
             <div class="list-item-image p-2">
-            <template v-if="file.unpacked_archive == true">
-                <mdicon name="archive" :size="40" />
-            </template>
-            <template v-else-if="file.exec_interpreter == 'powershell'">
-                <mdicon name="powershell" :size="40" />
-            </template>
-            <template v-else-if="file.exec_interpreter == 'dotnet'">
-                <mdicon name="dot-net" :size="40" />
-            </template>
-            <template v-else-if="file.target_os == 'windows'">
-                <mdicon name="microsoft-windows" :size="40" />
-            </template>
-            <template v-else-if="file.exec_interpreter == 'native'">
-                <mdicon name="file-cog" :size="40" />
-            </template>
-            <template v-else-if="file.exec_interpreter != '' && file.exec_interpreter != 'native'">
-                <mdicon name="script" :size="40" />
-            </template>
-            <template v-else>
-                <mdicon name="file-question" :size="40" />
-            </template>
+                <FileIcon :file="file"></FileIcon>
             </div>
-
             <div class="list-item-content">
                 <div class="list-item-title">{{ file.name }}</div>
                 <div class="list-item-description">
@@ -60,15 +42,43 @@ import axios from 'axios';
 export default {
   data() {
     return {
-        
+        current: null
     }
   },
-  props: ["files"],
+  emits: ["file_clicked"],
+  props: {
+    files: Array,
+    toggle: Boolean
+  },
   mounted() {
-    console.log(this.files)
+    
   },
   methods: {
-    
+    clickFile(uuid) {
+        var toggled = false;
+        if (this.toggle) {
+            
+            if (this.current == uuid) {
+                this.$refs[uuid][0].classList.remove('has-background-grey-light');
+                this.current = null;
+                toggled = false;
+            } else {
+                if (this.current != null) {
+                    this.$refs[this.current][0].classList.remove('has-background-grey-light');
+                }
+                this.$refs[uuid][0].classList.add('has-background-grey-light')
+                this.current = uuid;
+                toggled = true;
+            }
+        }
+        var file_data = null;
+        for (var i in this.files) {
+            if (this.files[i].uuid == uuid) {
+                file_data = this.files[i]
+            }
+        }
+        this.$emit('file_clicked', uuid, file_data, toggled);
+    }
   }
 }
 </script>

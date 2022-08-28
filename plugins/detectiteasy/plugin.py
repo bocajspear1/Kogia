@@ -37,6 +37,8 @@ class DetectItEasyPlugin(DockerPluginBase):
             self.docker_rebuild()
 
     def action_get_version(self):
-        return {"version": "1.0"}
+        version = self.run_image_with_cmd("diec -v").decode("utf-8").strip()
+        ver_split = version.split(" ", 1)
+        return [{"DiE Version": ver_split[1]}]
 
 __PLUGIN__ = DetectItEasyPlugin

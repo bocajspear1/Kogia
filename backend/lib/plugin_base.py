@@ -8,6 +8,7 @@ import tarfile
 import tempfile
 import shutil
 import json
+import shlex
 
 class PluginBase():
 
@@ -100,6 +101,12 @@ class DockerPluginBase(PluginBase):
 
     def docker_rebuild(self):
         self.docker_build(nocache=True)
+
+    def run_image_with_cmd(self, cmd):
+        cmd_split = shlex.split(cmd)
+        entrypoint = cmd_split[0]
+        args = shlex.join(cmd_split[1:])
+        return self.pm.docker.containers.run(self._name, args, entrypoint=entrypoint, remove=True, network_mode="none")
     
     def run_image(self, share_dir, file_obj, env_vars=None):
         share_dir = os.path.abspath(share_dir)

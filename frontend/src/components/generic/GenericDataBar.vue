@@ -1,9 +1,9 @@
 <template>
     <div class="level">
         <div v-for="item in data_list" class="level-item has-text-centered">
-            <div>
-                <p class="heading">{{ item.key }}</p>
-                <p class="title">{{ item.value }}</p>
+            <div v-for="(value, key) in item">
+                <p class="heading">{{ key }}</p>
+                <p class="title">{{ value }}</p>
             </div>
         </div>
     </div> 
@@ -14,35 +14,35 @@
 </style>
 
 <script>
-import axios from 'axios';
+import plugin_data from './plugin_data';
 
 export default {
   data() {
     return {
-      "data_list": []
+      data_list: [],
+      
     }
   },
-  props: ["plugin_name", "data_action"],
+  props: ["plugin_name", "loadon", "action"],
   mounted() {
-    
+    console.log("GenericDataBar loaded")
+    console.log(this.plugin_name);
+    console.log(this.loadon);
+    console.log(this.action);
+    if (this.loadon == "load") {
+      this.loadData();
+    }
   },
   methods: {
-    doAction() {
+    loadData() {
       var self = this;
+      plugin_data.get_plugin_action(self.plugin_name, self.action, function(resp_data) {
+        console.log(resp_data)
+        self.data_list = resp_data;
+      }, function(resp){
 
-      axios.get("/api/v1/plugin/" + self.plugin_name + "/action/" + self.data_action).then(function(resp){
-            var resp_data = resp['data'];
-
-            if (resp_data['ok'] == true) {
-                self.submission = resp_data['result'];
-                var date = new Date(self.submission['submit_time']*1000);
-                self.submission['submit_time'] = date.toLocaleString() 
-                self.done = true;
-            }
-            
-        }).catch(function(resp){
-            console.log('FAILURE!!', resp);
-        });
+      })
+      
     }
   }
 }

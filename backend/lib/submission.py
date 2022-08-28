@@ -291,7 +291,7 @@ class Submission(VertexObject):
 
     @classmethod
     def list_dict(cls, db):
-        return db.get_vertex_list(cls.GRAPH_NAME, cls.COLLECTION_NAME)
+        return db.get_vertex_list_sorted(cls.COLLECTION_NAME, "submit_time", "DESC")
 
     @property
     def uuid(self):
