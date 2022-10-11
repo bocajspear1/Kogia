@@ -7,11 +7,13 @@ class StringsPlugin(DockerPluginBase):
     INGESTS = []
     DOCKER_IMAGE = 'strings'
 
-    def __init__(self, plugin_manager):
+    def __init__(self, plugin_manager, args=None):
         super().__init__(self.DOCKER_IMAGE, plugin_manager)
+        self.args = args
 
     def run(self, job, file_obj):
         submission = job.submission
+        print(self.args)
 
         self.run_image(submission.submission_dir, file_obj)
         self.wait_and_stop()

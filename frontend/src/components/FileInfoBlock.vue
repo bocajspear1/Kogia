@@ -74,7 +74,7 @@ export default {
   },
   props: ["file"],
   mounted() {
-    console.log(this.file)
+    
   },
   methods: {
     

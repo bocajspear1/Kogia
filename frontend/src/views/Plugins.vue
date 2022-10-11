@@ -1,4 +1,5 @@
 <template>
+<div class="container column is-10">
     <div class="list has-hoverable-list-items">
         <div v-for="plugin in plugins" class="list-item">
             
@@ -36,6 +37,8 @@
         </div>
         
     </div>
+</div>
+    
 </template>
 
 <style scoped>
@@ -65,7 +68,6 @@ export default {
             var resp_data = resp['data'];
 
             if (resp_data['ok'] == true) {
-                console.log(resp_data['result'])
                 self.plugins = resp_data['result'];
                 self.done = true;
             }

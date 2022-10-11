@@ -30,8 +30,6 @@ export default {
   props: ["panel_data", "plugin_name"],
   mounted() {
     var self = this;
-    console.log("hi")
-    console.log(this.panel_data)
 
     for (var i in this.panel_data.items) {
         var item = this.panel_data.items[i];

@@ -2,6 +2,8 @@ from arango import ArangoClient
 from arango.exceptions import DocumentInsertError
 from threading import RLock
 
+NO_INDEX = ('logs',)
+
 class ArangoConnectionFactory():
 
     def __init__(self, host, port, username, password, db_name, ssl=False):
@@ -82,10 +84,11 @@ class ArangoConnection():
         else:
             return graph.edge_collection(collection)
 
-    def _get_collection(self, collection):
+    def _get_collection(self, collection, create_index=True):
         if not self._db.has_collection(collection):
             new_collection = self._db.create_collection(collection)
-            new_collection.add_hash_index(fields=['uuid'], unique=True)
+            if create_index and collection not in NO_INDEX:
+                new_collection.add_hash_index(fields=['uuid'], unique=True)
             return new_collection
         else:
             return self._db.collection(collection)
@@ -96,12 +99,109 @@ class ArangoConnection():
     def get_vertex_by_match(self, graph_name, collection, field, value):
         col = self._get_vertexes(graph_name, collection)
         cursor = col.find({field: value}, skip=0, limit=1)
+        if cursor.count() == 0:
+            return None
         item = cursor.next()
         return item
 
     def get_vertex_by_id(self, graph_name, collection, id):
         col = self._get_vertexes(graph_name, collection)
         return col.get(id)
+
+    # {"test": ()}
+    def get_vertex_list_joined(self, main_collection, join_map, sort_by=None, filter_map=None, limit=None, skip=0):
+        aql_query = f"FOR doc IN {main_collection}"
+        bind_vars = {}
+
+        join_list = list(join_map.keys())
+
+        for i,join_col in enumerate(join_list):
+            aql_query += " FOR " + join_col + "_item IN " + join_col
+
+
+        aql_query += " FILTER "
+        first = True
+        for i,join_col in enumerate(join_list):
+            if first:
+                first = False
+            else:
+                 aql_query += " AND "
+            join_info = join_map[join_col]
+            join_field = join_info[0]
+            compare = "=="
+            orig_field = ""
+            if len(join_info) == 3:
+                compare = join_info[1]
+                orig_field = join_info[2]
+            else:
+                orig_field = join_info[1]
+            
+
+            # bind_vars["join_col_" + str(i) + "_field"] = join_map[join_col][0]
+            aql_query += " " + join_col + "_item." + join_field + " " + compare + " doc." + orig_field
+
+        
+        if filter_map is not None:
+            aql_query += " AND ("
+            filter_keys = list(filter_map.keys())
+            first = True
+            for filter_key in filter_keys:
+                if first:
+                    first = False
+                else:
+                    aql_query += " AND "
+
+                filter_line = filter_map[filter_key]
+                filter_field = filter_line[0]
+                compare = "=="
+                comp_value = ""
+                if len(filter_line) == 3:
+                    compare = filter_line[1]
+                    comp_value = filter_line[2]
+                else:
+                    comp_value = filter_line[1]
+
+                val_name = "filter_key_" + str(i) + "_value"
+                bind_vars[val_name] = comp_value
+
+                final_key = filter_key
+                if final_key == main_collection:
+                    final_key = "doc" 
+                else:
+                    final_key = final_key + "_item"
+                
+                
+                aql_query += " " + final_key + "." + filter_field + " " + compare + " @" + val_name + ""
+            aql_query += ")"
+
+        if sort_by is not None:
+            sort_item = sort_by[0] + "_item"
+            if sort_by[0] == main_collection:
+                sort_item = "doc"
+            aql_query += f" SORT {sort_item}.{sort_by[1]} {sort_by[2]}"
+
+        if limit is not None:
+            aql_query += f" LIMIT {skip}, {limit}"
+
+        aql_query += " RETURN { " + main_collection + ": doc "
+
+        for i,join_col in enumerate(join_list):
+            aql_query += ", " + join_col + ": "  + join_col + "_item"
+        aql_query += " }"
+        print(aql_query)
+        print(bind_vars)
+            
+        cursor = self._db.aql.execute(
+            aql_query,
+            bind_vars=bind_vars
+        )
+
+        items = list(cursor)
+        return items
+
+
+
+        
 
     def get_vertex_list_sorted(self, collection, sort_field, sort_dir, filter=None, limit=None, skip=0):
 

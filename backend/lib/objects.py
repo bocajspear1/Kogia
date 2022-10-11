@@ -86,6 +86,9 @@ class VertexObject():
                 doc = db.get_vertex_by_id(self.GRAPH_NAME, self._collection, self._id)
             else:
                 return None
+
+        if doc is None:
+            return None
         
         if '_id' in doc:
             self._id = doc['_id']

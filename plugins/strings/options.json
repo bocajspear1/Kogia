@@ -1,0 +1,8 @@
+[
+    {
+        "name": "minimum",
+        "description": "Minimum string size",
+        "default": "4",
+        "type": "number"
+    }
+]

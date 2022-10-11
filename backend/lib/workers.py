@@ -1,6 +1,7 @@
 import threading
 import queue
 import time
+import traceback
 
 class FileWorker (threading.Thread):
     def __init__(self, plugin_list, job, file_obj):
@@ -19,7 +20,13 @@ class FileWorker (threading.Thread):
             stage = order[i]
             for plugin in self._plugin_list:
                 if plugin.PLUGIN_TYPE == stage and plugin.operates_on(self._file_obj):
-                    new_file_uuids = plugin.run(self._job, self._file_obj)
+                    try:
+                        new_file_uuids = plugin.run(self._job, self._file_obj)
+                    except Exception as e:
+                        message = str(e) + ": " + str(traceback.format_exc())
+                        self._job.error_log(plugin.__class__.__name__, message)
+                        self._job.add_to_error(f"Plugin {plugin.__class__.__name__} had a failure")
+
                     for new_file_uuid in new_file_uuids:
                         new_file_obj = self._job.submission.get_file(uuid=new_file_uuid)
                         new_file_obj.save(self._job.db)
@@ -43,7 +50,8 @@ class JobWorker(threading.Thread):
         workers = []
         file_list = self._job.submission.get_files()
         for i in range(len(file_list)):
-            plugin_list = self._pm.initialize_plugins(self._job.get_plugin_list())
+            plugin_list = self._job.get_initialized_plugin_list(self._pm)
+            
             new_file_worker = FileWorker(plugin_list, self._job, file_list[i])
             new_file_worker.start()
             workers.append(new_file_worker)

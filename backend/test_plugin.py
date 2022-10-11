@@ -37,6 +37,9 @@ class DBStub():
     def get_vertex_by_match(self, graph_name, collection, field, value):
         col = self._get_vertexes(graph_name, collection)
         cursor = col.find({field: value}, skip=0, limit=1)
+        print(cursor)
+        if cursor.count() == 0:
+            return None
         item = cursor.next()
         return item
 

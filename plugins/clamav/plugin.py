@@ -7,8 +7,9 @@ class ClamAVPlugin(DockerPluginBase):
     INGESTS = []
     DOCKER_IMAGE = 'clamav'
 
-    def __init__(self, plugin_manager):
+    def __init__(self, plugin_manager, args=None):
         super().__init__(self.DOCKER_IMAGE, plugin_manager)
+        self.args = args
 
     def run(self, job, file_obj):
         submission = job.submission
@@ -21,7 +22,7 @@ class ClamAVPlugin(DockerPluginBase):
         print(clamlog)
 
         self.remove_tmp_dirs()
-        # self.remove_container()
+        self.remove_container()
 
         return []
 

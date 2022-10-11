@@ -19,6 +19,8 @@ class PluginBase():
         self._enabled = True
         self.config = {}
         self._display = {}
+        self._options = {}
+
         config_path = os.path.join(self.get_plugin_dir(), "plugin.json")
         if os.path.exists(config_path):
             config_file = open(config_path, "r")
@@ -28,12 +30,20 @@ class PluginBase():
                 self._enabled = self.config['enabled']
                 del self.config['enabled']
             config_file.close()
+
         display_path = os.path.join(self.get_plugin_dir(), "display.json")
         if os.path.exists(display_path):
             display_file = open(display_path, "r")
             display_data = display_file.read()
             self._display = json.loads(display_data)
             display_file.close()
+
+        options_path = os.path.join(self.get_plugin_dir(), "options.json")
+        if os.path.exists(options_path):
+            options_file = open(options_path, "r")
+            options_data = options_file.read()
+            self._options= json.loads(options_data)
+            options_file.close()
             
         # print(self.config)
 
@@ -43,7 +53,8 @@ class PluginBase():
             "config": self.config,
             "type": self.PLUGIN_TYPE,
             "author": self.AUTHOR,
-            "display": self._display
+            "display": self._display,
+            "options": self._options
         }
 
     @property

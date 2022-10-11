@@ -23,6 +23,7 @@
           <router-link class="navbar-item" to="/upload"><mdicon name="cloud-upload-outline" :size="20" />&nbsp;&nbsp;Upload</router-link>
           <router-link class="navbar-item" to="/submissions"><mdicon name="view-list-outline" :size="20" />&nbsp;&nbsp;Submissions</router-link>
           <router-link class="navbar-item" to="/plugins"><mdicon name="video-input-component" :size="20" />&nbsp;&nbsp;Plugins</router-link>
+          <router-link class="navbar-item" to="/jobs"><mdicon name="cog-outline" :size="20" />&nbsp;&nbsp;Jobs</router-link>
           
         </div>
 
@@ -30,7 +31,7 @@
       
     </nav>
   </header>
-  <main class="container">
+  <main class="main-content columns">
     <router-view />
   </main>
 </template>

@@ -9,6 +9,8 @@ from .objects import CollectionObject
 
 class Job(CollectionObject):
 
+    COLLECTION_NAME = 'jobs'
+
     @classmethod
     def new(cls, submission, primary, db):
         new_cls = cls(db, uuid=str(uuid.uuid4()))
@@ -16,9 +18,32 @@ class Job(CollectionObject):
         new_cls._primary = primary
         return new_cls
 
+    @classmethod
+    def list_dict(cls, db, submission_uuid=None):
+        new_list = []
+        job_items = []
+        if submission_uuid is None:
+            job_items = db.get_vertex_list_joined(cls.COLLECTION_NAME, {"submissions": ("uuid", "submission")}, sort_by=(('jobs', 'start_time', 'DESC')))
+        else:
+            job_items = db.get_vertex_list_joined(cls.COLLECTION_NAME, {"submissions": ("uuid", "submission")}, filter_map={"submissions": ('uuid', submission_uuid)}, sort_by=('jobs', 'start_time', 'DESC'))
+
+        for job_item in job_items:
+            new_item = job_item['jobs']
+            new_item['submission_name'] = job_item['submissions'].get('name', "")
+            new_item['submission_description'] = job_item['submissions'].get('description', "")
+            new_item['submission_owner'] = job_item['submissions'].get('owner', "")
+            if new_item.get('primary', '') != '':
+                file_data = db.get_vertex_by_match('kogia-graph', 'files', 'uuid', new_item['primary'])
+                if file_data is not None:
+                    new_item['primary_name'] = file_data['name']
+                else:
+                    new_item['primary_name'] = ""
+            new_list.append(new_item)
+        
+        return new_list
 
     def __init__(self, db, uuid=None, id=None):
-        super().__init__('jobs', id)
+        super().__init__(self.COLLECTION_NAME, id)
 
         self._user = ""
         self._submission = None
@@ -26,10 +51,11 @@ class Job(CollectionObject):
         self._start_time = int(time.time())
         self._complete_time = 0
         self._complete = False
-        self._error = ""
+        self._error = []
         self._plugins = []
         self._uuid = uuid
         self._db = db
+        self._arg_map = {}
 
     @property
     def complete(self):
@@ -68,7 +94,7 @@ class Job(CollectionObject):
         for item in plugin_list:
             self.add_plugin(item)
 
-    def add_plugin(self, new_plugin):
+    def add_plugin(self, new_plugin, args=None):
         found = False
         for plugin in self._plugins:
             if plugin.__name__ == new_plugin.__name__:
@@ -76,6 +102,8 @@ class Job(CollectionObject):
         
         if not found:
             self._plugins.append(new_plugin)
+            if args is not None:
+                self._arg_map[new_plugin.__name__] = args
             
     def to_dict(self):
         plugin_list = []
@@ -90,7 +118,8 @@ class Job(CollectionObject):
             "complete": self._complete,
             "error": self._error,
             "plugins": plugin_list,
-            "submission": self._submission.uuid
+            "submission": self._submission.uuid,
+            "plugin_args": self._arg_map
         }
 
     def from_dict(self, pm, data_obj):
@@ -101,6 +130,7 @@ class Job(CollectionObject):
         self._complete_time = data_obj.get('complete_time', 0)
         self._complete = data_obj.get('complete', False)
         self._error = data_obj.get('error', '')
+        self._arg_map = data_obj.get('plugin_args', '')
 
         if 'submission' in data_obj:
             load_sub = Submission(uuid=data_obj['submission'])
@@ -115,7 +145,19 @@ class Job(CollectionObject):
 
 
     def get_plugin_list(self):
+        print(self._plugins)
         return copy.deepcopy(self._plugins)
+
+    def get_initialized_plugin_list(self, pm):
+        return_list = []
+        plugin_class_list = self.get_plugin_list()
+        for plugin_class in plugin_class_list:
+            name = plugin_class.__name__
+            if name in self._arg_map:
+                return_list.append(pm.initialize_plugin(plugin_class, args=self._arg_map[name]))
+            else:
+                return_list.append(pm.initialize_plugin(plugin_class))
+        return return_list
 
     def save(self):
         self.save_doc(self._db, self.to_dict())
@@ -124,5 +166,24 @@ class Job(CollectionObject):
     def load(self, pm):
         doc = self.load_doc(self._db, 'uuid', self._uuid)
         self.from_dict(pm, doc)
+
+    def add_to_error(self, error_message):
+        self._error.append(error_message)
+
+    def _log(self, severity, log_name, message):
+        self._db.insert("logs", {
+            "severity": severity,
+            "log_name": log_name,
+            "message": message
+        })
+
+    def error_log(self, log_name, message):
+        self._log('error', log_name, message)
+
+    def info_log(self, log_name, message):
+        self._log('info', log_name, message)
+
+    def warning_log(self, log_name, message):
+        self._log('warning', log_name, message)
 
 

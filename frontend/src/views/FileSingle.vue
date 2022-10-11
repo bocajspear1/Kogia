@@ -3,7 +3,11 @@ import FileInfoBlock from '@/components/FileInfoBlock.vue'
 </script>
 
 <template>
+
+<div class="container column is-10">
     <FileInfoBlock v-if="file != null" :file="file"></FileInfoBlock>
+</div>
+    
 </template>
 
 <style scoped>

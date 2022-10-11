@@ -18,7 +18,7 @@ export default {
     }
   },
   emits: ['click'],
-  props: ["iconname"],
+  props: ["iconname", "tooltip"],
   mounted() {
     console.log(this.iconname)
   },

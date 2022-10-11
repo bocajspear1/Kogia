@@ -5,7 +5,8 @@ var total_file_count = "N/A"
 </script>
 
 <template>
-  <div class="level">
+<div class="container column is-10">
+    <div class="level">
     <div class="level-item has-text-centered">
         <div>
             <p class="heading">Submissions</p>
@@ -25,6 +26,8 @@ var total_file_count = "N/A"
         </div>
     </div>
   </div>
+</div>
+  
 </template>
 
 <style scoped>

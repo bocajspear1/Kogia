@@ -378,6 +378,10 @@ class Submission(VertexObject):
         else:
             document = self.load_doc(db)
 
+        if document is None:
+            self._uuid = None
+            return
+
         self.from_dict(document)
 
         items = self.get_connected_to(db, 'has_file')
@@ -392,7 +396,8 @@ class Submission(VertexObject):
             "owner": self._owner,
             "submit_time": self._submit_time,
             "name": self._name,
-            'description': self._description
+            "description": self._description,
+            "base_dir": self._base_dir
         }
         if full:
             files_list = []
@@ -409,6 +414,7 @@ class Submission(VertexObject):
         self._submit_time = data_obj.get('submit_time', 0)
         self._name = data_obj.get('name', '')
         self._description = data_obj.get('description', '')
+        self._base_dir = data_obj.get('base_dir', '')
         
 
     def save(self, db):

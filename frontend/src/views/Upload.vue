@@ -5,7 +5,7 @@ import Notifications from '@/components/Notifications.vue'
 </script>
 
 <template>
-    <div class="container">
+    <div class="container column is-10">
         <Notifications ref="notifications"></Notifications>
         
         <div id="add-details" v-if="stage == 'add'" class="box">
@@ -39,7 +39,8 @@ export default {
   data() {
     return {
         "stage": "add",
-        "job_uuid": ""
+        "job_uuid": "",
+        "submission_uuid": ""
     }
   },
   mounted() {
@@ -47,9 +48,7 @@ export default {
   },
   methods: {
     onJobDone(job_data) {
-        var self = this;
-        self.stage = "new_job";
-        console.log(job_data);
+        this.$router.push({ name: 'JobCreate', params: { submission_uuid: this.submission_uuid } });
     },
     submitFiles(file_list) {
 
@@ -61,20 +60,17 @@ export default {
         var self = this;
 
         var name = self.$refs.nameInput.value;
-        console.log('name', name);
         formData.append('name', name);
         var description = self.$refs.descriptionInput.value;
         formData.append('description', description);
 
-
-
         axios.post('api/v1/submission/new',
-        formData,
-        {
-            headers: {
-                'Content-Type': 'multipart/form-data'
+            formData,
+            {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
             }
-        }
         ).then(function(resp){
             console.log('SUCCESS!!', resp);
             var resp_data = resp['data'];
@@ -82,17 +78,12 @@ export default {
             if (resp_data['ok'] == true) {
                 var job_uuid = resp_data['result']['job_uuid'];
                 self.job_uuid = job_uuid;
+                self.submission_uuid = resp_data['result']['submission_uuid'];
                 self.stage = "wait";
-                // console.log(job_uuid);
-                // console.log(self.$refs);
-                // self.stage = "wait";
-                // self.$refs.waitItem.startWait(job_uuid);
-                
+             
             } else {
                 self.$refs.notifications.addNotification("error", "Upload Error: " + resp_data['error']);
             }
-            // this.$refs.waitItem.startWait();
-
         })
         .catch(function(resp){
             console.log('FAILURE!!', resp);

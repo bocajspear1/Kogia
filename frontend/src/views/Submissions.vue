@@ -1,4 +1,5 @@
 <template>
+<div class="container column is-10">
     <table class="table is-striped is-fullwidth is-hoverable" v-if="submissions.length > 0 && done == true">
         <thead>
             <tr>
@@ -30,6 +31,8 @@
     <div class="p-3" v-else>
         <progress class="progress is-small is-primary" max="100">50%</progress>
     </div>
+</div>
+    
 </template>
 
 <style scoped>

@@ -243,6 +243,8 @@ def get_submission_info(uuid):
     submission = Submission(uuid=uuid)
     app._db.lock()
     submission.load(app._db)
+    if submission.uuid == None:
+        return abort(404)
     app._db.unlock()
     return jsonify({
         "ok": True,
@@ -312,6 +314,93 @@ def run_plugin_action(plugin_name, action):
         "ok": True,
         "result": output
     })
+
+@app.route('/api/v1/analysis/new', methods=['POST'])
+def create_job():
+
+    plugins_param = 'plugins'
+    submission_uuid_param = "submission_uuid"
+    primary_uuid_param = "primary_uuid"
+
+    request_data = request.get_json()
+
+    if plugins_param not in request_data:   
+        return jsonify({
+            "ok": False,
+            "error": f"No plugins submitted"
+        })
+
+    if submission_uuid_param not in request_data:   
+        return jsonify({
+            "ok": False,
+            "error": f"No submission uuid submitted"
+        })
+
+    if primary_uuid_param not in request_data:   
+        return jsonify({
+            "ok": False,
+            "error": f"No primary file uuid submitted"
+        })
+
+    app._db.lock()
+
+    submission_uuid = request_data[submission_uuid_param]
+    primary_file_uuid = request_data[primary_uuid_param]
+    submission = Submission(uuid=submission_uuid)
+    submission.load(app._db)
+
+    new_job = Job.new(submission, primary_file_uuid, app._db_factory.new())
+
+    for plugin in request_data[plugins_param]:
+        if 'name' not in plugin:
+            return jsonify({
+                "ok": False,
+                "error": f"Invalid plugin object (no name field)"
+            })
+        add_plugin_class = app._manager.get_plugin(plugin['name'])
+        
+        add_plugin = None
+        if 'options' in plugin:
+            options = plugin['options']
+            if not isinstance(options, dict):
+                return jsonify({
+                    "ok": False,
+                    "error": f"Invalid plugin object (options field is not dict)"
+                })
+            new_job.add_plugin(add_plugin_class, args=options)
+        else:
+            new_job.add_plugin(add_plugin_class)
+        
+        
+    new_job.save()
+    
+    new_worker = JobWorker(app._manager, new_job)
+    app._workers.append(new_worker)
+    new_worker.start()
+
+    return jsonify({
+        "ok": True,
+        "result": {
+            "job_uuid": str(new_job.uuid)
+        }
+    })
+
+@app.route('/api/v1/job/list', methods=['GET'])
+def get_job_list():
+    app._db.lock()
+    job_list = []
+    submission_uuid = request.args.get('submission')
+    if submission_uuid is None:
+        job_list = Job.list_dict(app._db)
+    else:
+        job_list = Job.list_dict(app._db, submission_uuid=submission_uuid)
+        
+    app._db.unlock()
+    return jsonify({
+        "ok": True,
+        "result": job_list
+    })
+
 
 @app.route('/api/v1/job/<uuid>/info', methods=['GET'])
 def get_job_status(uuid):

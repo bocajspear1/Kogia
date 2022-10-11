@@ -30,6 +30,12 @@ class PluginManager():
             new_list.append(plugin(self))
         return new_list
 
+    def initialize_plugin(self, plugin_class, args=None):
+        if args is None:
+            return plugin_class(self)
+        else:
+            return plugin_class(self, args=args)
+
     def get_plugin_list(self, type_string):
         return_list = []
         for plugin_name in self.plugins:

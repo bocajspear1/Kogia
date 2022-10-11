@@ -1,11 +1,13 @@
 <script setup>
 import SubmissionBlock from '@/components/SubmissionBlock.vue'
 import FileList from '../components/FileList.vue';
+import JobList from '../components/JobList.vue';
 import MenuButton from '../components/MenuButton.vue';
 import MenuBar from '../components/MenuBar.vue';
 </script>
 
 <template>
+  <div class="container column is-10">
     <SubmissionBlock v-if="submission != null" :submission="submission"></SubmissionBlock>
     <MenuBar>
       <template v-slot:main>
@@ -18,6 +20,8 @@ import MenuBar from '../components/MenuBar.vue';
       </template>
     </MenuBar>
     <FileList v-if="submission != null" :toggle="false" :files="submission.files" @file_clicked="fileClicked"></FileList>
+    <JobList v-if="submission != null" :submission_uuid="submission_uuid"></JobList>
+  </div>
     
 </template>
 
@@ -40,8 +44,7 @@ export default {
   },
   methods: {
     fileClicked(uuid, data) {
-      console.log(uuid, data);
-      this.$router.push({ name: 'FileSingle', params: { file_uuid: uuid } })
+      this.$router.push({ name: 'FileSingle', params: { file_uuid: uuid } });
     },
     getSubmission() {
       var self = this;
@@ -61,7 +64,7 @@ export default {
         });
     },
     resubmitSubmission() {
-      this.$router.push({ name: 'JobCreate', params: { submission_uuid: this.submission_uuid } })
+      this.$router.push({ name: 'JobCreate', params: { submission_uuid: this.submission_uuid } });
     },
     removeSubmission() {
 
