@@ -407,6 +407,8 @@ def get_job_status(uuid):
     app._db.lock()
     job = Job(app._db, uuid=uuid)
     job.load(app._manager)
+    if job.uuid == None:
+        return abort(404)
     resp = job.to_dict()
     app._db.unlock()
     return jsonify({

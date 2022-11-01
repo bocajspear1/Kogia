@@ -1,5 +1,5 @@
 <script setup>
-import FileIcon from '@/components/FileIcon.vue'
+import FileIcon from '@/components/file/FileIcon.vue'
 </script>
 <template>
     <div class="list has-hoverable-list-items has-visible-pointer-controls">

@@ -174,7 +174,8 @@ class Job(CollectionObject):
         self._db.insert("logs", {
             "severity": severity,
             "log_name": log_name,
-            "message": message
+            "message": message,
+            "job_uuid": self._uuid
         })
 
     def error_log(self, log_name, message):

@@ -10,6 +10,10 @@ import shutil
 import json
 import shlex
 
+from .submission import SubmissionFile
+
+from .job import Job
+
 class PluginBase():
 
     AUTHOR = ""
@@ -119,7 +123,7 @@ class DockerPluginBase(PluginBase):
         args = shlex.join(cmd_split[1:])
         return self.pm.docker.containers.run(self._name, args, entrypoint=entrypoint, remove=True, network_mode="none")
     
-    def run_image(self, share_dir, file_obj, env_vars=None):
+    def run_image(self, share_dir, job_obj: Job, file_obj: SubmissionFile, env_vars=None):
         share_dir = os.path.abspath(share_dir)
 
         environment = {}
@@ -143,8 +147,10 @@ class DockerPluginBase(PluginBase):
 
         container = None
         if not self._network:
+            job_obj.info_log(str(self.__class__.__name__), "Creating networked container " + self._name)
             container = self.pm.docker.containers.create(self._name, volumes=vols, environment=environment, detach=True, name=self._running_name, network_mode="none")
         else:
+            job_obj.info_log(str(self.__class__.__name__), "Creating unnetworked container " + self._name)
             container = self.pm.docker.containers.create(self._name, volumes=vols, environment=environment, detach=True, name=self._running_name)
 
         self._created = True
@@ -171,10 +177,14 @@ class DockerPluginBase(PluginBase):
             container = self.pm.docker.containers.get(self._running_name)
             container.stop()
 
-    def remove_container(self):
+    def remove_container(self, job_obj: Job):
         container = self.pm.docker.containers.get(self._running_name)
         if container.status == "running":
             container.stop()
+
+        job_obj.info_log(str(self.__class__.__name__), container.logs().decode('utf8'))
+        job_obj.info_log(str(self.__class__.__name__), "Removing container " + self._name)
+        
         if os.getenv("KOGIA_DEBUG") is not None:
             return
         container.remove()

@@ -1,5 +1,5 @@
 <script setup>
-import FileInfoBlock from '@/components/FileInfoBlock.vue'
+import FileInfoBlock from '@/components/file/FileInfoBlock.vue'
 </script>
 
 <template>

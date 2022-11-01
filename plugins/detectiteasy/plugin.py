@@ -15,7 +15,7 @@ class DetectItEasyPlugin(DockerPluginBase):
     def run(self, job, file_obj):
         submission = job.submission
 
-        self.run_image(submission.submission_dir, file_obj)
+        self.run_image(submission.submission_dir, job, file_obj)
         self.wait_and_stop()
         
         file_out = self.extract_single_file(submission, file_obj, "/tmp/die-out.json")
@@ -27,7 +27,7 @@ class DetectItEasyPlugin(DockerPluginBase):
                     file_obj.exec_packer = value['name'].lower()
 
         self.remove_tmp_dirs()
-        self.remove_container()
+        self.remove_container(job)
 
         return []
 

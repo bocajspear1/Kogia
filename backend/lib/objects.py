@@ -101,5 +101,5 @@ class VertexObject():
     def insert_edge(self, db, collection, to_item, data=None):
         db.insert_edge(self.GRAPH_NAME, collection, self._id, to_item, data=data)
 
-    def get_connected_to(self, db, edge_collection):
-        return db.get_connected_to(self.GRAPH_NAME, edge_collection, self._id)
+    def get_connected_to(self, db, end_collection, filter_edges=None, max=2):
+        return db.get_connected_to(self.GRAPH_NAME, self._id, end_collection, filter_edges=filter_edges, max=max)

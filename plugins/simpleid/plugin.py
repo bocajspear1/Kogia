@@ -14,7 +14,7 @@ class SimpleIDPlugin(DockerPluginBase):
     def run(self, job, file_obj):
         submission = job.submission
        
-        self.run_image(submission.submission_dir, file_obj)
+        self.run_image(submission.submission_dir, job, file_obj)
 
         self.wait_and_stop()
 
@@ -124,7 +124,7 @@ class SimpleIDPlugin(DockerPluginBase):
             else:
                 file_obj.target_os = "unknown"
 
-        self.remove_container()
+        self.remove_container(job)
 
         return []
 

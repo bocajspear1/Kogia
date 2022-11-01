@@ -5,6 +5,7 @@ import time
 import hashlib
 
 
+from .db import DBNotUniqueError
 from .objects import VertexObject
 
 class Metadata(VertexObject):
@@ -40,7 +41,10 @@ class Metadata(VertexObject):
         self._value = data_obj.get('value', '')
 
     def save(self, db):
-        self.save_doc(db, self.to_dict())
+        try:
+            self.save_doc(db, self.to_dict())
+        except DBNotUniqueError:
+            pass
 
     def load(self, db):
         document = {}
@@ -176,15 +180,15 @@ class SubmissionFile(VertexObject):
 
         self.from_dict(document)
 
-        items = self.get_connected_to(db, 'has_metadata')
+        items = self.get_connected_to(db, 'metadata', filter_edges=['has_metadata'])
         for item in items:
-            load_data = Metadata(id=item['_to'])
-            load_data.load(db)
+            load_data = Metadata(id=item['_id'])
+            load_data.from_dict(item)
             self._metadata.append(load_data)
 
-        parent = self.get_connected_to(db, 'has_parent')
-        if len(parent) != 0:
-            self._parent = parent[0]['_to']
+        # parent = self.get_connected_to(db, 'has_parent')
+        # if len(parent) != 0:
+        #     self._parent = parent[0]['_to']
 
     @property
     def mime_type(self):
@@ -263,16 +267,22 @@ class SubmissionFile(VertexObject):
         self._unpacked_archive = False
 
     def add_metadata(self, key, value):
+        new_data = Metadata(key=key)
+        new_data.value = value
+        self._metadata.append(new_data)
+
+    def add_metadata_unique(self, key, value):
         found = False
         for data in self._metadata:
             if data.key == key:
                 found = True
                 data.value = value 
-        
+
         if not found:
             new_data = Metadata(key=key)
             new_data.value = value
             self._metadata.append(new_data)
+
 
 
 class Submission(VertexObject):
@@ -384,10 +394,10 @@ class Submission(VertexObject):
 
         self.from_dict(document)
 
-        items = self.get_connected_to(db, 'has_file')
+        items = self.get_connected_to(db, 'files')
         for item in items:
-            load_file = SubmissionFile(id=item['_to'])
-            load_file.load(db)
+            load_file = SubmissionFile(id=item['_id'])
+            load_file.from_dict(item)
             self._files.append(load_file)
 
     def to_dict(self, full=False):

@@ -82,6 +82,7 @@ def main():
     parser.add_argument('--plugin', help='Plugin to test', required=True)
     parser.add_argument('--meta', help='Metadata to add to submission', action='append')
     parser.add_argument('--mimetype', help='Set mimetype of file')
+    parser.add_argument('--args', help='Set args in JSON')
 
     args = parser.parse_args()
 
@@ -114,7 +115,11 @@ def main():
     manager.load()
 
     plugin = manager.get_plugin(args.plugin)
-    plugin_obj = manager.initialize_plugins([plugin])[0]
+    plugin_obj = None
+    if args.args is not None:
+        plugin_obj = manager.initialize_plugin(plugin, args=json.loads(args.args))
+    else:
+        plugin_obj = manager.initialize_plugin(plugin)
     if plugin_obj is None:
         print(f"Invalid plugin {args.plugin}")
         return

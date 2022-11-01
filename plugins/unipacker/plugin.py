@@ -13,7 +13,7 @@ class UnipackerPlugin(DockerPluginBase):
     def run(self, job, file_obj):
         submission = job.submission
 
-        self.run_image(submission.submission_dir, file_obj)
+        self.run_image(submission.submission_dir, job, file_obj)
         self.wait_and_stop()
         
         tmp_dir = self.extract(submission, file_obj, "/tmp/out")
@@ -30,7 +30,7 @@ class UnipackerPlugin(DockerPluginBase):
 
         self.remove_tmp_dirs()
 
-        self.remove_container()
+        self.remove_container(job)
 
         return uuid_list
 

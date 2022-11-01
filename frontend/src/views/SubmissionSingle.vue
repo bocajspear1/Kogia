@@ -1,7 +1,7 @@
 <script setup>
 import SubmissionBlock from '@/components/SubmissionBlock.vue'
-import FileList from '../components/FileList.vue';
-import JobList from '../components/JobList.vue';
+import FileList from '../components/file/FileList.vue';
+import JobList from '../components/job/JobList.vue';
 import MenuButton from '../components/MenuButton.vue';
 import MenuBar from '../components/MenuBar.vue';
 </script>

@@ -57,7 +57,7 @@ const routes = [
     component: Jobs,
   },
   {
-    path: "/job/:job_uuid",
+    path: "/job/:job_uuid/:page?",
     name: "JobSingle",
     component: JobSingle,
   },

@@ -4,6 +4,9 @@ from threading import RLock
 
 NO_INDEX = ('logs',)
 
+class DBNotUniqueError(Exception):
+    pass
+
 class ArangoConnectionFactory():
 
     def __init__(self, host, port, username, password, db_name, ssl=False):
@@ -265,6 +268,8 @@ class ArangoConnection():
 
     def update_vertex(self, graph_name, collection, id, document):
         col = self._get_vertexes(graph_name, collection)
+        if 'uuid' in document:
+            del document['uuid']
         col.update_match({"_id": id}, document)
 
 
@@ -282,13 +287,48 @@ class ArangoConnection():
             pass
         
 
-    def get_connected_to(self, graph_name, collection, from_item):
-        from_col = self._extract_collection_from_id(from_item)
-        col = self._get_edges(graph_name, collection, from_col, None)
-        if col is None:
-            return []
-        items = list(col.find({"_from": from_item}))
-        return items
+    def get_connected_to(self, graph_name, from_item, end_collection, filter_edges=None, max=2):
+
+        print(from_item)
+        start_collection = from_item.split("/")[0]
+
+        query = f"""
+FOR start IN @@startCollection FILTER start._id == @fromId
+    FOR v, e, p IN 1..@max OUTBOUND start 
+    GRAPH @graphName
+    FILTER IS_SAME_COLLECTION('{end_collection}', v._id)"""
+
+        filter_edge_query = ""
+        if filter_edges is not None:
+            for edge in filter_edges:
+                if filter_edge_query == "":
+                    filter_edge_query = f" AND (IS_SAME_COLLECTION('{edge}', e._id)"
+                else:
+                    filter_edge_query += f" OR IS_SAME_COLLECTION('{edge}', e._id)"
+
+            if filter_edge_query != "":
+                query += filter_edge_query + ")"
+
+        query += "    RETURN v"
+
+        print(query)
+
+        cursor = self._db.aql.execute(query, 
+            bind_vars={
+                '@startCollection': start_collection,
+                # '@endCollection': end_collection,
+                'graphName': graph_name,
+                'fromId': from_item,
+                'max': max
+            })
+        return list(cursor)
+
+        # from_col = self._extract_collection_from_id(from_item)
+        # col = self._get_edges(graph_name, collection, from_col, None)
+        # if col is None:
+        #     return []
+        # items = list(col.find({"_from": from_item}))
+        # return items
         
 
 

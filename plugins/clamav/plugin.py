@@ -14,7 +14,7 @@ class ClamAVPlugin(DockerPluginBase):
     def run(self, job, file_obj):
         submission = job.submission
 
-        self.run_image(submission.submission_dir, file_obj)
+        self.run_image(submission.submission_dir, job, file_obj)
         self.wait_and_stop()
         
         clamlog = self.extract_single_file(submission, file_obj, "/tmp/out/clamav.log")
@@ -22,7 +22,7 @@ class ClamAVPlugin(DockerPluginBase):
         print(clamlog)
 
         self.remove_tmp_dirs()
-        self.remove_container()
+        self.remove_container(job)
 
         return []
 

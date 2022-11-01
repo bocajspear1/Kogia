@@ -1,11 +1,12 @@
 <script setup>
-import FileList from '@/components/FileList.vue';
-import PluginCard from '@/components/PluginCard.vue';
-import Notifications from '@/components/Notifications.vue'
+import FileList from '@/components/file/FileList.vue';
+import PluginCard from '@/components/plugin/PluginCard.vue';
+import Notifications from '@/components/Notifications.vue';
 </script>
 
 
 <template>
+<div class="container column is-10">
   <Notifications ref="notifications"></Notifications>
   <div class="box" v-if="submission != null">
       <h1 class="title is-spaced">Submission: {{ submission.name }}</h1>
@@ -40,6 +41,8 @@ import Notifications from '@/components/Notifications.vue'
       </div>
     </div>
   </div>
+</div>
+  
 </template>
 
 <style scoped>

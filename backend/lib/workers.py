@@ -26,6 +26,7 @@ class FileWorker (threading.Thread):
                         message = str(e) + ": " + str(traceback.format_exc())
                         self._job.error_log(plugin.__class__.__name__, message)
                         self._job.add_to_error(f"Plugin {plugin.__class__.__name__} had a failure")
+                        print(message)
 
                     for new_file_uuid in new_file_uuids:
                         new_file_obj = self._job.submission.get_file(uuid=new_file_uuid)
