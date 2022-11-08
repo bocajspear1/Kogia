@@ -1,23 +1,24 @@
 <script setup>
-import SubmissionBlock from '@/components/SubmissionBlock.vue'
+import SubmissionBlock from '@/components/submission/SubmissionBlock.vue'
+import JobBlock from '@/components/job/JobBlock.vue'
 import FileDropdown from '../components/file/FileDropdown.vue';
 import FileList from '../components/file/FileList.vue';
-import SidebarMenuItem from '../components/SidebarMenuItem.vue';
-import MenuBar from '../components/MenuBar.vue';
-import SidebarMenu from '../components/SidebarMenu.vue';
+import SidebarMenuItem from '../components/menu/SidebarMenuItem.vue';
+import MenuBar from '../components/menu/MenuBar.vue';
+import SidebarMenu from '../components/menu/SidebarMenu.vue';
 </script>
 
 <template>
     <div class="column is-2">
         <SidebarMenu>
             <template v-slot:main>
-            <SidebarMenuItem iconname="monitor-dashboard" @click="setPage('overview')">Overview</SidebarMenuItem>
+            <SidebarMenuItem iconname="monitor-dashboard" @click="setPage('overview')" :active="page=='overview'">Overview</SidebarMenuItem>
             <SidebarMenuItem iconname="desktop-tower-monitor">Host Activity</SidebarMenuItem>
             <SidebarMenuItem iconname="server-network">Network Activity</SidebarMenuItem>
-            <SidebarMenuItem iconname="folder-file" @click="setPage('files')">Files</SidebarMenuItem>
-            <SidebarMenuItem iconname="table-multiple" @click="setPage('metadata')">Metadata</SidebarMenuItem>
+            <SidebarMenuItem iconname="folder-file" @click="setPage('files')" :active="page=='files'">Files</SidebarMenuItem>
+            <SidebarMenuItem iconname="table-multiple" @click="setPage('metadata')" :active="page=='metadata'">Metadata</SidebarMenuItem>
             <SidebarMenuItem iconname="file-chart">Reports</SidebarMenuItem>
-            <SidebarMenuItem iconname="script-text">Logs</SidebarMenuItem>
+            <SidebarMenuItem iconname="script-text" @click="setPage('logs')" :active="page=='logs'">Logs</SidebarMenuItem>
             </template>
         </SidebarMenu>
     </div>
@@ -26,6 +27,7 @@ import SidebarMenu from '../components/SidebarMenu.vue';
             <progress class="progress is-medium is-primary m-5" max="100">50%</progress>
         </template>
         <template v-if="done && page == 'overview'">
+            <JobBlock v-if="job != null" :job="job"></JobBlock>
             <SubmissionBlock v-if="submission != null" :submission="submission"></SubmissionBlock>
         </template>
         <template v-if="done && page == 'files'">
@@ -33,6 +35,9 @@ import SidebarMenu from '../components/SidebarMenu.vue';
         </template>
         <template v-if="done && page == 'metadata'">
             <FileDropdown :files="files" :selected="selected_file" @file_selected="fileSelected"></FileDropdown>
+        </template>
+        <template v-if="done && page == 'logs'">
+            
         </template>
         
         
@@ -63,6 +68,8 @@ import SidebarMenu from '../components/SidebarMenu.vue';
 
 <script>
 import axios from 'axios';
+import api from '@/lib/api';
+import time from "@/lib/time";
 
 export default {
   data() {
@@ -98,6 +105,19 @@ export default {
         var self = this;
         self.$router.push({ name: 'JobSingle', params: { job_uuid: self.$route.params.job_uuid, page: page_name } });
         self.page = page_name;
+        if (self.page == 'metadata') {
+            axios.get("/api/v1/file/" + self.selected_file['uuid'] + "/metadata/list").then(function(resp){
+                var resp_data = resp['data'];
+
+                if (resp_data['ok'] == true) {
+                    console.log(resp_data['result']);
+                }
+                
+                
+            }).catch(function(resp){
+                console.log('FAILURE!!', resp);
+            });
+        }
     },  
     fileSelected(file) {
         this.selected_file = file;
@@ -107,20 +127,15 @@ export default {
     },
     getSubmission(submission_uuid) {
         var self = this;
+        
         axios.get("/api/v1/submission/" + submission_uuid + "/info").then(function(resp){
             var resp_data = resp['data'];
 
             if (resp_data['ok'] == true) {
                 self.submission = resp_data['result'];
-                var date = new Date(self.submission['start_time']*1000);
-                self.submission['start_time'] = date.toLocaleString() 
+                self.submission['submit_time'] = time.seconds_to_string(self.submission['submit_time']);
                 self.done = true;
-                
-                // for (var i in self.submission.files) {
-                //     self.files.push(self.submission.files[i]);
-                // }
                 self.files = self.submission.files;
-                console.log(self.files);
             }
             
             
@@ -129,23 +144,20 @@ export default {
         });
     },
     getJob() {
-      var self = this;
-      this.job_uuid = self.$route.params.job_uuid;
-      axios.get("/api/v1/job/" + this.job_uuid + "/info").then(function(resp){
-            var resp_data = resp['data'];
-
-            if (resp_data['ok'] == true) {
-                self.job = resp_data['result'];
-                var date = new Date(self.job['start_time']*1000);
-                self.job['start_time'] = date.toLocaleString() 
-                console.log(resp_data);
+        var self = this;
+        this.job_uuid = self.$route.params.job_uuid;
+        api.get_job_info(this.job_uuid, 
+            function(data) {
+                self.job = data;
+                
+                
+                console.log(self.job);
                 self.getSubmission(self.job.submission);
+            },
+            function(status, data){
+                console.log('failed', status, data);
             }
-            
-            
-        }).catch(function(resp){
-            console.log('FAILURE!!', resp);
-        });
+        );
     },
   }
 }

@@ -1,7 +1,7 @@
 <script setup>
 import FileUploadList from '@/components/FileUploadList.vue'
 import JobWait from '@/components/JobWait.vue'
-import Notifications from '@/components/Notifications.vue'
+import Notifications from '@/components/general/Notifications.vue'
 </script>
 
 <template>

@@ -1,7 +1,7 @@
 <template>
     <div class="box">
-      <h1 class="title is-spaced">Submission: {{ submission.name }}</h1>
-      <h5 class="subtitle is-5 is-spaced">{{ submission.description }}</h5>
+      <h4 class="title is-spaced is-4">Submission: {{ submission.name }}</h4>
+      <h6 class="subtitle is-6 is-spaced">{{ submission.description }}</h6>
       
       <div class="level">
         <div class="level-item has-text-centered">
@@ -14,6 +14,12 @@
           <div>
             <p class="title is-6 is-spaced">File Count</p>
             <p class="subtitle is-6">{{ fileCount() }}</p>
+          </div>
+        </div>
+        <div class="level-item has-text-centered">
+          <div>
+            <p class="title is-6 is-spaced">Submitter</p>
+            <p class="subtitle is-6">{{ submission.user }}</p>
           </div>
         </div>
       </div>

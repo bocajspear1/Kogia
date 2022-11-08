@@ -125,6 +125,29 @@ def get_file_info(uuid):
         "result": file_info.to_dict()
     })
 
+@app.route('/api/v1/file/<uuid>/metadata/list', methods=['GET'])
+def get_file_metadata(uuid):
+    file_obj = SubmissionFile(uuid=uuid)
+    app._db.lock()
+    file_obj.load(app._db)
+    app._db.unlock()
+
+    return_map = {}
+
+    metadata = file_obj.metadata 
+    for item in metadata:
+        print(item.key)
+        if item.key not in return_map:
+            return_map[item.key] = 0
+        return_map[item.key] += 1
+
+    return jsonify({
+        "ok": True,
+        "result": return_map
+    })
+
+
+
 @app.route('/api/v1/file/<uuid>/resubmit', methods=['POST'])
 def resumbit_file(uuid):
     resub_file = SubmissionFile(uuid=uuid)
@@ -415,6 +438,21 @@ def get_job_status(uuid):
         "ok": True,
         "result": resp
     })
+
+@app.route('/api/v1/job/<uuid>/logs', methods=['GET'])
+def get_job_logs(uuid):
+    app._db.lock()
+    job = Job(app._db, uuid=uuid)
+    job.load(app._manager)
+    if job.uuid == None:
+        return abort(404)
+    resp = job.get_logs()
+    app._db.unlock()
+    return jsonify({
+        "ok": True,
+        "result": resp
+    })
+
 
 
 if __name__== '__main__':

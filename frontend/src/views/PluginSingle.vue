@@ -1,6 +1,6 @@
 <script setup>
 import DynamicPanel from '@/components/DynamicPanel.vue'
-import Notifications from '@/components/Notifications.vue'
+import Notifications from '@/components/general/Notifications.vue'
 </script>
 
 <template>

@@ -11,12 +11,6 @@ class ImportsExportsPlugin(DockerPluginBase):
         super().__init__(self.DOCKER_IMAGE, plugin_manager)
         self.args = args
 
-    def _add_strings(self, name, strings_all, file_obj):
-        string_split = strings_all.split("\n")
-        for new_string in string_split:
-            if new_string != "":
-                file_obj.add_metadata(name, new_string)
-
     def run(self, job, file_obj):
         submission = job.submission
 

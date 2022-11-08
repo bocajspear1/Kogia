@@ -14,6 +14,7 @@ class Metadata(VertexObject):
         super().__init__('metadata', id)
         self._key = key 
         self._value = ""
+        self._uuid = ""
 
     @property
     def key(self):
@@ -28,16 +29,18 @@ class Metadata(VertexObject):
         self._value = value
 
     def to_dict(self):
-        my_uuid  = hashlib.sha256((self._key + ":" + self._value).encode())
+        if self._uuid == "":
+            my_uuid  = hashlib.sha256((self._key + ":" + self._value).encode())
+            self._uuid = my_uuid.hexdigest()
         return {
             "key": self._key,
             "value": self._value,
-            "uuid": my_uuid.hexdigest()
+            "uuid": self._uuid
         }
 
     def from_dict(self, data_obj):
         self._uuid = data_obj.get('uuid', '')
-        self._key = data_obj.get('name', '')
+        self._key = data_obj.get('key', '')
         self._value = data_obj.get('value', '')
 
     def save(self, db):
@@ -259,6 +262,10 @@ class SubmissionFile(VertexObject):
     @target_os.setter
     def target_os(self, new_target_os):
         self._target_os = new_target_os
+
+    @property
+    def metadata(self):
+        return self._metadata
 
     def is_unpacked_archive(self):
         self._unpacked_archive = True

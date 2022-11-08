@@ -1,12 +1,14 @@
 # What is Kogia?
 
-Kogia is a flexible, modular malware analysis framework. It is built for:
+Kogia is a flexible, modular malware analysis framework built to be highly extendable. All data extraction is done through modules and stored with a specific known data structure, allowing easy module interoperability and quick data presentation. Kogia's plugin system is built to easily add new functionality to your analysis pipelines without having to modify Kogia itself.
 
-* Highly flexible and adaptable
-* Easily extendable data and IOC extraction processes
-* Malware sample data analysis 
+# Getting Started 
 
-Kogia seeks to create an analysis engine that is not tied to a single path of analysis.
+TODO
+
+# Developing
+
+TODO
 
 # Structure
 

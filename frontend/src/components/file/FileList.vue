@@ -37,8 +37,6 @@ import FileIcon from '@/components/file/FileIcon.vue'
 </style>
 
 <script>
-import axios from 'axios';
-
 export default {
   data() {
     return {

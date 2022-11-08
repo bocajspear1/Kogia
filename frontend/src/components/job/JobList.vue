@@ -50,6 +50,7 @@
 
 <script>
 import axios from 'axios';
+import time from "@/lib/time";
 
 export default {
   data() {
@@ -78,12 +79,9 @@ export default {
             if (resp_data['ok'] == true) {
                 for (var i in resp_data['result']) {
                     var item = resp_data['result'][i];
-                    var complete_time = new Date(item['complete_time']*1000 );
-                    // item['submit_time'] = date.getFullYear() + "/" + date.getDate() + "/" + (date.getMonth()+1) + 
-                    //     " " + date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds();
-                    item['complete_time'] = complete_time.toLocaleString();
-                    var start_time = new Date(item['start_time']*1000 );
-                    item['start_time'] = start_time.toLocaleString();
+
+                    item['complete_time'] = time.seconds_to_string(item['complete_time']);
+                    item['start_time'] = time.seconds_to_string(item['start_time']);
                 }
                 self.jobs = resp_data['result'];
                 self.done = true;

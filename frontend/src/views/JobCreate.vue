@@ -1,7 +1,7 @@
 <script setup>
 import FileList from '@/components/file/FileList.vue';
 import PluginCard from '@/components/plugin/PluginCard.vue';
-import Notifications from '@/components/Notifications.vue';
+import Notifications from '@/components/general/Notifications.vue';
 </script>
 
 

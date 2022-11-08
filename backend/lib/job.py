@@ -187,4 +187,7 @@ class Job(CollectionObject):
     def warning_log(self, log_name, message):
         self._log('warning', log_name, message)
 
+    def get_logs(self):
+        return self._db.get_by_match("logs", "job_uuid", self._uuid)
+
 

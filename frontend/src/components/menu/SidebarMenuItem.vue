@@ -1,7 +1,7 @@
 <template>
     <li>
-        <a @click="buttonClick" class="sidebar-menu-item">
-            <span class="icon is-small" >
+        <a @click="buttonClick" :class="active ? 'sidebar-menu-item is-active' : 'sidebar-menu-item'">
+            <span class="icon is-small">
                 <mdicon :name="iconname" :size="30" />
             </span>&nbsp;&nbsp;
             <slot></slot>
@@ -23,13 +23,16 @@ export default {
     }
   },
   emits: ['click'],
-  props: ["iconname"],
+  props: {
+    "iconname": String,
+    "active": Boolean
+  },
   mounted() {
-    console.log(this.iconname)
+
   },
   methods: {
     buttonClick() {
-        this.$emit('click', this.file_list);
+        this.$emit('click');
     }
   }
 }

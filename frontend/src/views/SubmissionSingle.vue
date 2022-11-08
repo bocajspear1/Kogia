@@ -1,9 +1,9 @@
 <script setup>
-import SubmissionBlock from '@/components/SubmissionBlock.vue'
+import SubmissionBlock from '@/components/submission/SubmissionBlock.vue'
 import FileList from '../components/file/FileList.vue';
 import JobList from '../components/job/JobList.vue';
-import MenuButton from '../components/MenuButton.vue';
-import MenuBar from '../components/MenuBar.vue';
+import MenuButton from '../components/menu/MenuButton.vue';
+import MenuBar from '../components/menu/MenuBar.vue';
 </script>
 
 <template>
@@ -19,7 +19,9 @@ import MenuBar from '../components/MenuBar.vue';
         <MenuButton iconname="delete" @click="removeSubmission"></MenuButton>
       </template>
     </MenuBar>
+    <h4 class="title is-4 is-spaced">Submission Files</h4>
     <FileList v-if="submission != null" :toggle="false" :files="submission.files" @file_clicked="fileClicked"></FileList>
+    <h4 class="title is-4 is-spaced">Submission Jobs</h4>
     <JobList v-if="submission != null" :submission_uuid="submission_uuid"></JobList>
   </div>
     

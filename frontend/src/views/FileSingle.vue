@@ -1,11 +1,27 @@
 <script setup>
 import FileInfoBlock from '@/components/file/FileInfoBlock.vue'
+import Progress from '@/components/general/Progress.vue'
 </script>
 
 <template>
 
 <div class="container column is-10">
-    <FileInfoBlock v-if="file != null" :file="file"></FileInfoBlock>
+    <template  v-if="file != null && done == true">
+         <FileInfoBlock :file="file"></FileInfoBlock>
+        <div class="tabs">
+            <ul>
+                <li class="is-active"><a>Jobs</a></li>
+                <li><a>Metadata</a></li>
+                <li><a>Tools</a></li>
+            </ul>
+        </div>
+    </template>
+
+   
+    <Progress v-if="file != null && done != true"></Progress>
+    <div v-if="file == null && done == true" class="notification is-warning">
+        File not found
+    </div>
 </div>
     
 </template>
@@ -16,11 +32,13 @@ import FileInfoBlock from '@/components/file/FileInfoBlock.vue'
 
 <script>
 import axios from 'axios';
+import api from '@/lib/api';
 
 export default {
   data() {
     return {
-      file: null
+      file: null,
+      done: false,
     }
   },
   mounted() {
@@ -31,21 +49,18 @@ export default {
       console.log(uuid, data);
     },
     getFile() {
-      var self = this;
-      var file_uuid = self.$route.params.file_uuid;
-      axios.get("/api/v1/file/" + file_uuid + "/info").then(function(resp){
-            var resp_data = resp['data'];
-
-            if (resp_data['ok'] == true) {
-                self.file = resp_data['result'];
-                // var date = new Date(self.submission['submit_time']*1000);
-                // self.submission['submit_time'] = date.toLocaleString() 
+        var self = this;
+        var file_uuid = self.$route.params.file_uuid;
+        api.get_file_info(file_uuid,
+            function(data) {
+                self.file = data;
                 self.done = true;
+            },
+            function(status, data) {
+                self.done = true;
+                console.log('FAILURE!!', status, data);
             }
-            
-        }).catch(function(resp){
-            console.log('FAILURE!!', resp);
-        });
+        );
     }
   }
 }
