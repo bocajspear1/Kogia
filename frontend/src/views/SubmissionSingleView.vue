@@ -2,8 +2,8 @@
 import SubmissionBlock from '@/components/submission/SubmissionBlock.vue'
 import FileList from '../components/file/FileList.vue';
 import JobList from '../components/job/JobList.vue';
-import MenuButton from '../components/menu/MenuButton.vue';
-import MenuBar from '../components/menu/MenuBar.vue';
+import MenuButton from '@/components/menu/MenuButton.vue';
+import MenuBar from '@/components/menu/MenuBar.vue';
 </script>
 
 <template>

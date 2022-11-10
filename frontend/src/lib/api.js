@@ -15,9 +15,9 @@ export default  {
         full_path += path;
         axios.get(full_path, data).then(function(resp){
             var resp_data = resp['data'];
-            console.log(resp_data)
+            // console.log(resp_data)
             if (resp_data['ok'] === true) {
-                console.log(path, on_succeeded, on_failed);
+                // console.log(path, on_succeeded, on_failed);
                 on_succeeded(resp_data['result']);
             } else {
                 on_failed(200, resp_data['error']);
@@ -32,5 +32,16 @@ export default  {
     },
     get_file_info: function(file_uuid, on_succeeded, on_failed) {
         this.api_call("/file/" + file_uuid + "/info", on_succeeded, on_failed);
+    },
+    get_file_metadata_types: function(file_uuid, on_succeeded, on_failed) {
+        this.api_call("/file/" + file_uuid + "/metadata/list", on_succeeded, on_failed);
+    },
+    get_file_metadata_list: function(file_uuid, metadata, filter, on_succeeded, on_failed) {
+        if (!filter) {   
+            this.api_call("/file/" + file_uuid + "/metadata/" + metadata + "/list", on_succeeded, on_failed);
+        } else {
+            this.api_call("/file/" + file_uuid + "/metadata/" + metadata + "/list?filter=" + filter, on_succeeded, on_failed);
+        }
+       
     }
 }

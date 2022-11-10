@@ -1,6 +1,8 @@
 <script setup>
-import FileInfoBlock from '@/components/file/FileInfoBlock.vue'
-import Progress from '@/components/general/Progress.vue'
+import FileInfoBlock from '@/components/file/FileInfoBlock.vue';
+import Progress from '@/components/general/Progress.vue';
+import MenuButton from '@/components/menu/MenuButton.vue';
+import MenuBar from '@/components/menu/MenuBar.vue';
 </script>
 
 <template>
@@ -8,9 +10,20 @@ import Progress from '@/components/general/Progress.vue'
 <div class="container column is-10">
     <template  v-if="file != null && done == true">
          <FileInfoBlock :file="file"></FileInfoBlock>
+         <MenuBar>
+          <template v-slot:main>
+            <MenuButton iconname="download" @click="download"></MenuButton>
+            
+            
+          </template>
+          <template v-slot:right>
+            
+          </template>
+        </MenuBar>
         <div class="tabs">
             <ul>
                 <li class="is-active"><a>Jobs</a></li>
+                <li><a>Submissions</a></li>
                 <li><a>Metadata</a></li>
                 <li><a>Tools</a></li>
             </ul>
@@ -61,6 +74,9 @@ export default {
                 console.log('FAILURE!!', status, data);
             }
         );
+    },
+    download() {
+
     }
   }
 }

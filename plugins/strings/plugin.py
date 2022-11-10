@@ -15,6 +15,7 @@ class StringsPlugin(DockerPluginBase):
         string_split = strings_all.split("\n")
         for new_string in string_split:
             if new_string != "":
+                print(metadata_name, new_string)
                 file_obj.add_metadata(metadata_name, new_string)
 
     def run(self, job, file_obj):
@@ -37,7 +38,7 @@ class StringsPlugin(DockerPluginBase):
         self._add_strings("UTF32_STRING", verywide_strings.strip(), file_obj)
 
         all_strings = utf8_strings.strip() + "\n----\n" + wide_strings.strip() + "\n-----\n" + verywide_strings
-        print(all_strings)
+        
 
         self.remove_tmp_dirs()
 

@@ -1,6 +1,7 @@
 <script setup>
 import SubmissionBlock from '@/components/submission/SubmissionBlock.vue'
 import JobBlock from '@/components/job/JobBlock.vue'
+import MetadataTable from '@/components/metadata/MetadataTable.vue'
 import FileDropdown from '../components/file/FileDropdown.vue';
 import FileList from '../components/file/FileList.vue';
 import SidebarMenuItem from '../components/menu/SidebarMenuItem.vue';
@@ -35,6 +36,7 @@ import SidebarMenu from '../components/menu/SidebarMenu.vue';
         </template>
         <template v-if="done && page == 'metadata'">
             <FileDropdown :files="files" :selected="selected_file" @file_selected="fileSelected"></FileDropdown>
+            <MetadataTable :file_uuid="getFileUUID()"></MetadataTable>
         </template>
         <template v-if="done && page == 'logs'">
             
@@ -101,23 +103,17 @@ export default {
             this.page = 'overview';
         }
     },
+    getFileUUID() {
+        if (this.selected_file == null) {
+            return null;
+        } else {
+            return this.selected_file['uuid'];
+        }
+    },  
     setPage(page_name) {
         var self = this;
         self.$router.push({ name: 'JobSingle', params: { job_uuid: self.$route.params.job_uuid, page: page_name } });
         self.page = page_name;
-        if (self.page == 'metadata') {
-            axios.get("/api/v1/file/" + self.selected_file['uuid'] + "/metadata/list").then(function(resp){
-                var resp_data = resp['data'];
-
-                if (resp_data['ok'] == true) {
-                    console.log(resp_data['result']);
-                }
-                
-                
-            }).catch(function(resp){
-                console.log('FAILURE!!', resp);
-            });
-        }
     },  
     fileSelected(file) {
         this.selected_file = file;

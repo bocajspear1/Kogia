@@ -1,65 +1,65 @@
 import { createWebHistory, createRouter } from 'vue-router';
-import Home from "@/views/Home.vue";
-import Submissions from "@/views/Submissions.vue";
-import Upload from "@/views/Upload.vue";
-import SubmissionSingle from "@/views/SubmissionSingle.vue";
-import Plugins from "@/views/Plugins.vue";
-import PluginSingle from "@/views/PluginSingle.vue";
-import FileSingle from "@/views/FileSingle.vue";
-import JobCreate from "@/views/JobCreate.vue";
-import Jobs from "@/views/Jobs.vue";
-import JobSingle from "@/views/JobSingle.vue";
+import HomeView from "@/views/HomeView.vue";
+import SubmissionsView from "@/views/SubmissionsView.vue";
+import UploadView from "@/views/UploadView.vue";
+import SubmissionSingleView from "@/views/SubmissionSingleView.vue";
+import PluginsView from "@/views/PluginsView.vue";
+import PluginSingleView from "@/views/PluginSingleView.vue";
+import FileSingleView from "@/views/FileSingleView.vue";
+import JobCreateView from "@/views/JobCreateView.vue";
+import JobsView from "@/views/JobsView.vue";
+import JobSingleView from "@/views/JobSingleView.vue";
 
 const routes = [
   {
     path: "/",
     name: "Home",
-    component: Home,
+    component: HomeView,
   },
   {
     path: "/submissions",
     name: "Submissions",
-    component: Submissions,
+    component: SubmissionsView,
   },
   {
     path: "/upload",
     name: "Upload",
-    component: Upload,
+    component: UploadView,
   },
   {
     path: "/submission/:submission_uuid",
     name: "SubmissionSingle",
-    component: SubmissionSingle,
+    component: SubmissionSingleView,
   },
   {
     path: "/plugins",
     name: "Plugins",
-    component: Plugins,
+    component: PluginsView,
   },
   {
     path: "/plugin/:plugin_name",
     name: "PluginSingle",
-    component: PluginSingle,
+    component: PluginSingleView,
   },
   {
     path: "/file/:file_uuid",
     name: "FileSingle",
-    component: FileSingle,
+    component: FileSingleView,
   },
   {
     path: "/newjob/:submission_uuid",
     name: "JobCreate",
-    component: JobCreate,
+    component: JobCreateView,
   },
   {
     path: "/jobs",
     name: "Jobs",
-    component: Jobs,
+    component: JobsView,
   },
   {
     path: "/job/:job_uuid/:page?",
     name: "JobSingle",
-    component: JobSingle,
+    component: JobSingleView,
   },
 ];
 

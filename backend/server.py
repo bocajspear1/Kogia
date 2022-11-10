@@ -126,7 +126,7 @@ def get_file_info(uuid):
     })
 
 @app.route('/api/v1/file/<uuid>/metadata/list', methods=['GET'])
-def get_file_metadata(uuid):
+def get_file_metadata_types(uuid):
     file_obj = SubmissionFile(uuid=uuid)
     app._db.lock()
     file_obj.load(app._db)
@@ -136,7 +136,6 @@ def get_file_metadata(uuid):
 
     metadata = file_obj.metadata 
     for item in metadata:
-        print(item.key)
         if item.key not in return_map:
             return_map[item.key] = 0
         return_map[item.key] += 1
@@ -146,7 +145,33 @@ def get_file_metadata(uuid):
         "result": return_map
     })
 
+@app.route('/api/v1/file/<uuid>/metadata/<metatype>/list', methods=['GET'])
+def get_file_metadata_list(uuid, metatype):
+    file_obj = SubmissionFile(uuid=uuid)
+    app._db.lock()
+    file_obj.load(app._db)
+    app._db.unlock()
 
+    return_list = []
+
+    filter = request.args.get('filter')
+    metatype = metatype.strip()
+
+    # Will probably want to make more efficient method later
+
+    metadata = file_obj.metadata 
+    for item in metadata:
+        if item.key == metatype:
+            if filter is not None:
+                if filter.lower() not in item.value.lower():
+                    continue
+
+            return_list.append(item.value)
+
+    return jsonify({
+        "ok": True,
+        "result": return_list
+    })
 
 @app.route('/api/v1/file/<uuid>/resubmit', methods=['POST'])
 def resumbit_file(uuid):

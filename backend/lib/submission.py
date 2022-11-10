@@ -28,10 +28,17 @@ class Metadata(VertexObject):
     def value(self, value):
         self._value = value
 
+    @property
+    def uuid(self):
+        return self._uuid
+    
+    def _gen_uuid(self):
+        my_uuid  = hashlib.sha256((self._key + ":" + self._value).encode())
+        self._uuid = my_uuid.hexdigest()
+
     def to_dict(self):
         if self._uuid == "":
-            my_uuid  = hashlib.sha256((self._key + ":" + self._value).encode())
-            self._uuid = my_uuid.hexdigest()
+            self._gen_uuid()
         return {
             "key": self._key,
             "value": self._value,
@@ -52,7 +59,9 @@ class Metadata(VertexObject):
     def load(self, db):
         document = {}
         if self.id is None:
-            document = self.load_doc(db, field='key', value=self._key)
+            if self._uuid == "":
+                self._gen_uuid()
+            document = self.load_doc(db, field='uuid', value=self.uuid)
         else:
             document = self.load_doc(db)
 
