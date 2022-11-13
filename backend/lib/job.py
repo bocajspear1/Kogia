@@ -3,11 +3,11 @@ import time
 import uuid
 import copy
 
-from backend.lib.submission import Submission
-from .objects import CollectionObject
+from backend.lib.submission import Submission, Report, SubmissionFile
+from .objects import CollectionObject, VertexObject
 
 
-class Job(CollectionObject):
+class Job(VertexObject):
 
     COLLECTION_NAME = 'jobs'
 
@@ -56,6 +56,7 @@ class Job(CollectionObject):
         self._uuid = uuid
         self._db = db
         self._arg_map = {}
+        self._reports = []
 
     @property
     def complete(self):
@@ -139,6 +140,7 @@ class Job(CollectionObject):
         else:
             self._submission = None
 
+
         if 'plugins' in data_obj:
             for item in data_obj['plugins']:
                 self._plugins.append(pm.get_plugin(item))
@@ -159,9 +161,40 @@ class Job(CollectionObject):
                 return_list.append(pm.initialize_plugin(plugin_class))
         return return_list
 
+    def _save_reports(self):
+        for report in self._reports:
+            report.save(self._db)
+            self.insert_edge(self._db, 'added_report', report.id)
+            file_obj = SubmissionFile(uuid=report.file_uuid)
+            file_obj.load(self._db)
+            file_obj.insert_edge(self._db, 'has_report', report.id)
+
+    def add_report(self, report_name, file_obj, data):
+        print(file_obj)
+
+        new_report = Report()
+        new_report.value = data
+        new_report.name = report_name
+        new_report.file_uuid = file_obj.uuid
+
+        self._reports.append(new_report)
+
+    def get_reports(self, file_uuid=None):
+        # Ensure any stored reports are saved
+        self._save_reports()
+
+        if file_uuid is None:
+            return self.get_connected_to(self._db, 'reports', filter_edges=['created_report'])
+        else:
+            file_obj = SubmissionFile(uuid=file_uuid)
+            file_obj.load(self._db)
+            return file_obj.get_in_path(self._db, self.id, 1, ['has_report', 'added_report'], return_fields=['uuid', 'name'])
+
+
     def save(self):
         self.save_doc(self._db, self.to_dict())
         self._submission.save(self._db)
+        self._save_reports()
 
     def load(self, pm):
         doc = self.load_doc(self._db, 'uuid', self._uuid)
@@ -188,6 +221,6 @@ class Job(CollectionObject):
         self._log('warning', log_name, message)
 
     def get_logs(self):
-        return self._db.get_by_match("logs", "job_uuid", self._uuid)
+        return self._db.get_list_by_match("logs", "job_uuid", self._uuid)
 
 

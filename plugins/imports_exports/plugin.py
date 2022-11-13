@@ -31,12 +31,9 @@ class ImportsExportsPlugin(DockerPluginBase):
             elif line_type == "EXPORT":
                 file_obj.add_metadata("EXPORT", line_split[1])
 
-
-        print(output)
-
         self.remove_tmp_dirs()
 
-        # self.remove_container(job)
+        self.remove_container(job)
 
         return []
 

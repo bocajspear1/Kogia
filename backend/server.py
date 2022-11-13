@@ -20,7 +20,7 @@ from flask import Flask, g, jsonify, current_app, request, render_template, send
 from werkzeug.utils import secure_filename
 
 from backend.lib.plugin_manager import PluginManager
-from backend.lib.submission import Submission, SubmissionFile
+from backend.lib.submission import Submission, SubmissionFile, Report
 from backend.lib.db import ArangoConnection, ArangoConnectionFactory
 from backend.lib.workers import JobWorker
 from backend.lib.job import Job
@@ -433,6 +433,11 @@ def create_job():
         }
     })
 
+
+#
+# Job API endpoints
+#
+
 @app.route('/api/v1/job/list', methods=['GET'])
 def get_job_list():
     app._db.lock()
@@ -448,7 +453,6 @@ def get_job_list():
         "ok": True,
         "result": job_list
     })
-
 
 @app.route('/api/v1/job/<uuid>/info', methods=['GET'])
 def get_job_status(uuid):
@@ -473,12 +477,48 @@ def get_job_logs(uuid):
         return abort(404)
     resp = job.get_logs()
     app._db.unlock()
+
     return jsonify({
         "ok": True,
         "result": resp
     })
 
+@app.route('/api/v1/job/<uuid>/reports', methods=['GET'])
+def get_job_reports(uuid):
+    app._db.lock()
+    job = Job(app._db, uuid=uuid)
+    job.load(app._manager)
+    if job.uuid == None:
+        return abort(404)
 
+    file_uuid = request.args.get('file')
+    resp = job.get_reports(file_uuid=file_uuid)
 
+    app._db.unlock()
+
+    return jsonify({
+        "ok": True,
+        "result": resp
+    })
+
+#
+# Report API endpoints
+#
+
+@app.route('/api/v1/report/<uuid>', methods=['GET'])
+def get_report(uuid):
+    app._db.lock()
+    report = Report(uuid=uuid)
+    report.load(app._db)
+    if report.uuid == None:
+        return abort(404)
+
+    app._db.unlock()
+
+    return jsonify({
+        "ok": True,
+        "result": report.to_dict()
+    })
+ 
 if __name__== '__main__':
     app.run()

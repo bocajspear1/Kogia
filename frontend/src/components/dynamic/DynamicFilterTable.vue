@@ -4,39 +4,53 @@
             <tr>
                 <th v-for="column in columns">
                     {{ column }}
-                    <span v-if="column.toLowerCase() != 'id' || column.toLowerCase() != 'uuid'">
+                    <span v-if="!limitFilter.hasOwnProperty(column) && (column.toLowerCase() != 'id' || column.toLowerCase() != 'uuid') && !noFilter.includes(column)">
                         <input class="input is-info" type="text" @input="event => newFilter(column, event.target.value)"/>
                     </span>
+                    <div v-if="limitFilter.hasOwnProperty(column)" class="select is-fullwidth">
+                        <select>
+                            <option selected>Filter {{ column }}</option>
+                            <template v-for="value in limitFilter[column]">    
+                            <option @click="newFilter(column, value)">{{ value }}</option>
+                            </template>
+                        </select>
+                    </div>
                 </th>
             </tr>
         </thead>
         <tfoot>
-            <nav class="pagination is-centered" role="navigation" aria-label="pagination">
-                <a class="pagination-previous">Previous</a>
-                <a class="pagination-next">Next page</a>
-                <ul class="pagination-list">
-                    <li><a class="pagination-link" aria-label="Goto page 1">1</a></li>
-                    <li><span class="pagination-ellipsis">&hellip;</span></li>
-                    <li><a class="pagination-link" aria-label="Goto page 45">45</a></li>
-                    <li><a class="pagination-link is-current" aria-label="Page 46" aria-current="page">46</a></li>
-                    <li><a class="pagination-link" aria-label="Goto page 47">47</a></li>
-                    <li><span class="pagination-ellipsis">&hellip;</span></li>
-                    <li><a class="pagination-link" aria-label="Goto page 86">86</a></li>
-                </ul>
-            </nav>
+            <tr>
+                <td :colspan="columns.length">
+                    <nav class="pagination is-centered" role="navigation" aria-label="pagination">
+                        <a class="pagination-previous">Previous</a>
+                        <a class="pagination-next">Next page</a>
+                        <ul class="pagination-list">
+                            <li><a class="pagination-link" aria-label="Goto page 1">1</a></li>
+                            <li><span class="pagination-ellipsis">&hellip;</span></li>
+                            <li><a class="pagination-link" aria-label="Goto page 45">45</a></li>
+                            <li><a class="pagination-link is-current" aria-label="Page 46" aria-current="page">46</a></li>
+                            <li><a class="pagination-link" aria-label="Goto page 47">47</a></li>
+                            <li><span class="pagination-ellipsis">&hellip;</span></li>
+                            <li><a class="pagination-link" aria-label="Goto page 86">86</a></li>
+                        </ul>
+                    </nav>
+                </td>
+            </tr>
+           
+            
         </tfoot>
 
         <tbody>
             <template v-if="data.length > 0" >
                 <tr v-for="row in data">
-                    <td v-for="(column, index) in columns">
+                    <td class="allow-newlines" v-for="(column, index) in columns">
                         {{ row[index] }}
                     </td>
                 </tr>
             </template>
             <template v-else-if="data.length == 0" >
                 <tr>
-                    <td colspan="{{ column.length }}">
+                    <td :colspan="columns.length" >
                         <div class="notification is-warning">
                             No results found
                         </div>
@@ -50,7 +64,9 @@
 </template>
 
 <style scoped>
-
+    .allow-newlines {
+        white-space: pre-wrap; 
+    }
 </style>
 
 <script>
@@ -64,7 +80,15 @@ export default {
   props: {
     columns: Array,
     data: Array,
-    pageCount: Number 
+    pageCount: Number,
+    noFilter: {
+        type: Array,
+        default: []
+    },
+    limitFilter: {
+        type: Object,
+        default: {}
+    },
   },
   emits: ["onFilter", "newPage"],
   mounted() {

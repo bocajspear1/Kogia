@@ -103,3 +103,6 @@ class VertexObject():
 
     def get_connected_to(self, db, end_collection, filter_edges=None, max=2):
         return db.get_connected_to(self.GRAPH_NAME, self._id, end_collection, filter_edges=filter_edges, max=max)
+    
+    def get_in_path(self, db, end_item, path_pos, edges, max=2, return_fields=None):
+        return db.get_in_path(self.GRAPH_NAME, self._id, end_item, path_pos, edges, max=max, return_fields=return_fields)

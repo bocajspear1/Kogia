@@ -8,6 +8,74 @@ import hashlib
 from .db import DBNotUniqueError
 from .objects import VertexObject
 
+class Report(VertexObject):
+
+    def __init__(self, id=None, uuid=None):
+        super().__init__('reports', id)
+        self._uuid = uuid
+        self._value = ""
+        self._file_uuid = ""
+        self.name = ""
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        self._value = value
+        self._gen_uuid()
+
+    @property
+    def file_uuid(self):
+        return self._file_uuid
+
+    @file_uuid.setter
+    def file_uuid(self, file_uuid):
+        self._file_uuid = file_uuid
+
+    @property
+    def uuid(self):
+        return self._uuid
+    
+    def _gen_uuid(self):
+        my_uuid  = hashlib.sha256((self._value).encode())
+        self._uuid = my_uuid.hexdigest()
+
+    def to_dict(self):
+        if self._uuid == "":
+            self._gen_uuid()
+        return {
+            "uuid": self._uuid,
+            "value": self._value,
+            "file_uuid": self._file_uuid,
+            "name": self.name
+        }
+
+    def from_dict(self, data_obj):
+        self._hash = data_obj.get('uuid', '')
+        self._value = data_obj.get('value', '')
+        self._file_uuid = data_obj.get('file_uuid', '')
+        self.name = data_obj.get('name', '')
+
+    def save(self, db):
+        try:
+            self.save_doc(db, self.to_dict())
+        except DBNotUniqueError:
+            pass
+
+    def load(self, db):
+        document = {}
+        if self.id is None:
+            if self._uuid == "":
+                self._gen_uuid()
+            document = self.load_doc(db, field='uuid', value=self._uuid)
+        else:
+            document = self.load_doc(db)
+
+        self.from_dict(document)
+
+
 class Metadata(VertexObject):
 
     def __init__(self, key=None, id=None):
@@ -286,6 +354,7 @@ class SubmissionFile(VertexObject):
         new_data = Metadata(key=key)
         new_data.value = value
         self._metadata.append(new_data)
+        return new_data
 
     def add_metadata_unique(self, key, value):
         found = False
@@ -293,11 +362,14 @@ class SubmissionFile(VertexObject):
             if data.key == key:
                 found = True
                 data.value = value 
+                return data
 
         if not found:
             new_data = Metadata(key=key)
             new_data.value = value
             self._metadata.append(new_data)
+            return new_data
+        
 
 
 

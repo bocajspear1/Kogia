@@ -7,6 +7,8 @@ import FileList from '../components/file/FileList.vue';
 import SidebarMenuItem from '../components/menu/SidebarMenuItem.vue';
 import MenuBar from '../components/menu/MenuBar.vue';
 import SidebarMenu from '../components/menu/SidebarMenu.vue';
+import DynamicFilterTable from '@/components/dynamic/DynamicFilterTable.vue';
+import ReportDisplay from '@/components/report/ReportDisplay.vue';
 </script>
 
 <template>
@@ -18,7 +20,7 @@ import SidebarMenu from '../components/menu/SidebarMenu.vue';
             <SidebarMenuItem iconname="server-network">Network Activity</SidebarMenuItem>
             <SidebarMenuItem iconname="folder-file" @click="setPage('files')" :active="page=='files'">Files</SidebarMenuItem>
             <SidebarMenuItem iconname="table-multiple" @click="setPage('metadata')" :active="page=='metadata'">Metadata</SidebarMenuItem>
-            <SidebarMenuItem iconname="file-chart">Reports</SidebarMenuItem>
+            <SidebarMenuItem iconname="file-chart" @click="setPage('reports')" :active="page=='reports'">Reports</SidebarMenuItem>
             <SidebarMenuItem iconname="script-text" @click="setPage('logs')" :active="page=='logs'">Logs</SidebarMenuItem>
             </template>
         </SidebarMenu>
@@ -38,8 +40,16 @@ import SidebarMenu from '../components/menu/SidebarMenu.vue';
             <FileDropdown :files="files" :selected="selected_file" @file_selected="fileSelected"></FileDropdown>
             <MetadataTable :file_uuid="getFileUUID()"></MetadataTable>
         </template>
+        <template v-if="done && page == 'reports'">
+            <FileDropdown :files="files" :selected="selected_file" @file_selected="fileSelected"></FileDropdown>
+            <ReportDisplay :file_uuid="getFileUUID()" :job_uuid="job_uuid"></ReportDisplay>
+        </template>
         <template v-if="done && page == 'logs'">
-            
+            <DynamicFilterTable :columns="['Severity', 'Name', 'Message']" 
+                                :data="logs" 
+                                :noFilter="['Message']"
+                                :limitFilter="{'Severity':['error', 'warning', 'debug', 'info']}"
+                                @onFilter="onLogFilter"></DynamicFilterTable>
         </template>
         
         
@@ -83,6 +93,7 @@ export default {
       done: false,
       page: null,
       selected_file: null,
+      logs: []
     }
   },
   mounted() {
@@ -114,7 +125,24 @@ export default {
         var self = this;
         self.$router.push({ name: 'JobSingle', params: { job_uuid: self.$route.params.job_uuid, page: page_name } });
         self.page = page_name;
+        if (self.page == "logs") {
+            self.logs = [];
+            api.get_job_logs(self.job_uuid, "", 
+                function(data) {
+                    for (var i = 0; i < data.length; i++) {
+                        var message = data[i]['message']
+                        self.logs.push([data[i]['severity'], data[i]['log_name'], message]);
+                    }
+                },
+                function(status, data) {
+
+                }
+            )
+        }
     },  
+    onLogFilter(column, new_filter) {
+        console.log(column, new_filter);
+    },
     fileSelected(file) {
         this.selected_file = file;
     },

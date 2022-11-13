@@ -42,6 +42,22 @@ export default  {
         } else {
             this.api_call("/file/" + file_uuid + "/metadata/" + metadata + "/list?filter=" + filter, on_succeeded, on_failed);
         }
-       
-    }
+    },
+    get_job_logs: function(job_uuid, filter, on_succeeded, on_failed) {
+        if (!filter) {   
+            this.api_call("/job/" + job_uuid + "/logs", on_succeeded, on_failed);
+        } else {
+            this.api_call("/job/" + job_uuid + "/logs?filter=" + filter, on_succeeded, on_failed);
+        }
+    },
+    get_job_reports: function(job_uuid, file_uuid, on_succeeded, on_failed) {
+        if (!file_uuid) {   
+            this.api_call("/job/" + job_uuid + "/reports", on_succeeded, on_failed);
+        } else {
+            this.api_call("/job/" + job_uuid + "/reports?file=" + file_uuid, on_succeeded, on_failed);
+        }
+    },
+    get_report: function(report_uuid, on_succeeded, on_failed) {
+        this.api_call("/report/" + report_uuid, on_succeeded, on_failed);
+    },
 }
