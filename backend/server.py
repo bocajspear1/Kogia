@@ -20,10 +20,11 @@ from flask import Flask, g, jsonify, current_app, request, render_template, send
 from werkzeug.utils import secure_filename
 
 from backend.lib.plugin_manager import PluginManager
-from backend.lib.submission import Submission, SubmissionFile, Report
+from backend.lib.submission import Submission, SubmissionFile
 from backend.lib.db import ArangoConnection, ArangoConnectionFactory
 from backend.lib.workers import JobWorker
 from backend.lib.job import Job
+from backend.lib.data import Report
 
 
 VERSION = '0.0.1'
@@ -40,7 +41,7 @@ def create_app():
 
         app._queue = queue.Queue()
         app._manager = PluginManager()
-        app._manager.load()
+        app._manager.load_all()
 
         
         config_file = open("./config.json", "r")
@@ -130,6 +131,7 @@ def get_file_metadata_types(uuid):
     file_obj = SubmissionFile(uuid=uuid)
     app._db.lock()
     file_obj.load(app._db)
+    file_obj.load_metadata(app._db)
     app._db.unlock()
 
     return_map = {}
@@ -150,6 +152,7 @@ def get_file_metadata_list(uuid, metatype):
     file_obj = SubmissionFile(uuid=uuid)
     app._db.lock()
     file_obj.load(app._db)
+    file_obj.load_metadata(app._db)
     app._db.unlock()
 
     return_list = []
@@ -205,7 +208,7 @@ def resumbit_file(uuid):
     })
 
 @app.route('/api/v1/submission/new', methods=['POST'])
-def sumbit_sample():
+def submit_sample():
 
     single_param = 'submission'
     multi_param = 'submissions[]'
@@ -252,27 +255,38 @@ def sumbit_sample():
 
     new_submission.name = request.form['name']
 
+    for file in file_list:
+        filename = secure_filename(file.filename)
+        new_file = new_submission.generate_file(filename)
+
+        # Save file to filesystem
+        file.save(new_file.file_path)
+
+        app._db.lock()
+        
+        new_file.set_read_only()
+        new_submission.add_file(new_file)
+        new_file.save(app._db)
+        # Don't need to load_metadata, since a generate_file initialies metadata
+
+        app._db.unlock()
+
     app._db.lock()
     new_submission.save(app._db)
     app._db.unlock()
 
-    for file in file_list:
-        filename = secure_filename(file.filename)
-        new_file = new_submission.generate_file(filename)
-        app._db.lock()
-        file.save(new_file.file_path)
-        app._db.unlock()
-        new_file.set_read_only()
-        new_submission.add_file(new_file)
+    print(new_submission.files)
 
 
     new_job = Job.new(new_submission, None, app._db_factory.new())
+    # No primary is set, since we are just identifying
     identify_plugins = app._manager.get_plugin_list('identify')
     new_job.add_plugin_list(identify_plugins)
     unarchive_plugins = app._manager.get_plugin_list('unarchive')
     new_job.add_plugin_list(unarchive_plugins)
     new_job.save()
 
+    print("New JobWorker")
     new_worker = JobWorker(app._manager, new_job)
     app._workers.append(new_worker)
     new_worker.start()
@@ -291,12 +305,13 @@ def get_submission_info(uuid):
     submission = Submission(uuid=uuid)
     app._db.lock()
     submission.load(app._db)
+    submission.load_files(app._db)
     if submission.uuid == None:
         return abort(404)
     app._db.unlock()
     return jsonify({
         "ok": True,
-        "result": submission.to_dict(full=True)
+        "result": submission.to_dict(files=True)
     })
 
 @app.route('/api/v1/submission/list', methods=['GET'])
@@ -364,7 +379,7 @@ def run_plugin_action(plugin_name, action):
     })
 
 @app.route('/api/v1/analysis/new', methods=['POST'])
-def create_job():
+def create_analysis_job():
 
     plugins_param = 'plugins'
     submission_uuid_param = "submission_uuid"
@@ -500,6 +515,25 @@ def get_job_reports(uuid):
         "ok": True,
         "result": resp
     })
+
+@app.route('/api/v1/job/<uuid>/signatures', methods=['GET'])
+def get_job_signatures(uuid):
+    app._db.lock()
+    job = Job(app._db, uuid=uuid)
+    job.load(app._manager)
+    if job.uuid == None:
+        return abort(404)
+
+    file_uuid = request.args.get('file')
+    resp = job.get_signatures(file_uuid=file_uuid)
+
+    app._db.unlock()
+
+    return jsonify({
+        "ok": True,
+        "result": resp
+    })
+
 
 #
 # Report API endpoints

@@ -124,6 +124,7 @@ class ArangoConnection():
 
         aql_query += " FILTER "
         first = True
+        merge_list = []
         for i,join_col in enumerate(join_list):
             if first:
                 first = False
@@ -142,7 +143,7 @@ class ArangoConnection():
 
             # bind_vars["join_col_" + str(i) + "_field"] = join_map[join_col][0]
             aql_query += " " + join_col + "_item." + join_field + " " + compare + " doc." + orig_field
-
+            merge_list.append((orig_field, join_col))
         
         if filter_map is not None:
             aql_query += " AND ("
@@ -186,11 +187,14 @@ class ArangoConnection():
         if limit is not None:
             aql_query += f" LIMIT {skip}, {limit}"
 
-        aql_query += " RETURN { " + main_collection + ": doc "
+        aql_query += " RETURN merge(doc, { "
 
-        for i,join_col in enumerate(join_list):
-            aql_query += ", " + join_col + ": "  + join_col + "_item"
-        aql_query += " }"
+        for i,merge_data in enumerate(merge_list):
+            if i != 0:
+                aql_query += ", "
+            aql_query += merge_data[0] + ": "  + merge_data[1] + "_item"
+
+        aql_query += " })"
         print(aql_query)
         print(bind_vars)
             

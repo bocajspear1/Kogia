@@ -68,6 +68,10 @@ class VertexObject():
     def reset_modified(self):
         self._modified = False
 
+    @property
+    def is_modified(self):
+        return self._modified
+
     def to_dict(self):
         raise NotImplementedError
 

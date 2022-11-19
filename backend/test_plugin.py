@@ -34,6 +34,9 @@ class DBStub():
     def unlock(self):
         pass
 
+    def _get_vertexes(self, graph_name, collection):
+        return {}
+
     def get_vertex_by_match(self, graph_name, collection, field, value):
         col = self._get_vertexes(graph_name, collection)
         cursor = col.find({field: value}, skip=0, limit=1)
@@ -112,7 +115,7 @@ def main():
     submission.save(db)
 
     manager = PluginManager()
-    manager.load()
+    manager.load_all()
 
     plugin = manager.get_plugin(args.plugin)
     plugin_obj = None

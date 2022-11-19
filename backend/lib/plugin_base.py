@@ -51,6 +51,10 @@ class PluginBase():
             
         # print(self.config)
 
+    @property
+    def name(self):
+        return self.__class__.__name__
+
     def to_dict(self):
         return {
             "name": str(self.__class__.__name__),

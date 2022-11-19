@@ -3,8 +3,9 @@ import time
 import uuid
 import copy
 
-from backend.lib.submission import Submission, Report, SubmissionFile
-from .objects import CollectionObject, VertexObject
+from backend.lib.submission import Metadata, Submission, SubmissionFile
+from backend.lib.objects import VertexObject
+from backend.lib.data import Signature, SignatureMatch, Report
 
 
 class Job(VertexObject):
@@ -16,6 +17,11 @@ class Job(VertexObject):
         new_cls = cls(db, uuid=str(uuid.uuid4()))
         new_cls._submission = submission
         new_cls._primary = primary
+        # Ensure files and their metadata are all loaded
+        new_cls._submission.load_files(db)
+        for file in new_cls._submission.files:
+            file.load_metadata(db)
+
         return new_cls
 
     @classmethod
@@ -28,17 +34,19 @@ class Job(VertexObject):
             job_items = db.get_vertex_list_joined(cls.COLLECTION_NAME, {"submissions": ("uuid", "submission")}, filter_map={"submissions": ('uuid', submission_uuid)}, sort_by=('jobs', 'start_time', 'DESC'))
 
         for job_item in job_items:
-            new_item = job_item['jobs']
-            new_item['submission_name'] = job_item['submissions'].get('name', "")
-            new_item['submission_description'] = job_item['submissions'].get('description', "")
-            new_item['submission_owner'] = job_item['submissions'].get('owner', "")
-            if new_item.get('primary', '') != '':
-                file_data = db.get_vertex_by_match('kogia-graph', 'files', 'uuid', new_item['primary'])
+            print(job_item)
+            del job_item['submission']['_id']
+            del job_item['submission']['_key']
+            del job_item['submission']['_rev']
+            del job_item['submission']['base_dir']
+
+            if job_item.get('primary', '') != '':
+                file_data = db.get_vertex_by_match('kogia-graph', 'files', 'uuid', job_item['primary'])
                 if file_data is not None:
-                    new_item['primary_name'] = file_data['name']
+                    job_item['primary_name'] = file_data['name']
                 else:
-                    new_item['primary_name'] = ""
-            new_list.append(new_item)
+                    job_item['primary_name'] = ""
+            new_list.append(job_item)
         
         return new_list
 
@@ -57,6 +65,18 @@ class Job(VertexObject):
         self._db = db
         self._arg_map = {}
         self._reports = []
+        self._matches = []
+        self._limit_to = []
+
+    def add_limit_to_file(self, file_uuid):
+        self._limit_to.append(file_uuid)
+
+    def clear_file_limit(self):
+        self._limit_to = []
+
+    @property
+    def limited_to(self):
+        return self._limit_to
 
     @property
     def complete(self):
@@ -169,8 +189,27 @@ class Job(VertexObject):
             file_obj.load(self._db)
             file_obj.insert_edge(self._db, 'has_report', report.id)
 
+    def _save_matches(self):
+        for match in self._matches:
+            match.save(self._db)
+            self.insert_edge(self._db, 'added_match', match.id)
+
+
+    def add_signature(self, plugin_name, name, file_obj, description, metadata=None, events=None, syscalls=None):
+        new_signature = Signature()
+        new_signature.name = name
+        new_signature.plugin_name = plugin_name
+        new_signature.load(self._db)
+        if new_signature.id is None:
+            new_signature.description = description
+
+        new_match = SignatureMatch.new(new_signature, file_obj)
+        if metadata is not None:
+            pass
+
+        self._matches.append(new_match)
+
     def add_report(self, report_name, file_obj, data):
-        print(file_obj)
 
         new_report = Report()
         new_report.value = data
@@ -184,17 +223,29 @@ class Job(VertexObject):
         self._save_reports()
 
         if file_uuid is None:
-            return self.get_connected_to(self._db, 'reports', filter_edges=['created_report'])
+            return self.get_connected_to(self._db, 'reports', filter_edges=['added_report'])
         else:
             file_obj = SubmissionFile(uuid=file_uuid)
             file_obj.load(self._db)
             return file_obj.get_in_path(self._db, self.id, 1, ['has_report', 'added_report'], return_fields=['uuid', 'name'])
+
+    def get_signatures(self, file_uuid=None):
+        # Ensure any stored reports are saved
+        self._save_matches()
+
+        if file_uuid is None:
+            return self.get_connected_to(self._db, 'signatures', filter_edges=['added_match'])
+        else:
+            file_obj = SubmissionFile(uuid=file_uuid)
+            file_obj.load(self._db)
+            return file_obj.get_in_path(self._db, self.id, 1, ['has_match', 'added_match'], return_fields=['uuid', 'name'])
 
 
     def save(self):
         self.save_doc(self._db, self.to_dict())
         self._submission.save(self._db)
         self._save_reports()
+        self._save_matches()
 
     def load(self, pm):
         doc = self.load_doc(self._db, 'uuid', self._uuid)
@@ -208,7 +259,8 @@ class Job(VertexObject):
             "severity": severity,
             "log_name": log_name,
             "message": message,
-            "job_uuid": self._uuid
+            "job_uuid": self._uuid,
+            "log_time": int(time.time())
         })
 
     def error_log(self, log_name, message):

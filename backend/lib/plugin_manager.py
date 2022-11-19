@@ -11,7 +11,7 @@ class PluginManager():
 
         self.docker = docker.from_env()
 
-    def load(self):
+    def load_all(self):
         module_list = os.listdir(self._plugin_dir)
         for module_dir in module_list:
             dir_list = os.listdir(os.path.join(self._plugin_dir, module_dir))

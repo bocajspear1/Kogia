@@ -1,3 +1,4 @@
+from multiprocessing.sharedctypes import Value
 import uuid
 import os
 import stat
@@ -8,93 +9,32 @@ import hashlib
 from .db import DBNotUniqueError
 from .objects import VertexObject
 
-class Report(VertexObject):
-
-    def __init__(self, id=None, uuid=None):
-        super().__init__('reports', id)
-        self._uuid = uuid
-        self._value = ""
-        self._file_uuid = ""
-        self.name = ""
-
-    @property
-    def value(self):
-        return self._value
-
-    @value.setter
-    def value(self, value):
-        self._value = value
-        self._gen_uuid()
-
-    @property
-    def file_uuid(self):
-        return self._file_uuid
-
-    @file_uuid.setter
-    def file_uuid(self, file_uuid):
-        self._file_uuid = file_uuid
-
-    @property
-    def uuid(self):
-        return self._uuid
-    
-    def _gen_uuid(self):
-        my_uuid  = hashlib.sha256((self._value).encode())
-        self._uuid = my_uuid.hexdigest()
-
-    def to_dict(self):
-        if self._uuid == "":
-            self._gen_uuid()
-        return {
-            "uuid": self._uuid,
-            "value": self._value,
-            "file_uuid": self._file_uuid,
-            "name": self.name
-        }
-
-    def from_dict(self, data_obj):
-        self._hash = data_obj.get('uuid', '')
-        self._value = data_obj.get('value', '')
-        self._file_uuid = data_obj.get('file_uuid', '')
-        self.name = data_obj.get('name', '')
-
-    def save(self, db):
-        try:
-            self.save_doc(db, self.to_dict())
-        except DBNotUniqueError:
-            pass
-
-    def load(self, db):
-        document = {}
-        if self.id is None:
-            if self._uuid == "":
-                self._gen_uuid()
-            document = self.load_doc(db, field='uuid', value=self._uuid)
-        else:
-            document = self.load_doc(db)
-
-        self.from_dict(document)
-
 
 class Metadata(VertexObject):
 
-    def __init__(self, key=None, id=None):
+    def __init__(self, uuid=None, id=None):
         super().__init__('metadata', id)
-        self._key = key 
+        self._key = "" 
         self._value = ""
-        self._uuid = ""
+        self._uuid = uuid
 
     @property
     def key(self):
         return self._key 
 
+    @key.setter
+    def key(self, new_key):
+        self.set_modified()
+        self._key = new_key
+
     @property
     def value(self):
         return self._value
 
     @value.setter
-    def value(self, value):
-        self._value = value
+    def value(self, new_value):
+        self.set_modified()
+        self._value = new_value
 
     @property
     def uuid(self):
@@ -103,9 +43,10 @@ class Metadata(VertexObject):
     def _gen_uuid(self):
         my_uuid  = hashlib.sha256((self._key + ":" + self._value).encode())
         self._uuid = my_uuid.hexdigest()
+        self.set_modified()
 
     def to_dict(self):
-        if self._uuid == "":
+        if self._uuid is None:
             self._gen_uuid()
         return {
             "key": self._key,
@@ -119,10 +60,11 @@ class Metadata(VertexObject):
         self._value = data_obj.get('value', '')
 
     def save(self, db):
-        try:
-            self.save_doc(db, self.to_dict())
-        except DBNotUniqueError:
-            pass
+        if self.is_modified:
+            try:
+                self.save_doc(db, self.to_dict())
+            except DBNotUniqueError:
+                pass
 
     def load(self, db):
         document = {}
@@ -135,6 +77,7 @@ class Metadata(VertexObject):
 
         self.from_dict(document)
 
+
 class SubmissionFile(VertexObject):
 
     @classmethod
@@ -143,6 +86,7 @@ class SubmissionFile(VertexObject):
         new_cls._modified = True
         new_cls._parent_path = parent_dir
         new_cls._name = filename
+        new_cls._metadata = []
         return new_cls
     
     def __init__(self, uuid=None, id=None):
@@ -160,7 +104,7 @@ class SubmissionFile(VertexObject):
         self._exec_interpreter = ""
         self._exec_packer = ""
         self._target_os = ""
-        self._metadata = []
+        self._metadata = None
         self._hash = ""
         self._parent = ""
 
@@ -243,9 +187,15 @@ class SubmissionFile(VertexObject):
 
     def save(self, db):
         self.save_doc(db, self.to_dict())
-        for data in self._metadata:
-            data.save(db)
-            self.insert_edge(db, 'has_metadata', data.id)
+        self.reset_modified()
+
+        # Check if metadata has been loaded our added
+        # None indicates not loaded and no additions
+        if self._metadata is not None:
+            for data in self._metadata:
+                if data.is_modified:
+                    data.save(db)
+                    self.insert_edge(db, 'has_metadata', data.id)
 
         if self._parent != "":
             self.insert_edge(db, 'has_parent', self._parent)
@@ -258,17 +208,20 @@ class SubmissionFile(VertexObject):
         else:
             document = self.load_doc(db)
 
-        self.from_dict(document)
+        if document is not None:
+            self.from_dict(document)
+            self.reset_modified()
+
+    # We load metadata seperately so we don't grab everything every time.
+    # Saves lots of time
+    def load_metadata(self, db):
+        self._metadata = []
 
         items = self.get_connected_to(db, 'metadata', filter_edges=['has_metadata'])
         for item in items:
             load_data = Metadata(id=item['_id'])
             load_data.from_dict(item)
             self._metadata.append(load_data)
-
-        # parent = self.get_connected_to(db, 'has_parent')
-        # if len(parent) != 0:
-        #     self._parent = parent[0]['_to']
 
     @property
     def mime_type(self):
@@ -351,12 +304,19 @@ class SubmissionFile(VertexObject):
         self._unpacked_archive = False
 
     def add_metadata(self, key, value):
-        new_data = Metadata(key=key)
+        if self._metadata is None:
+            raise ValueError("Must call load_metadata before adding new metadata")
+
+        new_data = Metadata()
+        new_data.key = key
         new_data.value = value
         self._metadata.append(new_data)
         return new_data
 
     def add_metadata_unique(self, key, value):
+        if self._metadata is None:
+            raise ValueError("Must call load_metadata before adding new metadata")
+
         found = False
         for data in self._metadata:
             if data.key == key:
@@ -365,8 +325,9 @@ class SubmissionFile(VertexObject):
                 return data
 
         if not found:
-            new_data = Metadata(key=key)
+            new_data = Metadata()
             new_data.value = value
+            new_data.key = key
             self._metadata.append(new_data)
             return new_data
         
@@ -447,7 +408,8 @@ class Submission(VertexObject):
 
         return None
 
-    def get_files(self):
+    @property
+    def files(self):
         return self._files
 
 
@@ -482,13 +444,15 @@ class Submission(VertexObject):
 
         self.from_dict(document)
 
+    def load_files(self, db):
+        self._files = []
         items = self.get_connected_to(db, 'files')
         for item in items:
             load_file = SubmissionFile(id=item['_id'])
             load_file.from_dict(item)
             self._files.append(load_file)
 
-    def to_dict(self, full=False):
+    def to_dict(self, files=False):
         data_dict = {
             "uuid": self._uuid,
             "owner": self._owner,
@@ -497,7 +461,7 @@ class Submission(VertexObject):
             "description": self._description,
             "base_dir": self._base_dir
         }
-        if full:
+        if files:
             files_list = []
             for file in self._files:
                 files_list.append(file.to_dict())

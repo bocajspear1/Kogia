@@ -30,7 +30,7 @@
                 <td v-if="job['primary'] != null" ><router-link :to="{ name: 'JobSingle', params: { job_uuid: job['uuid'] }}">{{ job['uuid'] }}</router-link></td>
                 <td v-if="job['primary'] == null" >{{ job['uuid'] }}</td>
                 <td><router-link v-if="job['primary'] != null" :to="{ name: 'FileSingle', params: { file_uuid: job['primary'] }}">{{ job['primary_name'] }}</router-link></td>
-                <td v-if="!submission_uuid"><router-link :to="{ name: 'SubmissionSingle', params: { submission_uuid: job['submission'] }}">{{ job['submission_name'] }}</router-link></td>
+                <td v-if="!submission_uuid"><router-link :to="{ name: 'SubmissionSingle', params: { submission_uuid: job['submission']['uuid'] }}">{{ job['submission']['name'] }}</router-link></td>
                 <td>{{ job['start_time'] }}</td>
                 <td>{{ job['complete_time'] }}</td>
             </tr>
