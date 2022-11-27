@@ -27,6 +27,13 @@ export default  {
             on_failed(resp.response.status, resp.message);
         })
     },
+    get_submission_list: function(file_uuid, on_succeeded, on_failed) {
+        if (!file_uuid) {   
+            this.api_call("/submission/list", on_succeeded, on_failed);
+        } else {
+            this.api_call("/submission/list?file=" + file_uuid, on_succeeded, on_failed);
+        }
+    },
     get_job_info: function(job_uuid, on_succeeded, on_failed) {
         this.api_call("/job/" + job_uuid + "/info", on_succeeded, on_failed);
     },
@@ -59,5 +66,12 @@ export default  {
     },
     get_report: function(report_uuid, on_succeeded, on_failed) {
         this.api_call("/report/" + report_uuid, on_succeeded, on_failed);
+    },
+    get_job_signatures: function(job_uuid, file_uuid, on_succeeded, on_failed) {
+        if (!file_uuid) {   
+            this.api_call("/job/" + job_uuid + "/signatures", on_succeeded, on_failed);
+        } else {
+            this.api_call("/job/" + job_uuid + "/signatures?file=" + file_uuid, on_succeeded, on_failed);
+        }
     },
 }

@@ -9,7 +9,7 @@
     </div>
     <template v-else-if="error == null && file_uuid != null">
         <div class="select is-fullwidth">
-            <select>
+            <select ref="reportSelect">
                 <option selected>Select Report</option>
                 <template v-for="report in report_list">    
                 <option @click="onSelect(report.uuid)">{{ report.name }}</option>
@@ -22,12 +22,12 @@
             </pre>
         </div>
         <div v-if="selected_report == ''">
-            <div class="notification is-warning">
+            <div class="notification is-warning m-2">
                 Select report
             </div>
         </div>
     </template>
-    <div class="notification is-info" v-else>
+    <div class="notification is-info m-2" v-else>
         Select a file to view reports
     </div>
 </div>
@@ -52,11 +52,20 @@ export default {
   },
   props: ["file_uuid", "job_uuid"],
   mounted() {
+    
     this.getReports();
+  
+
   },
   watch: {
     'file_uuid' (to, from) {
+        this.report_list = [];
         this.getReports();
+        if (this.selected_report != "") {
+            this.$refs.reportSelect.selectedIndex = 0;
+        }
+        
+        this.selected_report = "";
     }
   },
   methods: {

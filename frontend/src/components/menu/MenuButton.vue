@@ -1,6 +1,6 @@
 <template>
     <a class="button is-outlined" @click="buttonClick">
-        <span class="icon is-small">
+        <span class="icon is-small" :title="tooltip">
             <mdicon :name="iconname" :size="30" />
         </span>
     </a>

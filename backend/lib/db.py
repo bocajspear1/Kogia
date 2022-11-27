@@ -111,6 +111,40 @@ class ArangoConnection():
         col = self._get_vertexes(graph_name, collection)
         return col.get(id)
 
+    def _get_aql_filter(self, main_collection, filter_map):
+
+        filter_query = ""
+        new_bind_vars = {}
+
+        filter_keys = list(filter_map.keys())
+        for i,filter_key in enumerate(filter_keys):
+            if filter_query != "":
+                filter_query += " AND "
+
+            filter_line = filter_map[filter_key]
+            filter_field = filter_line[0]
+            compare = "=="
+            comp_value = ""
+            if len(filter_line) == 3:
+                compare = filter_line[1]
+                comp_value = filter_line[2]
+            else:
+                comp_value = filter_line[1]
+
+            val_name = "filter_key_" + str(i) + "_value"
+            new_bind_vars[val_name] = comp_value
+
+            final_key = filter_key
+            if final_key == main_collection:
+                final_key = "doc" 
+            else:
+                final_key = final_key + "_item"
+            
+            filter_query += " " + final_key + "." + filter_field + " " + compare + " @" + val_name + ""
+
+        print(filter_query)
+        return filter_query, new_bind_vars
+
     # {"test": ()}
     def get_vertex_list_joined(self, main_collection, join_map, sort_by=None, filter_map=None, limit=None, skip=0):
         aql_query = f"FOR doc IN {main_collection}"
@@ -210,7 +244,7 @@ class ArangoConnection():
 
         
 
-    def get_vertex_list_sorted(self, collection, sort_field, sort_dir, filter=None, limit=None, skip=0):
+    def get_vertex_list_sorted(self, collection, sort_field, sort_dir, filter_map=None, limit=None, skip=0):
 
         aql_query = f"FOR doc IN {collection}"
         bind_vars = {
@@ -220,8 +254,11 @@ class ArangoConnection():
         aql_query += f" SORT doc.{sort_field} {sort_dir}"
 
 
-        if filter is not None:
-            aql_query += " FILTER doc." + filter['filter'] + " " + filter['cond'] + " " + filter['value']
+        if filter_map is not None:
+            filter_query, new_bind_vars = self._get_aql_filter(collection, filter_map)
+            bind_vars.update(new_bind_vars)
+            aql_query += filter_query
+            # aql_query += " FILTER doc." + filter['filter'] + " " + filter['cond'] + " " + filter['value']
 
         if limit is not None:
             aql_query += f" LIMIT {skip}, {limit}"
@@ -335,13 +372,13 @@ FOR start IN @@startCollection FILTER start._id == @fromId
         return list(cursor)
 
 
-    def get_connected_to(self, graph_name, from_item, end_collection, filter_edges=None, max=2):
+    def get_connected_to(self, graph_name, from_item, end_collection, filter_edges=None, sort_by=None, max=2):
 
         start_collection = from_item.split("/")[0]
 
         query = f"""
 FOR start IN @@startCollection FILTER start._id == @fromId
-    FOR v, e, p IN 1..@max OUTBOUND start 
+    FOR v, e, p IN 1..@max ANY start 
     GRAPH @graphName
     FILTER IS_SAME_COLLECTION('{end_collection}', v._id)"""
 
@@ -355,6 +392,12 @@ FOR start IN @@startCollection FILTER start._id == @fromId
 
             if filter_edge_query != "":
                 query += filter_edge_query + ")"
+
+        if sort_by is not None:
+            sort_item = sort_by[0] + "_item"
+            if sort_by[0] == end_collection:
+                sort_item = "v"
+            query += f" SORT {sort_item}.{sort_by[1]} {sort_by[2]}"
 
         query += "    RETURN v"
 

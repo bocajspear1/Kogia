@@ -9,7 +9,7 @@ import DynamicFilterTable from '@/components/dynamic/DynamicFilterTable.vue'
     </div>
     <template v-else-if="error == null && file_uuid != null">
         <div class="select is-fullwidth">
-            <select>
+            <select ref="metadataSelect">
                 <option selected>Select Metadata Type</option>
                 <template v-for="(value, metadata_type) in metadata_types">    
                 <option @click="onSelect(metadata_type)">{{ metadata_type }} ({{value}})</option>
@@ -47,7 +47,10 @@ export default {
   },
   watch: {
     'file_uuid' (to, from) {
+        this.$refs.metadataSelect.selectedIndex = 0;
         this.getMetadataList();
+        this.metadata_list = [];
+        this.selected_type = "";
     }
   },
   methods: {

@@ -1,7 +1,7 @@
 <script setup>
 import SubmissionBlock from '@/components/submission/SubmissionBlock.vue'
 import JobBlock from '@/components/job/JobBlock.vue'
-import MetadataTable from '@/components/metadata/MetadataTable.vue'
+import MetadataTable from '@/components/metadata/MetadataTable.vue';
 import FileDropdown from '../components/file/FileDropdown.vue';
 import FileList from '../components/file/FileList.vue';
 import SidebarMenuItem from '../components/menu/SidebarMenuItem.vue';
@@ -9,6 +9,7 @@ import MenuBar from '../components/menu/MenuBar.vue';
 import SidebarMenu from '../components/menu/SidebarMenu.vue';
 import DynamicFilterTable from '@/components/dynamic/DynamicFilterTable.vue';
 import ReportDisplay from '@/components/report/ReportDisplay.vue';
+import SignatureList from '@/components/signature/SignatureList.vue';
 </script>
 
 <template>
@@ -22,6 +23,7 @@ import ReportDisplay from '@/components/report/ReportDisplay.vue';
             <SidebarMenuItem iconname="table-multiple" @click="setPage('metadata')" :active="page=='metadata'">Metadata</SidebarMenuItem>
             <SidebarMenuItem iconname="file-chart" @click="setPage('reports')" :active="page=='reports'">Reports</SidebarMenuItem>
             <SidebarMenuItem iconname="script-text" @click="setPage('logs')" :active="page=='logs'">Logs</SidebarMenuItem>
+            <SidebarMenuItem iconname="information" @click="setPage('details')" :active="page=='details'">Details</SidebarMenuItem>
             </template>
         </SidebarMenu>
     </div>
@@ -32,6 +34,7 @@ import ReportDisplay from '@/components/report/ReportDisplay.vue';
         <template v-if="done && page == 'overview'">
             <JobBlock v-if="job != null" :job="job"></JobBlock>
             <SubmissionBlock v-if="submission != null" :submission="submission"></SubmissionBlock>
+            <SignatureList v-if="all_signatures.length > 0" :signatures="all_signatures"></SignatureList>
         </template>
         <template v-if="done && page == 'files'">
             <FileList v-if="files != null" :toggle="false" :files="files" @file_clicked="fileClicked"></FileList>
@@ -93,7 +96,8 @@ export default {
       done: false,
       page: null,
       selected_file: null,
-      logs: []
+      logs: [],
+      all_signatures: []
     }
   },
   mounted() {
@@ -113,19 +117,21 @@ export default {
         } else {
             this.page = 'overview';
         }
-    },
-    getFileUUID() {
-        if (this.selected_file == null) {
-            return null;
-        } else {
-            return this.selected_file['uuid'];
-        }
-    },  
-    setPage(page_name) {
         var self = this;
-        self.$router.push({ name: 'JobSingle', params: { job_uuid: self.$route.params.job_uuid, page: page_name } });
-        self.page = page_name;
-        if (self.page == "logs") {
+        console.log(self.page)
+        if (self.page == 'overview' || self.page == '') {
+            self.all_signatures = [];
+            api.get_job_signatures(self.job_uuid, "", 
+                function(data) {
+                    for (var i = 0; i < data.length; i++) {
+                        self.all_signatures.push(data[i]);
+                    }
+                },
+                function(status, data) {
+
+                }
+            )
+        } else if (self.page == "logs") {
             self.logs = [];
             api.get_job_logs(self.job_uuid, "", 
                 function(data) {
@@ -139,6 +145,18 @@ export default {
                 }
             )
         }
+    },
+    getFileUUID() {
+        if (this.selected_file == null) {
+            return null;
+        } else {
+            return this.selected_file['uuid'];
+        }
+    },  
+    setPage(page_name) {
+        var self = this;
+        self.$router.push({ name: 'JobSingle', params: { job_uuid: self.$route.params.job_uuid, page: page_name } });
+        self.page = page_name;
     },  
     onLogFilter(column, new_filter) {
         console.log(column, new_filter);

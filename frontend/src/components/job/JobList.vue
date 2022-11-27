@@ -24,9 +24,9 @@
 
         <tbody>
             <tr v-for="job in jobs">
-                <td v-if="job['complete'] == true && job['error'] == ''"><mdicon name="check-bold" :size="25" /></td>
-                <td v-if="job['error'] != ''"><mdicon name="alert" :size="25" /></td>
-                <td v-if="job['complete'] == false && job['error'] == ''"><mdicon name="clock" :size="25" /></td>
+                <td v-if="job['complete'] == true && job['error'] == ''" title="Job complete"><mdicon name="check-bold" :size="25" /></td>
+                <td v-if="job['error'] != ''" title="Error occured in job"><mdicon name="alert" :size="25" /></td>
+                <td v-if="job['complete'] == false && job['error'] == ''" title="Job in progress"><mdicon name="clock" :size="25" /></td>
                 <td v-if="job['primary'] != null" ><router-link :to="{ name: 'JobSingle', params: { job_uuid: job['uuid'] }}">{{ job['uuid'] }}</router-link></td>
                 <td v-if="job['primary'] == null" >{{ job['uuid'] }}</td>
                 <td><router-link v-if="job['primary'] != null" :to="{ name: 'FileSingle', params: { file_uuid: job['primary'] }}">{{ job['primary_name'] }}</router-link></td>

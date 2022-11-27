@@ -11,8 +11,12 @@ import MenuBar from '@/components/menu/MenuBar.vue';
     <SubmissionBlock v-if="submission != null" :submission="submission"></SubmissionBlock>
     <MenuBar>
       <template v-slot:main>
-        <MenuButton iconname="refresh" @click="getSubmission"></MenuButton>
-        <MenuButton iconname="cog-refresh" @click="resubmitSubmission"></MenuButton>
+        <MenuButton iconname="refresh" @click="getSubmission" tooltip="Refresh"></MenuButton>
+        <MenuButton iconname="cog-refresh" @click="resubmitSubmission" tooltip="Resubmit submission"></MenuButton>
+        <MenuButton iconname="folder-zip" @click="zipDownload" tooltip="Zipped download"></MenuButton>
+          <MenuButton iconname="folder-key" @click="encryptDownload" tooltip="Encrypted download"></MenuButton>
+            
+        <MenuButton iconname="laptop-account" tooltip="Start manual analysis"></MenuButton>
         
       </template>
       <template v-slot:right>
@@ -70,7 +74,13 @@ export default {
     },
     removeSubmission() {
 
-    }
+    },
+    zipDownload() {
+
+    },
+    encryptDownload() {
+
+    },
   }
 }
 </script>

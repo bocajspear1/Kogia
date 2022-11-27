@@ -5,7 +5,7 @@ import copy
 
 from backend.lib.submission import Metadata, Submission, SubmissionFile
 from backend.lib.objects import VertexObject
-from backend.lib.data import Signature, SignatureMatch, Report
+from backend.lib.data import Process, Signature, SignatureMatch, Report
 
 
 class Job(VertexObject):
@@ -29,7 +29,7 @@ class Job(VertexObject):
         new_list = []
         job_items = []
         if submission_uuid is None:
-            job_items = db.get_vertex_list_joined(cls.COLLECTION_NAME, {"submissions": ("uuid", "submission")}, sort_by=(('jobs', 'start_time', 'DESC')))
+            job_items = db.get_vertex_list_joined(cls.COLLECTION_NAME, {"submissions": ("uuid", "submission")}, sort_by=('jobs', 'start_time', 'DESC'))
         else:
             job_items = db.get_vertex_list_joined(cls.COLLECTION_NAME, {"submissions": ("uuid", "submission")}, filter_map={"submissions": ('uuid', submission_uuid)}, sort_by=('jobs', 'start_time', 'DESC'))
 
@@ -67,6 +67,7 @@ class Job(VertexObject):
         self._reports = []
         self._matches = []
         self._limit_to = []
+        self._processes = []
 
     def add_limit_to_file(self, file_uuid):
         self._limit_to.append(file_uuid)
@@ -194,6 +195,10 @@ class Job(VertexObject):
             match.save(self._db)
             self.insert_edge(self._db, 'added_match', match.id)
 
+    def _save_processes(self):
+        for process in self._processes:
+            process.save(self._db)
+            self.insert_edge(self._db, 'has_process', process.id)
 
     def add_signature(self, plugin_name, name, file_obj, description, metadata=None, events=None, syscalls=None):
         new_signature = Signature()
@@ -218,6 +223,19 @@ class Job(VertexObject):
 
         self._reports.append(new_report)
 
+    def add_process(self, proc_name, pid, file_obj=None):
+        new_proc = None
+        if file_obj is not None:
+            is_primary = False
+            if file_obj.uuid == self._primary:
+                is_primary = True
+            new_proc = Process.new(proc_name, pid, is_primary=is_primary, file=file_obj)
+        else:
+            new_proc = Process.new(proc_name, pid)
+            
+        self._processes.append(new_proc)
+        return new_proc
+
     def get_reports(self, file_uuid=None):
         # Ensure any stored reports are saved
         self._save_reports()
@@ -234,11 +252,16 @@ class Job(VertexObject):
         self._save_matches()
 
         if file_uuid is None:
-            return self.get_connected_to(self._db, 'signatures', filter_edges=['added_match'])
+            return self.get_connected_to(self._db, 'signatures', filter_edges=['added_match', 'matched_signature'])
         else:
             file_obj = SubmissionFile(uuid=file_uuid)
             file_obj.load(self._db)
             return file_obj.get_in_path(self._db, self.id, 1, ['has_match', 'added_match'], return_fields=['uuid', 'name'])
+
+
+    def get_processes(self):
+        self._save_processes()
+        return self.get_connected_to(self._db, 'processes', filter_edges=['has_process'])
 
 
     def save(self):

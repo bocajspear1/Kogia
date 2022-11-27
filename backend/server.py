@@ -207,6 +207,11 @@ def resumbit_file(uuid):
         "result": resub_file.to_dict(full=True)
     })
 
+
+#
+# Submission API endpoints
+#
+
 @app.route('/api/v1/submission/new', methods=['POST'])
 def submit_sample():
 
@@ -286,7 +291,6 @@ def submit_sample():
     new_job.add_plugin_list(unarchive_plugins)
     new_job.save()
 
-    print("New JobWorker")
     new_worker = JobWorker(app._manager, new_job)
     app._workers.append(new_worker)
     new_worker.start()
@@ -298,7 +302,6 @@ def submit_sample():
             "job_uuid": str(new_job.uuid)
         }
     })
-
 
 @app.route('/api/v1/submission/<uuid>/info', methods=['GET'])
 def get_submission_info(uuid):
@@ -318,12 +321,21 @@ def get_submission_info(uuid):
 def get_submission_list():
     
     app._db.lock()
-    submissions = Submission.list_dict(app._db)
+    file_uuid = request.args.get('file')
+    submissions = []
+    if file_uuid is not None:
+        submissions = Submission.list_dict(app._db, file_uuid=file_uuid)
+    else:
+        submissions = Submission.list_dict(app._db)
     app._db.unlock()
     return jsonify({
         "ok": True,
         "result": submissions
     })
+
+#
+# Plugin API endpoints
+#
 
 @app.route('/api/v1/plugin/list', methods=['GET'])
 def get_plugin_list():
@@ -377,6 +389,10 @@ def run_plugin_action(plugin_name, action):
         "ok": True,
         "result": output
     })
+
+#
+# Analysis API endpoints
+#
 
 @app.route('/api/v1/analysis/new', methods=['POST'])
 def create_analysis_job():
@@ -477,6 +493,8 @@ def get_job_status(uuid):
     if job.uuid == None:
         return abort(404)
     resp = job.to_dict()
+    signature_list = job.get_signatures()
+    resp['signature_count'] = len(signature_list)
     app._db.unlock()
     return jsonify({
         "ok": True,

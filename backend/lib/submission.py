@@ -349,8 +349,13 @@ class Submission(VertexObject):
         return new_cls
 
     @classmethod
-    def list_dict(cls, db):
-        return db.get_vertex_list_sorted(cls.COLLECTION_NAME, "submit_time", "DESC")
+    def list_dict(cls, db, file_uuid=None):
+        if file_uuid is None:
+            return db.get_vertex_list_sorted(cls.COLLECTION_NAME, "submit_time", "DESC")
+        else:
+            filter_file = SubmissionFile(uuid=file_uuid)
+            filter_file.load(db)
+            return db.get_connected_to(cls.GRAPH_NAME, filter_file.id, cls.COLLECTION_NAME, filter_edges=['has_file'], sort_by=(cls.COLLECTION_NAME, 'submit_time', 'DESC'))
 
     @property
     def uuid(self):

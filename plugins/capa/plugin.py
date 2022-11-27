@@ -19,17 +19,23 @@ class CapaPlugin(DockerPluginBase):
         self.wait_and_stop()
         
         file_out = self.extract_single_file(submission, file_obj, "/tmp/capa-output.json")
-        capa_json = json.loads(file_out)
-        for item in capa_json['rules']:
-            signature_name = item.replace(" ", "_").upper()
-            print(signature_name)
-            description = ""
-            if "meta" in capa_json['rules'][item] and 'description' in capa_json['rules'][item]['meta']:
-                description = capa_json['rules'][item]['meta']['description']
-            job.add_signature(self.name, signature_name, file_obj, description)
-        # print(json.dumps(capa_json, indent=4))
+        if file_out.strip() != "":
+            try:
+                capa_json = json.loads(file_out)
+                for item in capa_json['rules']:
+                    signature_name = item.replace(" ", "_").upper()
+                    print(signature_name)
+                    description = ""
+                    if "meta" in capa_json['rules'][item] and 'description' in capa_json['rules'][item]['meta']:
+                        description = capa_json['rules'][item]['meta']['description']
+                    job.add_signature(self.name, signature_name, file_obj, description)
+                # print(json.dumps(capa_json, indent=4))
+            except json.decoder.JSONDecodeError:
+                pass
 
         file_out = self.extract_single_file(submission, file_obj, "/tmp/capa-output.txt")
+        job.add_report("Full CAPA Output", file_obj, file_out)
+
         # print(file_out)
         # 
 
