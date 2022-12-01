@@ -47,7 +47,10 @@ export default {
   },
   watch: {
     'file_uuid' (to, from) {
-        this.$refs.metadataSelect.selectedIndex = 0;
+        if (this.$refs.metadataSelect) {
+            this.$refs.metadataSelect.selectedIndex = 0;
+        }
+        
         this.getMetadataList();
         this.metadata_list = [];
         this.selected_type = "";

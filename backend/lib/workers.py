@@ -78,7 +78,6 @@ class JobWorker(threading.Thread):
             if len(self._job.limited_to) > 0 and not current_file.uuid in self._job.limited_to:
                 continue
             plugin_list = self._job.get_initialized_plugin_list(self._pm)
-            print("hi there")
             
             new_file_worker = FileWorker(self._pm, plugin_list, self._job, current_file)
             new_file_worker.start()
