@@ -16,7 +16,7 @@ class CapaPlugin(DockerPluginBase):
         submission = job.submission
 
         self.run_image(submission.submission_dir, job, file_obj)
-        self.wait_and_stop()
+        self.wait_and_stop(timeout=360)
         
         file_out = self.extract_single_file(submission, file_obj, "/tmp/capa-output.json")
         if file_out.strip() != "":
@@ -24,11 +24,11 @@ class CapaPlugin(DockerPluginBase):
                 capa_json = json.loads(file_out)
                 for item in capa_json['rules']:
                     signature_name = item.replace(" ", "_").upper()
-                    print(signature_name)
                     description = ""
                     if "meta" in capa_json['rules'][item] and 'description' in capa_json['rules'][item]['meta']:
                         description = capa_json['rules'][item]['meta']['description']
                     job.add_signature(self.name, signature_name, file_obj, description)
+                # job.add_report("Full CAPA JSON Output", file_obj, json.dumps(capa_json, indent=4))
                 # print(json.dumps(capa_json, indent=4))
             except json.decoder.JSONDecodeError:
                 pass

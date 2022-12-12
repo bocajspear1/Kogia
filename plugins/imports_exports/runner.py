@@ -16,8 +16,10 @@ def parse_pe(file_path):
         pe = pefile.PE(file_path)
         if hasattr(pe, 'DIRECTORY_ENTRY_EXPORT'):
             for exp in pe.DIRECTORY_ENTRY_EXPORT.symbols:
-                name = exp.name.decode('utf8')
-                if name is None or name == "":
+                name = ""
+                if exp.name is not None:
+                    name = exp.name.decode('utf8')
+                elif exp.ordinal is not None:
                     name = f"#{exp.ordinal}"
                 print(
                     "EXPORT", name, hex(pe.OPTIONAL_HEADER.ImageBase + exp.address), exp.ordinal

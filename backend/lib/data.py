@@ -206,8 +206,8 @@ class Signature(VertexObject):
 
     @severity.setter
     def severity(self, new_severity):
-        if new_severity not in SIGNATURE_SEVERITY:
-            raise ValueError()
+        # if not isinstance(new_severity, SIGNATURE_SEVERITY):
+        #     raise ValueError("Invalid severity")
         self.set_modified()
         self._severity = new_severity
 

@@ -12,11 +12,13 @@ import uuid
 import threading
 import queue
 import time
-import stat
-import random
+import binascii
+import pyzipper
+import zipfile
+import io
 import json
 
-from flask import Flask, g, jsonify, current_app, request, render_template, send_from_directory, abort
+from flask import Flask, g, jsonify, current_app, request, send_file, send_from_directory, abort
 from werkzeug.utils import secure_filename
 
 from backend.lib.plugin_manager import PluginManager
@@ -125,6 +127,59 @@ def get_file_info(uuid):
         "ok": True,
         "result": file_info.to_dict()
     })
+
+@app.route('/api/v1/file/<uuid>/download', methods=['GET'])
+def download_file(uuid):
+    file_info = SubmissionFile(uuid=uuid)
+    app._db.lock()
+    file_info.load(app._db)
+    
+
+    if file_info.uuid == None:
+        app._db.unlock()
+        return abort(404)
+
+    ret_format = request.args.get('format')
+
+    if ret_format is None or ret_format not in ('raw', 'zip', 'enczip', 'hex'):
+        return jsonify({
+            "ok": False,
+            "error": "'format' parameter must be set to 'raw', 'zip', 'enczip', or 'hex'."
+        })
+
+    if ret_format == 'zip' or ret_format == 'enczip':
+        new_zip = None
+        out_stream = io.BytesIO()
+
+        if ret_format == 'enczip':
+            new_zip = pyzipper.AESZipFile(out_stream, "w", compression=pyzipper.ZIP_DEFLATED, encryption=pyzipper.WZ_AES)
+            new_zip.setpassword(app._config['default_zip_password'].encode('utf-8'))
+        elif ret_format == 'zip':
+            new_zip = zipfile.ZipFile(out_stream, "w", compression=pyzipper.ZIP_DEFLATED)
+
+        new_zip.write(file_info.file_path,file_info.name)
+
+        new_zip.close()
+        out_stream.seek(0)
+        app._db.unlock()
+        return send_file(out_stream, mimetype='application/zip', as_attachment=True,
+                         download_name=f"{file_info.name}.zip")
+    elif ret_format == 'raw' or ret_format == 'hex':
+        raw_file = open(file_info.file_path, "rb")
+        if ret_format == 'raw':
+            app._db.unlock()
+            return send_file(raw_file, mimetype='application/octet-stream', as_attachment=True,
+                            download_name=f"{file_info.name}_")
+        else:
+            hex_data = raw_file.read().hex()
+            raw_file.close()
+            return hex_data.encode('utf-8')
+    else:
+        abort(500)
+        
+
+    
+    
 
 @app.route('/api/v1/file/<uuid>/metadata/list', methods=['GET'])
 def get_file_metadata_types(uuid):
@@ -310,12 +365,48 @@ def get_submission_info(uuid):
     submission.load(app._db)
     submission.load_files(app._db)
     if submission.uuid == None:
+        app._db.unlock()
         return abort(404)
     app._db.unlock()
     return jsonify({
         "ok": True,
         "result": submission.to_dict(files=True)
     })
+
+@app.route('/api/v1/submission/<uuid>/download', methods=['GET'])
+def download_submission(uuid):
+    submission = Submission(uuid=uuid)
+    app._db.lock()
+    submission.load(app._db)
+    if submission.uuid == None:
+        app._db.unlock()
+        return abort(404)
+
+    nopassword = request.args.get('nopassword')
+
+    submission.load_files(app._db)
+
+    new_zip = None
+    out_stream = io.BytesIO()
+
+    if nopassword is None:
+        new_zip = pyzipper.AESZipFile(out_stream, "w", compression=pyzipper.ZIP_DEFLATED, encryption=pyzipper.WZ_AES)
+        new_zip.setpassword(app._config['default_zip_password'].encode('utf-8'))
+    else:
+        new_zip = zipfile.ZipFile(out_stream, "w", compression=pyzipper.ZIP_DEFLATED)
+
+    
+
+    for file in submission.files:
+        print(file.file_path)
+        new_zip.write(file.file_path,file.name)
+
+    new_zip.close()
+    out_stream.seek(0)
+
+    app._db.unlock()
+    return send_file(out_stream, mimetype='application/zip', as_attachment=True,
+                     download_name=f"{submission.uuid}.zip")
 
 @app.route('/api/v1/submission/list', methods=['GET'])
 def get_submission_list():

@@ -1,6 +1,5 @@
 from backend.lib.plugin_base import DockerPluginBase
-import shutil
-import os
+from backend.lib.data import SIGNATURE_SEVERITY
 
 class ClamAVPlugin(DockerPluginBase):
     PLUGIN_TYPE = 'signature'
@@ -14,12 +13,20 @@ class ClamAVPlugin(DockerPluginBase):
     def run(self, job, file_obj):
         submission = job.submission
 
-        self.run_image(submission.submission_dir, job, file_obj)
+        test_path = self.run_image(submission.submission_dir, job, file_obj)
         self.wait_and_stop()
         
         clamlog = self.extract_single_file(submission, file_obj, "/tmp/out/clamav.log")
-        
-        print(clamlog)
+
+        job.add_report("ClamAV Scan", file_obj, clamlog)
+
+        clamlog_split = clamlog.split("\n")
+        for line in clamlog_split:
+            if line.startswith(test_path) and "FOUND" in line:
+                line_split = line.split(" ")
+                clam_sig = line_split[1]
+                print(clam_sig)
+                job.add_signature(self.name, clam_sig, file_obj, f"Matched ClamAV signature {clam_sig}", severity=SIGNATURE_SEVERITY.MALICIOUS)
 
         self.remove_tmp_dirs()
         self.remove_container(job)

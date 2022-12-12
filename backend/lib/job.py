@@ -34,7 +34,6 @@ class Job(VertexObject):
             job_items = db.get_vertex_list_joined(cls.COLLECTION_NAME, {"submissions": ("uuid", "submission")}, filter_map={"submissions": ('uuid', submission_uuid)}, sort_by=('jobs', 'start_time', 'DESC'))
 
         for job_item in job_items:
-            print(job_item)
             del job_item['submission']['_id']
             del job_item['submission']['_key']
             del job_item['submission']['_rev']
@@ -200,10 +199,12 @@ class Job(VertexObject):
             process.save(self._db)
             self.insert_edge(self._db, 'has_process', process.id)
 
-    def add_signature(self, plugin_name, name, file_obj, description, metadata=None, events=None, syscalls=None):
+    def add_signature(self, plugin_name, name, file_obj, description, severity=None, metadata=None, events=None, syscalls=None):
         new_signature = Signature()
         new_signature.name = name
         new_signature.plugin_name = plugin_name
+        if severity is not None:
+            new_signature.severity = severity
         new_signature.load(self._db)
         if new_signature.id is None:
             new_signature.description = description

@@ -162,6 +162,8 @@ class DockerPluginBase(PluginBase):
         # self._logger.info(f"Started container {self._running_name}")
         print(f"Started container {self._running_name}")
 
+        return os.path.join(tmp_dir, file_obj.name)
+
     def wait_and_stop(self, timeout=180):
         i = 0
         done = False

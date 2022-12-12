@@ -23,6 +23,7 @@ class FileWorker (threading.Thread):
             stage = order[i]
             for plugin in self._plugin_list:
                 if plugin.PLUGIN_TYPE == stage and plugin.operates_on(self._file_obj):
+                    new_file_uuids = []
                     try:
                         new_file_uuids = plugin.run(self._job, self._file_obj)
                     except Exception as e:

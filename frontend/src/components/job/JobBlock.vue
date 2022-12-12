@@ -7,13 +7,13 @@
         <div class="level-item has-text-centered">
             <div>
                 <p class="title is-6 is-spaced">Started</p>
-                <p class="subtitle is-6">{{ job.start_time }}</p>
+                <p class="subtitle is-6">{{ job.start_time_string }}</p>
             </div>
         </div>
         <div class="level-item has-text-centered">
             <div>
                 <p class="title is-6 is-spaced">Completed</p>
-                <p class="subtitle is-6">{{ job.complete_time }}</p>
+                <p class="subtitle is-6">{{ job.complete_time_string }}</p>
             </div>
         </div>
         <div class="level-item has-text-centered">
@@ -43,13 +43,13 @@ export default {
   mounted() {
     var self = this;
     var start_seconds = self.job['start_time'];
-    self.job['start_time'] = time.seconds_to_string(start_seconds);
+    self.job['start_time_string'] = time.seconds_to_string(start_seconds);
     if (self.job['complete_time']) {
         var complete_seconds = self.job['complete_time'];
-        self.job['complete_time'] = time.seconds_to_string(complete_seconds);
+        self.job['complete_time_string'] = time.seconds_to_string(complete_seconds);
         self.job['duration'] = time.seconds_duration(start_seconds, complete_seconds);
     } else {
-        self.job['complete_time'] = "Running"
+        self.job['complete_time_string'] = "Running"
         self.job['duration'] = ""
     }
   },

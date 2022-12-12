@@ -14,7 +14,7 @@ import MenuBar from '@/components/menu/MenuBar.vue';
         <MenuButton iconname="refresh" @click="getSubmission" tooltip="Refresh"></MenuButton>
         <MenuButton iconname="cog-refresh" @click="resubmitSubmission" tooltip="Resubmit submission"></MenuButton>
         <MenuButton iconname="folder-zip" @click="zipDownload" tooltip="Zipped download"></MenuButton>
-          <MenuButton iconname="folder-key" @click="encryptDownload" tooltip="Encrypted download"></MenuButton>
+        <MenuButton iconname="folder-key" @click="encryptDownload" tooltip="Encrypted download"></MenuButton>
             
         <MenuButton iconname="laptop-account" tooltip="Start manual analysis"></MenuButton>
         
@@ -27,6 +27,7 @@ import MenuBar from '@/components/menu/MenuBar.vue';
     <FileList v-if="submission != null" :toggle="false" :files="submission.files" @file_clicked="fileClicked"></FileList>
     <h4 class="title is-4 is-spaced">Submission Jobs</h4>
     <JobList v-if="submission != null" :submission_uuid="submission_uuid"></JobList>
+    <iframe ref="download_iframe" style="display:none;"></iframe>
   </div>
     
 </template>
@@ -76,10 +77,10 @@ export default {
 
     },
     zipDownload() {
-
+      this.$refs.download_iframe.src = '/api/v1/submission/' + this.submission_uuid + "/download?nopassword=1";
     },
     encryptDownload() {
-
+      this.$refs.download_iframe.src = '/api/v1/submission/' + this.submission_uuid + "/download";
     },
   }
 }
