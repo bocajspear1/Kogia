@@ -10,6 +10,7 @@ import SidebarMenu from '../components/menu/SidebarMenu.vue';
 import DynamicFilterTable from '@/components/dynamic/DynamicFilterTable.vue';
 import ReportDisplay from '@/components/report/ReportDisplay.vue';
 import SignatureList from '@/components/signature/SignatureList.vue';
+import ProcessPanel from '@/components/host/ProcessPanel.vue';
 </script>
 
 <template>
@@ -17,7 +18,7 @@ import SignatureList from '@/components/signature/SignatureList.vue';
         <SidebarMenu>
             <template v-slot:main>
             <SidebarMenuItem iconname="monitor-dashboard" @click="setPage('overview')" :active="page=='overview'">Overview</SidebarMenuItem>
-            <SidebarMenuItem iconname="desktop-tower-monitor">Host Activity</SidebarMenuItem>
+            <SidebarMenuItem iconname="desktop-tower-monitor" @click="setPage('host')" :active="page=='host'">Host Activity</SidebarMenuItem>
             <SidebarMenuItem iconname="server-network">Network Activity</SidebarMenuItem>
             <SidebarMenuItem iconname="folder-file" @click="setPage('files')" :active="page=='files'">Files</SidebarMenuItem>
             <SidebarMenuItem iconname="table-multiple" @click="setPage('metadata')" :active="page=='metadata'">Metadata</SidebarMenuItem>
@@ -35,6 +36,9 @@ import SignatureList from '@/components/signature/SignatureList.vue';
             <JobBlock v-if="job != null" :job="job"></JobBlock>
             <SubmissionBlock v-if="submission != null" :submission="submission"></SubmissionBlock>
             <SignatureList v-if="all_signatures.length > 0" :signatures="all_signatures"></SignatureList>
+        </template>
+        <template v-if="done && page == 'host'">
+            <ProcessPanel :job_uuid="job_uuid"></ProcessPanel>
         </template>
         <template v-if="done && page == 'files'">
             <FileList v-if="files != null" :toggle="false" :files="files" @file_clicked="fileClicked"></FileList>
@@ -118,7 +122,7 @@ export default {
             this.page = 'overview';
         }
         var self = this;
-        console.log(self.page)
+
         if (self.page == 'overview' || self.page == '') {
             self.all_signatures = [];
             api.get_job_signatures(self.job_uuid, "", 

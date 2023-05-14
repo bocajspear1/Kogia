@@ -1,5 +1,5 @@
 <template>
-    <div class="level">
+    <div class="level m-2">
         <div v-for="item in data_list" class="level-item has-text-centered">
             <div v-for="(value, key) in item">
                 <p class="heading">{{ key }}</p>

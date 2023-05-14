@@ -5,7 +5,7 @@ import copy
 
 from backend.lib.submission import Metadata, Submission, SubmissionFile
 from backend.lib.objects import VertexObject
-from backend.lib.data import Process, Signature, SignatureMatch, Report
+from backend.lib.data import Process, Signature, SignatureMatch, Report, ExecInstance
 
 
 class Job(VertexObject):
@@ -29,9 +29,9 @@ class Job(VertexObject):
         new_list = []
         job_items = []
         if submission_uuid is None:
-            job_items = db.get_vertex_list_joined(cls.COLLECTION_NAME, {"submissions": ("uuid", "submission")}, sort_by=('jobs', 'start_time', 'DESC'))
+            job_items = db.get_vertex_list_joined(cls.GRAPH_NAME, cls.COLLECTION_NAME, {"submissions": ("uuid", "submission")}, sort_by=('jobs', 'start_time', 'DESC'))
         else:
-            job_items = db.get_vertex_list_joined(cls.COLLECTION_NAME, {"submissions": ("uuid", "submission")}, filter_map={"submissions": ('uuid', submission_uuid)}, sort_by=('jobs', 'start_time', 'DESC'))
+            job_items = db.get_vertex_list_joined(cls.GRAPH_NAME, cls.COLLECTION_NAME, {"submissions": ("uuid", "submission")}, filter_map={"submissions": ('uuid', submission_uuid)}, sort_by=('jobs', 'start_time', 'DESC'))
 
         for job_item in job_items:
             del job_item['submission']['_id']
@@ -40,7 +40,7 @@ class Job(VertexObject):
             del job_item['submission']['base_dir']
 
             if job_item.get('primary', '') != '':
-                file_data = db.get_vertex_by_match('kogia-graph', 'files', 'uuid', job_item['primary'])
+                file_data = db.get_vertex_by_match(cls.GRAPH_NAME, 'files', 'uuid', job_item['primary'])
                 if file_data is not None:
                     job_item['primary_name'] = file_data['name']
                 else:
@@ -66,7 +66,7 @@ class Job(VertexObject):
         self._reports = []
         self._matches = []
         self._limit_to = []
-        self._processes = []
+        self._exec_instances = []
 
     def add_limit_to_file(self, file_uuid):
         self._limit_to.append(file_uuid)
@@ -194,10 +194,10 @@ class Job(VertexObject):
             match.save(self._db)
             self.insert_edge(self._db, 'added_match', match.id)
 
-    def _save_processes(self):
-        for process in self._processes:
-            process.save(self._db)
-            self.insert_edge(self._db, 'has_process', process.id)
+    def _save_exec_instances(self):
+        for exec_instance in self._exec_instances:
+            exec_instance.save(self._db)
+            self.insert_edge(self._db, 'has_exec_instance', exec_instance.id)
 
     def add_signature(self, plugin_name, name, file_obj, description, severity=None, metadata=None, events=None, syscalls=None):
         new_signature = Signature()
@@ -224,18 +224,10 @@ class Job(VertexObject):
 
         self._reports.append(new_report)
 
-    def add_process(self, proc_name, pid, file_obj=None):
-        new_proc = None
-        if file_obj is not None:
-            is_primary = False
-            if file_obj.uuid == self._primary:
-                is_primary = True
-            new_proc = Process.new(proc_name, pid, is_primary=is_primary, file=file_obj)
-        else:
-            new_proc = Process.new(proc_name, pid)
-            
-        self._processes.append(new_proc)
-        return new_proc
+    def add_exec_instance(self, module_name, run_os):
+        new_exec_instance = ExecInstance.new(module_name, run_os)
+        self._exec_instances.append(new_exec_instance)
+        return new_exec_instance
 
     def get_reports(self, file_uuid=None):
         # Ensure any stored reports are saved
@@ -260,9 +252,9 @@ class Job(VertexObject):
             return file_obj.get_in_path(self._db, self.id, 1, ['has_match', 'added_match'], return_fields=['uuid', 'name'])
 
 
-    def get_processes(self):
-        self._save_processes()
-        return self.get_connected_to(self._db, 'processes', filter_edges=['has_process'])
+    def get_exec_instances(self):
+        self._save_exec_instances()
+        return self.get_connected_to(self._db, 'exec_instance', filter_edges=['has_exec_instance'])
 
 
     def save(self):
@@ -270,6 +262,7 @@ class Job(VertexObject):
         self._submission.save(self._db)
         self._save_reports()
         self._save_matches()
+        self._save_exec_instances()
 
     def load(self, pm):
         doc = self.load_doc(self._db, 'uuid', self._uuid)

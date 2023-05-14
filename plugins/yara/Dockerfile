@@ -1,4 +1,4 @@
-FROM alpine:3.15
+FROM alpine:3.17
 
 WORKDIR /
 RUN apk add -U --repository http://dl-cdn.alpinelinux.org/alpine/edge/testing yara

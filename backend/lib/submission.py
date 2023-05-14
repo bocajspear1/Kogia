@@ -151,6 +151,9 @@ class SubmissionFile(VertexObject):
 
         self._hash = sha256.hexdigest()
     
+    @property
+    def file(self):
+        return open(self.file_path, "rb")
 
     @property
     def hash(self):
@@ -351,7 +354,7 @@ class Submission(VertexObject):
     @classmethod
     def list_dict(cls, db, file_uuid=None):
         if file_uuid is None:
-            return db.get_vertex_list_sorted(cls.COLLECTION_NAME, "submit_time", "DESC")
+            return db.get_vertex_list_sorted(cls.GRAPH_NAME, cls.COLLECTION_NAME, "submit_time", "DESC")
         else:
             filter_file = SubmissionFile(uuid=file_uuid)
             filter_file.load(db)

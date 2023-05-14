@@ -31,9 +31,12 @@ export default  {
             }
         }, 
         function(resp) {
-            on_failed(resp.response.status, resp.message);
-        })
-        
+            if (resp == 404) {
+                on_failed(404, "Not Found");
+            } else {
+                on_failed(resp.response.status, resp.message);
+            }
+        });
     },
     get_submission_list: function(file_uuid, on_succeeded, on_failed) {
         if (!file_uuid) {   
@@ -84,5 +87,14 @@ export default  {
         } else {
             this.api_call("/job/" + job_uuid + "/signatures?file=" + file_uuid, on_succeeded, on_failed);
         }
+    },
+    get_job_exec_instances: function(job_uuid, on_succeeded, on_failed) {
+        this.api_call("/job/" + job_uuid + "/exec_instances", on_succeeded, on_failed);
+    },
+    get_plugin_data: function(plugin_name, on_succeeded, on_failed) {
+        this.api_call("/plugin/" + plugin_name + "/info", on_succeeded, on_failed);
+    },
+    get_exec_instance_data: function(plugin_name, on_succeeded, on_failed) {
+        this.api_call("/exec_instance/" + plugin_name, on_succeeded, on_failed);
     },
 }

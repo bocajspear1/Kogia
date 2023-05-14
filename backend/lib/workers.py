@@ -17,7 +17,7 @@ class FileWorker (threading.Thread):
         self._pm = plugin_manager
 
     def run(self):
-        order = ('identify', 'unarchive', 'unpack', 'syscalls', 'metadata', 'signature')
+        order = ('identify', 'unarchive', 'unpack', 'syscall', 'metadata', 'signature')
 
         for i in range(len(order)):
             stage = order[i]

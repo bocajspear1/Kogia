@@ -1,0 +1,27 @@
+[
+    {
+        "title": "Overview",
+        "items": [
+            {
+                "type": "databar",
+                "action": "action_get_version",
+                "on": "load"
+            },
+            {
+                "type": "databar",
+                "action": "action_get_job_count",
+                "on": "load"
+            }
+        ]
+    },
+    {
+        "title": "Job List",
+        "items": [
+            {
+                "type": "table",
+                "action": "action_get_jobs",
+                "on": "load"
+            }
+        ]
+    }
+]

@@ -36,7 +36,7 @@
             </tr>
         </tbody>
     </table>
-    <div class="notification is-info" v-else-if="done == true">
+    <div class="notification is-info m-2" v-else-if="done == true">
         No jobs
     </div>
     <div class="p-3" v-else>

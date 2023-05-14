@@ -56,6 +56,12 @@ class ArangoConnection():
     def unlock(self):
         self._db_lock.release()
 
+    def _insert_indexed_collection(self, graph_name, collection):
+        graph = self._get_graph(graph_name)
+        if not graph.has_vertex_collection(collection):
+            new_collection = graph.create_vertex_collection(collection)
+            new_collection.add_hash_index(fields=['uuid'], unique=True)
+
     def _get_graph(self, graph_name):
         if not self._db.has_graph(graph_name):
             return self._db.create_graph(graph_name)
@@ -146,13 +152,16 @@ class ArangoConnection():
         return filter_query, new_bind_vars
 
     # {"test": ()}
-    def get_vertex_list_joined(self, main_collection, join_map, sort_by=None, filter_map=None, limit=None, skip=0):
+    def get_vertex_list_joined(self, graph_name, main_collection, join_map, sort_by=None, filter_map=None, limit=None, skip=0):
         aql_query = f"FOR doc IN {main_collection}"
         bind_vars = {}
 
         join_list = list(join_map.keys())
 
+        self._insert_indexed_collection(graph_name, main_collection)
+
         for i,join_col in enumerate(join_list):
+            self._insert_indexed_collection(graph_name, join_col)
             aql_query += " FOR " + join_col + "_item IN " + join_col
 
 
@@ -241,10 +250,8 @@ class ArangoConnection():
         return items
 
 
-
-        
-
-    def get_vertex_list_sorted(self, collection, sort_field, sort_dir, filter_map=None, limit=None, skip=0):
+    def get_vertex_list_sorted(self, graph_name, collection, sort_field, sort_dir, filter_map=None, limit=None, skip=0):
+        self._insert_indexed_collection(graph_name, collection)
 
         aql_query = f"FOR doc IN {collection}"
         bind_vars = {
@@ -372,13 +379,19 @@ FOR start IN @@startCollection FILTER start._id == @fromId
         return list(cursor)
 
 
-    def get_connected_to(self, graph_name, from_item, end_collection, filter_edges=None, sort_by=None, max=2):
+    def get_connected_to(self, graph_name, from_item, end_collection, filter_edges=None, sort_by=None, max=2, direction='both'):
 
         start_collection = from_item.split("/")[0]
 
+        query_dir = "ANY"
+        if direction == "out":
+            query_dir = "OUTBOUND"
+        elif direction == "in":
+            query_dir = "INBOUND"
+
         query = f"""
 FOR start IN @@startCollection FILTER start._id == @fromId
-    FOR v, e, p IN 1..@max ANY start 
+    FOR v, e, p IN 1..@max {query_dir} start 
     GRAPH @graphName
     FILTER IS_SAME_COLLECTION('{end_collection}', v._id)"""
 

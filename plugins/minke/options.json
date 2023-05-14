@@ -1,0 +1,14 @@
+[
+    {
+        "name": "exectime",
+        "description": "Execution Time",
+        "default": "3",
+        "type": "int"
+    },
+    {
+        "name": "uuid",
+        "description": "Existing Job UUID",
+        "default": "",
+        "type": "string"
+    }
+]

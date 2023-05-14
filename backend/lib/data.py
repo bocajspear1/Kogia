@@ -17,62 +17,6 @@ class SIGNATURE_SEVERITY:
     SUSPICIOUS = 3 # Often used for malicious activies
     MALICIOUS = 4 # Known to be malicious
 
-
-class Event(VertexObject):
-    def __init__(self, id=None, uuid=None):
-        super().__init__('events', id)
-        self._uuid = uuid
-        self._pid = None
-        self._tid = None
-        self._name = ""
-        self._event_time = 0
-
-
-class Process(VertexObject):
-
-    COLLECTION_NAME = 'processes'
-
-    @classmethod
-    def new(cls, proc_name, pid, is_primary=False, file=None):
-        new_cls = cls(uuid=str(uuid.uuid4()))
-        new_cls._name = proc_name
-        new_cls._pid = pid
-        new_cls._is_primary = is_primary
-        new_cls._file = file
-        return new_cls
-
-
-    def __init__(self, id=None, uuid=None):
-        super().__init__(self.COLLECTION_NAME, id)
-        self._uuid = uuid
-        self._pid = None
-        self._file = None
-        self._name = ""
-        self._start_time = 0
-        self._end_time = 0
-        self._is_primary = False
-
-    @property
-    def is_primary(self):
-        return self._is_primary
-
-    @property
-    def file_uuid(self):
-        if self._file is not None:
-            return self._file.uuid
-        else:
-            return None
-
-    @property
-    def pid(self):
-        return self._pid
-
-    # @pid.setter
-    # def pid(self, new_pid):
-    #     self._pid = new_pid
-    #     # self._gen_uuid()
-        
-
 class SignatureMatch(VertexObject):
 
     COLLECTION_NAME = 'signature_matches'
@@ -322,3 +266,209 @@ class Report(VertexObject):
             document = self.load_doc(db)
 
         self.from_dict(document)
+
+class ExecInstance(VertexObject):
+
+    COLLECTION_NAME = 'exec_instance'
+
+    @classmethod
+    def new(cls, module_name, run_os):
+        new_cls = cls(uuid=str(uuid.uuid4()))
+        new_cls.exec_module = module_name
+        new_cls._run_os = run_os
+        return new_cls
+
+    def __init__(self, id=None, uuid=None):
+        super().__init__(self.COLLECTION_NAME, id)
+        self._uuid = uuid
+        self._start_time = 0
+        self._end_time = 0
+        self.exec_module = ""
+        self._run_os = ""
+        self._processes = []
+        self._syscall_counter = 0
+        self._event_counter = 0
+
+    def to_dict(self, full=True):
+        ret_dict = {
+            "uuid": self._uuid,
+            "start_time": self._start_time,
+            "end_time": self._end_time,
+            "exec_module": self.exec_module,
+            "run_os": self._run_os,
+        }
+        if full:
+            ret_dict["processes"] = []
+            for proc in self._processes:
+                ret_dict["processes"].append(proc.to_dict(get_children=True))
+        return ret_dict
+
+    def from_dict(self, data_obj):
+        self._uuid = data_obj.get('uuid', '')
+        self._start_time = data_obj.get('start_time', 0)
+        self._end_time = data_obj.get('end_time', 0)
+        self.exec_module = data_obj.get('exec_module', '')
+        self._run_os = data_obj.get('run_os', '')
+        if 'signature' in data_obj:
+            self._signature = Signature(uuid=data_obj['signature'])
+
+
+    def save(self, db):
+        try:
+            self.save_doc(db, self.to_dict(full=False))
+        except DBNotUniqueError:
+            pass
+
+        if self._processes is not None:
+            for process in self._processes:
+                process.save(db)
+                self.insert_edge(db, 'has_process', process.id)
+
+    def load(self, db):
+        document = {}
+        if self.id is None:
+            document = self.load_doc(db, field='uuid', value=self._uuid)
+        else:
+            document = self.load_doc(db)
+
+        if document is not None:
+            self.from_dict(document)
+
+    def load_processes(self, db):
+        items = self.get_connected_to(db, 'processes', filter_edges=['has_process'])
+        for item in items:
+            load_data = Process(id=item['_id'])
+            load_data.from_dict(item)
+            load_data.load_child_processes(db)
+            self._processes.append(load_data)
+
+    def add_process(self, proc_path, pid):
+        new_proc = Process.new(proc_path, pid)
+            
+        self._processes.append(new_proc)
+        return new_proc
+    
+    @property
+    def uuid(self):
+        return self._uuid
+
+    @property
+    def start_time(self):
+        return self._start_time
+
+    @start_time.setter
+    def start_time(self, new_time):
+        self._start_time = new_time
+
+    @property
+    def end_time(self):
+        return self._end_time
+
+    @end_time.setter
+    def end_time(self, new_time):
+        self._end_time = new_time
+
+class Event(VertexObject):
+    def __init__(self, id=None, uuid=None):
+        super().__init__('events', id)
+        self._uuid = uuid
+        self._pid = None
+        self._tid = None
+        self._name = ""
+        self._event_time = 0
+
+
+class Process(VertexObject):
+
+    COLLECTION_NAME = 'processes'
+
+    @classmethod
+    def new(cls, proc_path, pid):
+        new_cls = cls(uuid=str(uuid.uuid4()))
+        new_cls._path = proc_path
+        new_cls._pid = pid
+        return new_cls
+
+
+    def __init__(self, id=None, uuid=None):
+        super().__init__(self.COLLECTION_NAME, id)
+        self._uuid = uuid
+        self._pid = 0
+        self._path = ""
+        self._start_time = 0
+        self._end_time = 0
+        self._syscalls = []
+        self._events = []
+        self._child_processes = []
+
+    @property
+    def pid(self):
+        return self._pid
+    
+    @property
+    def path(self):
+        return self._path
+    
+    def to_dict(self, get_children=True):
+        ret_dict = {
+            "uuid": self._uuid,
+            "pid": self._pid,
+            "path": self._path,
+            "start_time": self._start_time,
+            "end_time": self._end_time,
+        }
+        if get_children:
+            ret_dict["child_processes"] = []
+            for child_proc in self._child_processes:
+                ret_dict["child_processes"].append(child_proc.to_dict(get_children=True))
+        return ret_dict
+
+    def from_dict(self, data_obj):
+        self._uuid = data_obj.get('uuid', '')
+        self._pid = data_obj.get('pid', 0)
+        self._path = data_obj.get('path', '')
+        self._start_time = data_obj.get('start_time', 0)
+        self._end_time = data_obj.get('end_time', 0)
+
+        if 'child_processes' in data_obj:
+            for item in data_obj['child_processes']:
+                add_proc = Process(uuid=item['uuid'])
+                add_proc.from_dict(item)
+                self._child_processes.append(add_proc)
+
+    def save(self, db):
+        try:
+            self.save_doc(db, self.to_dict(get_children=False))
+        except DBNotUniqueError:
+            pass
+
+        if self._child_processes is not None:
+            for process in self._child_processes:
+                process.save(db)
+                self.insert_edge(db, 'is_child_of', process.id)
+
+    def load(self, db):
+        document = {}
+        if self.id is None:
+            document = self.load_doc(db, field='uuid', value=self._uuid)
+        else:
+            document = self.load_doc(db)
+
+        if document is not None:
+            self.from_dict(document)
+
+    def load_child_processes(self, db, get_children=True):
+        items = self.get_connected_to(db, 'processes', filter_edges=['is_child_of'], direction='out', max=1)
+        for item in items:
+            load_data = Process(id=item['_id'])
+            load_data.from_dict(item)
+            if get_children:
+                load_data.load_child_processes(db, get_children=get_children)
+            self._child_processes.append(load_data)
+    
+    def add_child_process(self, proc_path, pid):
+        child_proc = Process.new(proc_path, pid)
+        self._child_processes.append(child_proc)
+        return child_proc
+
+                

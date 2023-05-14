@@ -19,7 +19,7 @@ import Notifications from '@/components/general/Notifications.vue'
                         <ul>
                             <template v-for="display_tab in plugin.display">
                                 <li v-if="current_tab == display_tab.title" class="is-active"><a>{{ display_tab.title }}</a></li>
-                                <li v-else><a>{{ display_tab.title }}</a></li>
+                                <li v-else><a @click="setTab(display_tab.title)">{{ display_tab.title }}</a></li>
                             </template>
                         </ul>
                     </div>
@@ -50,7 +50,7 @@ import Notifications from '@/components/general/Notifications.vue'
 </style>
 
 <script>
-import axios from 'axios';
+import api from '@/lib/api';
 
 
 export default {
@@ -68,40 +68,35 @@ export default {
     this.getPlugin();
   },
   methods: {
+    setTab(new_tab) {
+        var self = this;
+        self.current_tab = new_tab;
+    },
     getPlugin() {
       var self = this;
       this.plugin_name = self.$route.params.plugin_name;
       
-      axios.get("/api/v1/plugin/" + this.plugin_name + "/info").then(function(resp){
-            var resp_data = resp['data'];
-
-            if (resp_data['ok'] == true) {
-                self.plugin = resp_data['result'];
-                
-                if (self.plugin.display.length > 0) {
-                    self.has_display = true;
-                    self.current_tab = self.plugin.display[0].title;
-                }
-                self.done = true;
-            } else {
-                self.$refs.notifications.addNotification("error", resp_data['error']);
-                self.done = true;
-                self.error = resp_data['error'];
-            }
+      api.get_plugin_data(this.plugin_name, function(data) {
+        self.plugin = data;
             
-        }).catch(function(resp){
-           
-            if (resp['response']['status'] == 404) {
-                self.$refs.notifications.addNotification("error", "Plugin not found");
-                self.error = "Plugin not found";
-            } else {
-                console.log(resp);
-                self.$refs.notifications.addNotification("error", resp);
-                self.error = resp;
-            }
-            self.done = true;
-            
-        });
+        if (self.plugin.display.length > 0) {
+            self.has_display = true;
+            self.current_tab = self.plugin.display[0].title;
+        }
+        self.done = true;
+      },
+      function(status, data){
+        if (status == 404) {
+            self.$refs.notifications.addNotification("error", "Plugin not found");
+            self.error = "Plugin not found";
+        } else {
+            self.$refs.notifications.addNotification("error", data);
+            self.error = data;
+        }
+        
+        self.done = true;
+        
+      });
     }
   }
 }

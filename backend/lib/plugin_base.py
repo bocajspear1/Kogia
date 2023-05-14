@@ -10,6 +10,8 @@ import shutil
 import json
 import shlex
 
+import requests
+
 from .submission import SubmissionFile
 
 from .job import Job
@@ -90,6 +92,63 @@ class PluginBase():
         else:
             return True
 
+class HTTPPluginBase(PluginBase):
+
+    def __init__(self, plugin_manager):
+        super().__init__(plugin_manager)
+        self._remote_addr = ""
+        self._ssl = True
+        self._verify = True
+        self._token = ""
+
+
+    def configure(self, remote_addr, ssl=True, verify=True, token=None):
+        self._remote_addr = remote_addr
+        self._ssl = ssl
+        self._verify = verify
+        self._token = token
+    
+    @property
+    def protocol(self):
+        if self._ssl:
+            return "https://"
+        else:
+            return "http://"
+    
+    @property
+    def headers(self):
+        ret_headers = {}
+        if self._token is not None:
+            key_name = "Token"
+            value = ""
+            if isinstance(self._token, dict):
+                key_name = list(self._token.keys())[0]
+                value = self._token[key_name]
+            else:
+                value = self._token
+            
+            ret_headers[key_name] = value
+            
+
+    def get(self, path : str):
+        if not path.startswith("/"):
+            path = "/" + path
+        return requests.get(f"{self.protocol}{self._remote_addr}{path}", headers=self.headers, verify=self._verify)
+    
+    def post(self, path : str, data=None, files=None):
+        if not path.startswith("/"):
+            path = "/" + path
+
+        post_data = {}
+        post_files = {}
+
+
+        return requests.post(f"{self.protocol}{self._remote_addr}{path}", 
+                             headers=self.headers, 
+                             verify=self._verify,
+                             files=files,
+                             data=data
+                            )
 
 class DockerPluginBase(PluginBase):
     

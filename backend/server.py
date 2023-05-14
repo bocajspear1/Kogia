@@ -26,7 +26,7 @@ from backend.lib.submission import Submission, SubmissionFile
 from backend.lib.db import ArangoConnection, ArangoConnectionFactory
 from backend.lib.workers import JobWorker
 from backend.lib.job import Job
-from backend.lib.data import Report
+from backend.lib.data import Report, ExecInstance
 
 
 VERSION = '0.0.1'
@@ -643,6 +643,21 @@ def get_job_signatures(uuid):
         "result": resp
     })
 
+@app.route('/api/v1/job/<uuid>/exec_instances', methods=['GET'])
+def get_job_exec_instances(uuid):
+    app._db.lock()
+    job = Job(app._db, uuid=uuid)
+    job.load(app._manager)
+    if job.uuid == None:
+        return abort(404)
+    resp = job.get_exec_instances()
+
+    app._db.unlock()
+
+    return jsonify({
+        "ok": True,
+        "result": resp
+    })
 
 #
 # Report API endpoints
@@ -662,6 +677,26 @@ def get_report(uuid):
         "ok": True,
         "result": report.to_dict()
     })
- 
+
+#
+# Exec Instance API endpoints
+#
+
+@app.route('/api/v1/exec_instance/<uuid>', methods=['GET'])
+def get_exec_instance(uuid):
+    app._db.lock()
+    exec_instance = ExecInstance(uuid=uuid)
+    exec_instance.load(app._db)
+    exec_instance.load_processes(app._db)
+    if exec_instance.uuid == None:
+        return abort(404)
+
+    app._db.unlock()
+
+    return jsonify({
+        "ok": True,
+        "result": exec_instance.to_dict()
+    })
+
 if __name__== '__main__':
     app.run()

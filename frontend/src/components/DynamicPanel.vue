@@ -19,6 +19,7 @@
 import { shallowRef,  ref, computed } from 'vue'
 import GenericDataBar from '@/components/generic/GenericDataBar.vue'
 import GenericList from '@/components/generic/GenericList.vue'
+import GenericTable from '@/components/generic/GenericTable.vue'
 
 
 export default {
@@ -35,6 +36,8 @@ export default {
         var item = this.panel_data.items[i];
         var type_obj = null;
         if (item['type'] == 'databar') {
+          type_obj = shallowRef(GenericDataBar);
+        } else if (item['type'] == 'table') {
           type_obj = shallowRef(GenericDataBar);
         }
         this.panel_contents.push({

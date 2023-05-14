@@ -26,7 +26,13 @@
         <div class="content" v-if="plugin.enabled == true && plugin.options.length > 0">
             <div class="box">
             <template v-for="option in plugin.options">
-                <div v-if="option.type == 'number'" class="field">
+                <div v-if="option.type == 'number' || option.type == 'int'" class="field">
+                    <label class="label">{{ option.description }}</label>
+                    <div class="control">
+                        <input class="input short-textbox" type="text" :name="option.name" v-model="option.value" ref="pluginoptions" size="10">
+                    </div>
+                </div>
+                <div v-if="option.type == 'string'" class="field">
                     <label class="label">{{ option.description }}</label>
                     <div class="control">
                         <input class="input" type="text" :name="option.name" v-model="option.value" ref="pluginoptions">
@@ -43,6 +49,10 @@
 <style scoped>
     .card-header-icon {
         border: 1px solid gray;
+    }
+
+    .short-textbox {
+        width: 50%;
     }
 </style>
 
