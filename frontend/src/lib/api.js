@@ -97,4 +97,17 @@ export default  {
     get_exec_instance_data: function(plugin_name, on_succeeded, on_failed) {
         this.api_call("/exec_instance/" + plugin_name, on_succeeded, on_failed);
     },
+    get_process_events: function(process_uuid, on_succeeded, on_failed) {
+        this.api_call("/process/" + process_uuid + "/events", on_succeeded, on_failed);
+    },
+    get_process_metadata_types: function(process_uuid, on_succeeded, on_failed) {
+        this.api_call("/process/" + process_uuid + "/metadata/list", on_succeeded, on_failed);
+    },
+    get_process_metadata_list: function(process_uuid, metadata, filter, on_succeeded, on_failed) {
+        if (!filter) {   
+            this.api_call("/process/" + process_uuid + "/metadata/" + metadata + "/list", on_succeeded, on_failed);
+        } else {
+            this.api_call("/process/" + process_uuid + "/metadata/" + metadata + "/list?filter=" + filter, on_succeeded, on_failed);
+        }
+    },
 }

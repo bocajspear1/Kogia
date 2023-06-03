@@ -20,6 +20,46 @@ class MinkePlugin(HTTPPluginBase):
         else:
             self.args = {}
 
+    def _process_thread(self, process, thread_syscalls):
+        for item in thread_syscalls:
+            if item['api'] in ("kernel32.createfilew", "kernel32.createfilea"):
+                path = item['args'][0][1:-1]
+                process.add_event("CREATE_FILE", event_src=path)
+            elif item['api'] in ("kernel32.createprocessw", "kernel32.createprocessa"):
+                exec_path = item['args'][0][1:-1]
+                if item['args'][1].startswith("\""):
+                    exec_path = item['args'][1][1:-1]
+
+                event_data = "FAILED"
+                if item['ret'] > 0:
+                    event_data = "SUCCESS"
+
+                process.add_event("CREATE_PROCESS", event_src=exec_path, event_data=event_data)
+            elif item['api'] in ("advapi32.regopenkeyexw", "advapi32.regopenkeyexa"):
+                top_level_num = item['args'][0]
+                top_level = "???"
+                if top_level_num == "ffffffff80000001":
+                    top_level = "HKEY_CURRENT_USER"
+                elif top_level_num == "ffffffff80000002":
+                    top_level = "HKEY_LOCAL_MACHINE"
+                elif top_level_num == "ffffffff80000003":
+                    top_level = "HKEY_USERS"
+                elif top_level_num == "ffffffff80000005":
+                    top_level = "HKEY_CURRENT_CONFIG"
+                elif top_level_num == "ffffffff80000006":
+                    top_level = "HKEY_DYN_DATA"
+
+
+                reg_path = item['args'][1][1:-1]
+
+                full_path = top_level + "\\" + reg_path
+
+                event_data = "FAILED"
+                if item['ret'] == 0:
+                    event_data = "SUCCESS"
+
+                process.add_event("OPEN_REGISTRY_KEY", event_src=full_path, event_data=event_data)
+
     def _add_child_process(self, process_list, exec_instance=None, parent_proc=None):
         for process in process_list:
             print(process['path'], process['pid'])
@@ -27,7 +67,14 @@ class MinkePlugin(HTTPPluginBase):
             if exec_instance is not None:
                 new_proc = exec_instance.add_process(process['path'], process['pid'])
             elif parent_proc is not None:
-                new_proc = parent_proc.add_child_process(process['path'], process['pid'])  
+                new_proc = parent_proc.add_child_process(process['path'], process['pid']) 
+
+            for lib_path in process['libraries']:
+                new_proc.add_metadata("LOADED_LIBRARY", lib_path.lower()) 
+                new_proc.add_shared_lib(lib_path)
+
+            for thread in process['threads']:
+                self._process_thread(new_proc, process['threads'][thread])
 
             if 'child_processes' in process:
                 self._add_child_process(process['child_processes'], parent_proc=new_proc)

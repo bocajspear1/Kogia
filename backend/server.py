@@ -26,7 +26,7 @@ from backend.lib.submission import Submission, SubmissionFile
 from backend.lib.db import ArangoConnection, ArangoConnectionFactory
 from backend.lib.workers import JobWorker
 from backend.lib.job import Job
-from backend.lib.data import Report, ExecInstance
+from backend.lib.data import Report, ExecInstance, Process
 
 
 VERSION = '0.0.1'
@@ -696,6 +696,80 @@ def get_exec_instance(uuid):
     return jsonify({
         "ok": True,
         "result": exec_instance.to_dict()
+    })
+
+#
+# Process API endpoints
+#
+
+@app.route('/api/v1/process/<uuid>/events', methods=['GET'])
+def get_process_events(uuid):
+    app._db.lock()
+    proc = Process(uuid=uuid)
+    proc.load(app._db)
+    if proc.uuid == None:
+        app._db.unlock()
+        return abort(404)
+    proc.load_events(app._db, as_dict=True)
+    
+    app._db.unlock()
+
+    return jsonify({
+        "ok": True,
+        "result": proc.events
+    })
+
+@app.route('/api/v1/process/<uuid>/metadata/<metatype>/list', methods=['GET'])
+def get_process_metadata_list(uuid, metatype):
+    proc = Process(uuid=uuid)
+    app._db.lock()
+    proc.load(app._db)
+    if proc.uuid == None:
+        app._db.unlock()
+        return abort(404)
+    proc.load_metadata(app._db)
+    app._db.unlock()
+
+    return_list = []
+
+    filter = request.args.get('filter')
+    metatype = metatype.strip()
+
+    # Will probably want to make more efficient method later
+
+    metadata = proc.metadata 
+    for item in metadata:
+        if item.key == metatype:
+            if filter is not None:
+                if filter.lower() not in item.value.lower():
+                    continue
+
+            return_list.append(item.value)
+
+    return jsonify({
+        "ok": True,
+        "result": return_list
+    })
+
+@app.route('/api/v1/process/<uuid>/metadata/list', methods=['GET'])
+def get_process_metadata_types(uuid):
+    proc = Process(uuid=uuid)
+    app._db.lock()
+    proc.load(app._db)
+    proc.load_metadata(app._db)
+    app._db.unlock()
+
+    return_map = {}
+
+    metadata = proc.metadata 
+    for item in metadata:
+        if item.key not in return_map:
+            return_map[item.key] = 0
+        return_map[item.key] += 1
+
+    return jsonify({
+        "ok": True,
+        "result": return_map
     })
 
 if __name__== '__main__':

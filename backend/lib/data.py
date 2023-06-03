@@ -5,7 +5,7 @@ import time
 import hashlib
 from enum import Enum
 
-from .submission import SubmissionFile
+from .submission import SubmissionFile, Metadata
 
 
 from .db import DBNotUniqueError
@@ -339,8 +339,10 @@ class ExecInstance(VertexObject):
         for item in items:
             load_data = Process(id=item['_id'])
             load_data.from_dict(item)
-            load_data.load_child_processes(db)
+            load_data.load_child_processes(db, load_event_count=True)
+            load_data.load_events(db, count_only=True)
             self._processes.append(load_data)
+            
 
     def add_process(self, proc_path, pid):
         new_proc = Process.new(proc_path, pid)
@@ -372,11 +374,98 @@ class Event(VertexObject):
     def __init__(self, id=None, uuid=None):
         super().__init__('events', id)
         self._uuid = uuid
-        self._pid = None
-        self._tid = None
-        self._name = ""
-        self._event_time = 0
+        self._key = ""
+        self._src = ""
+        self._dest = ""
+        self._data = ""
+        self._time = 0
 
+    def _gen_uuid(self):
+        my_uuid  = hashlib.sha256(
+            (self._key).encode() + \
+            (self._src).encode() + \
+            (self._dest).encode() + \
+            (self._data).encode()
+        )
+        self._uuid = my_uuid.hexdigest()
+
+    def to_dict(self, full=True):
+        self._gen_uuid()
+        ret_dict = {
+            "uuid": self._uuid,
+            "key": self._key,
+            "src": self._src,
+            "dest": self._dest,
+            "data": self._data,
+        }
+        if full:
+            ret_dict['time'] = self._time
+        return ret_dict
+
+    def from_dict(self, data_obj):
+        self._uuid = data_obj.get('uuid', '')
+        self._key = data_obj.get('key', '')
+        self._src = data_obj.get('src', '')
+        self._dest = data_obj.get('dest', '')
+        self._data = data_obj.get('data', '')
+        if 'signature' in data_obj:
+            self._signature = Signature(uuid=data_obj['signature'])
+
+    def save(self, db):
+        try:
+            self.save_doc(db, self.to_dict(full=False))
+        except DBNotUniqueError:
+            pass
+
+    def load(self, db):
+        document = {}
+        if self.id is None:
+            document = self.load_doc(db, field='uuid', value=self._uuid)
+        else:
+            document = self.load_doc(db)
+
+        if document is not None:
+            self.from_dict(document)
+
+    @property
+    def key(self):
+        return self._key
+
+    @key.setter
+    def key(self, new_key):
+        self._key = new_key
+
+    @property
+    def src(self):
+        return self._src
+
+    @src.setter
+    def src(self, new_src):
+        self._src = new_src 
+
+    @property
+    def dest(self):
+        return self._dest
+
+    @dest.setter
+    def dest(self, new_dest):
+        self._dest = new_dest  
+
+    @property
+    def data(self):
+        return self._data
+
+    @data.setter
+    def data(self, new_data):
+        self._data = new_data 
+
+    @property
+    def time(self):
+        return self._time
+
+    @time.setter
+    def time(self, new_time):
+        self._time = new_time
 
 class Process(VertexObject):
 
@@ -399,7 +488,11 @@ class Process(VertexObject):
         self._end_time = 0
         self._syscalls = []
         self._events = []
+        self._event_count = -1
         self._child_processes = []
+        self._event_counter = 1
+        self._metadata = []
+        self._libs = []
 
     @property
     def pid(self):
@@ -416,6 +509,8 @@ class Process(VertexObject):
             "path": self._path,
             "start_time": self._start_time,
             "end_time": self._end_time,
+            "libraries": self._libs,
+            "event_count": self.event_count
         }
         if get_children:
             ret_dict["child_processes"] = []
@@ -429,6 +524,11 @@ class Process(VertexObject):
         self._path = data_obj.get('path', '')
         self._start_time = data_obj.get('start_time', 0)
         self._end_time = data_obj.get('end_time', 0)
+        
+        
+        if 'libraries' in data_obj:
+            for shared_lib in data_obj['libraries']:
+                self.add_shared_lib(shared_lib)
 
         if 'child_processes' in data_obj:
             for item in data_obj['child_processes']:
@@ -444,8 +544,21 @@ class Process(VertexObject):
 
         if self._child_processes is not None:
             for process in self._child_processes:
-                process.save(db)
-                self.insert_edge(db, 'is_child_of', process.id)
+                if isinstance(process, Process):
+                    process.save(db)
+                    self.insert_edge(db, 'is_child_of', process.id)
+
+        for event in self._events:
+            if isinstance(event, Event):
+                event.save(db)
+                self.insert_edge(db, 'has_event', event.id, data={
+                    "event_time": event.time
+                })
+
+        for data in self._metadata:
+            if isinstance(data, Metadata):
+                data.save(db)
+                self.insert_edge(db, 'has_process_metadata', data.id)
 
     def load(self, db):
         document = {}
@@ -457,14 +570,45 @@ class Process(VertexObject):
         if document is not None:
             self.from_dict(document)
 
-    def load_child_processes(self, db, get_children=True):
+    def load_child_processes(self, db, get_children=True, load_event_count=False):
         items = self.get_connected_to(db, 'processes', filter_edges=['is_child_of'], direction='out', max=1)
         for item in items:
             load_data = Process(id=item['_id'])
             load_data.from_dict(item)
             if get_children:
-                load_data.load_child_processes(db, get_children=get_children)
+                load_data.load_child_processes(db, get_children=get_children, load_event_count=load_event_count)
+            if load_event_count:
+                load_data.load_events(db, count_only=True)
             self._child_processes.append(load_data)
+
+    def load_events(self, db, as_dict=False, limit=0, skip=0, count_only=False):
+        if not count_only:
+            items = self.get_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1, limit=limit, skip=skip)
+            
+            if not as_dict:
+                for item in items:
+                    load_data = Event(id=item['_id'])
+                    load_data.from_dict(load_data)
+                    self._events.append(load_data)
+                    self._event_counter += 1
+            else:
+                self._events = items
+
+            if limit > 0:
+                self._event_counter = self.count_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1)[0]
+        else:
+            self._event_count = self.count_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1)[0]
+    
+    # We load metadata seperately so we don't grab everything every time.
+    # Saves lots of time
+    def load_metadata(self, db):
+        self._metadata = []
+
+        items = self.get_connected_to(db, 'metadata', filter_edges=['has_process_metadata'], max=1, direction="out")
+        for item in items:
+            load_data = Metadata(id=item['_id'])
+            load_data.from_dict(item)
+            self._metadata.append(load_data)
     
     def add_child_process(self, proc_path, pid):
         child_proc = Process.new(proc_path, pid)
@@ -472,3 +616,56 @@ class Process(VertexObject):
         return child_proc
 
                 
+    def add_event(self, event_key, event_src=None, event_dest=None, event_data=None, event_time=None):
+        new_event = Event()
+        new_event.key = event_key
+        if event_src:
+            new_event.src = event_src
+        if event_dest:
+            new_event.dest = event_dest
+        if event_data:
+            new_event.data = event_data
+        if event_time is None:
+            new_event.time = self._event_counter
+            self._event_counter += 1
+        else:
+            new_event.time = event_time
+
+        self._events.append(new_event)
+        return new_event
+
+    def add_metadata(self, key, value):
+        if self._metadata is None:
+            raise ValueError("Must call load_metadata before adding new metadata")
+
+        for data in self._metadata:
+            if data.key == key and data.value == value:
+                return data
+ 
+        new_data = Metadata()
+        new_data.value = value
+        new_data.key = key
+        self._metadata.append(new_data)
+        return new_data
+        
+    def add_shared_lib(self, lib_path):
+        self._libs.append(lib_path)
+    
+    @property
+    def events(self):
+        return self._events
+
+    @property
+    def event_count(self):
+        if self._event_count == -1:
+            return len(self._events)
+        else:
+            return self._event_count
+
+    @property
+    def metadata(self):
+        return self._metadata
+
+    @property
+    def uuid(self):
+        return self._uuid

@@ -48,7 +48,6 @@ export default {
   },
   methods: {
     addNotification(importance, message) {
-        console.log(importance, message)
         this.notifications.push({"importance": importance, "message": message})
     },
     closeNotification(index) {

@@ -7,7 +7,7 @@ import DynamicFilterTable from '@/components/dynamic/DynamicFilterTable.vue'
     <div v-if="error != null" class="notification is-warning">
         {{ error }}
     </div>
-    <template v-else-if="error == null && file_uuid != null">
+    <template v-else-if="error == null && (file_uuid != null || process_uuid != null)">
         <div class="select is-fullwidth">
             <select ref="metadataSelect">
                 <option selected>Select Metadata Type</option>
@@ -19,7 +19,7 @@ import DynamicFilterTable from '@/components/dynamic/DynamicFilterTable.vue'
         <DynamicFilterTable v-if="selected_type != ''" :columns="['Values']" :data="metadata_list" :pageCount="2" @onFilter="onFilter"></DynamicFilterTable>
     </template>
     <div class="notification is-info" v-else>
-        Select a file to view metadata
+        No file or process selected
     </div>
 </div>
 </template>
@@ -41,27 +41,44 @@ export default {
         selected_type: ""
     }
   },
-  props: ["file_uuid"],
+  props: ["file_uuid", "process_uuid"],
   mounted() {
     this.getMetadataList();
   },
   watch: {
     'file_uuid' (to, from) {
-        if (this.$refs.metadataSelect) {
-            this.$refs.metadataSelect.selectedIndex = 0;
-        }
-        
+        this._reset();
         this.getMetadataList();
-        this.metadata_list = [];
-        this.selected_type = "";
+    },
+    'process_uuid' (to, from) {
+        this._reset();
+        this.getMetadataList();
     }
   },
   methods: {
+    _reset() {
+        if (this.$refs.metadataSelect) {
+            this.$refs.metadataSelect.selectedIndex = 0;
+        }
+        this.metadata_list = [];
+        this.selected_type = "";
+    },
     getMetadataList() {
         var self = this;
+        console.log(self)
 
         if (self.file_uuid != null) {
             api.get_file_metadata_types(self.file_uuid, 
+                function(data){
+                    self.error = null;
+                    self.metadata_types = data;
+                },
+                function(status, data){
+                    self.error = data;
+                }
+            )
+        } else if (self.process_uuid != null) {
+            api.get_process_metadata_types(self.process_uuid, 
                 function(data){
                     self.error = null;
                     self.metadata_types = data;
@@ -83,6 +100,23 @@ export default {
                 self.selected_type = " ";
             }
             api.get_file_metadata_list(self.file_uuid, self.selected_type, filter,
+                function(data){
+                    self.error = null;
+                    self.metadata_list = [];
+                    for (var i = 0; i < data.length; i++) {
+                        self.metadata_list.push([data[i]])
+                    }
+                    
+                },
+                function(status, data){
+                    self.error = data;
+                }
+            )
+        } else if (self.process_uuid != null) {
+            if (self.selected_type == "") {
+                self.selected_type = " ";
+            }
+            api.get_process_metadata_list(self.process_uuid, self.selected_type, filter,
                 function(data){
                     self.error = null;
                     self.metadata_list = [];

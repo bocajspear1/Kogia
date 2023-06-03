@@ -379,9 +379,17 @@ FOR start IN @@startCollection FILTER start._id == @fromId
         return list(cursor)
 
 
-    def get_connected_to(self, graph_name, from_item, end_collection, filter_edges=None, sort_by=None, max=2, direction='both'):
+    def get_connected_to(self, graph_name, from_item, end_collection, filter_edges=None, sort_by=None, max=2, direction='both', limit=0, skip=0, length_only=False):
 
         start_collection = from_item.split("/")[0]
+
+        bind_vars = {
+            '@startCollection': start_collection,
+            # '@endCollection': end_collection,
+            'graphName': graph_name,
+            'fromId': from_item,
+            'max': max
+        }
 
         query_dir = "ANY"
         if direction == "out":
@@ -412,18 +420,24 @@ FOR start IN @@startCollection FILTER start._id == @fromId
                 sort_item = "v"
             query += f" SORT {sort_item}.{sort_by[1]} {sort_by[2]}"
 
-        query += "    RETURN v"
+        if limit > 0:
+            query += "LIMIT "
+            if skip > 0:
+                query += "@skip, "
+                bind_vars['skip'] = skip
+            query += "@limit"
+            bind_vars['limit'] = limit
+
+        if not length_only:
+            query += "    RETURN v"
+        else:
+            query += "    COLLECT WITH COUNT INTO length RETURN length"
 
         print(query)
 
         cursor = self._db.aql.execute(query, 
-            bind_vars={
-                '@startCollection': start_collection,
-                # '@endCollection': end_collection,
-                'graphName': graph_name,
-                'fromId': from_item,
-                'max': max
-            })
+            bind_vars=bind_vars
+        )
         return list(cursor)
 
         # from_col = self._extract_collection_from_id(from_item)

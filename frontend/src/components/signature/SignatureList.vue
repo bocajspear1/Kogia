@@ -1,5 +1,5 @@
 <script setup>
-import FileIcon from '@/components/file/FileIcon.vue'
+
 </script>
 <template>
     <template  v-for="severity in severities" >

@@ -6,6 +6,9 @@ var total_file_count = "N/A"
 
 <template>
 <div class="container column is-10">
+    <div class="content">
+        <img class="logo-img" src="/images/kogia.png"/>
+    </div>
     <div class="level">
     <div class="level-item has-text-centered">
         <div>
@@ -31,5 +34,10 @@ var total_file_count = "N/A"
 </template>
 
 <style scoped>
-
+    .logo-img {
+        width: 40%;
+        margin-left: auto;
+        margin-right: auto;
+        display: block;
+    }
 </style>

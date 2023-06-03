@@ -7,7 +7,8 @@
     <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
       <div class="navbar-brand">
         <div class="navbar-item">
-          Kogia
+          <router-link to="/"><img rel="icon" src="/images/kogia-navbar.png" /></router-link>
+          
         </div>
 
         <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="kogiaNavbar">
@@ -19,11 +20,11 @@
 
       <div id="kogiaNavbar" class="navbar-menu">
         <div class="navbar-start">
-          <router-link class="navbar-item" to="/"><mdicon name="home" :size="20" />&nbsp;&nbsp;Home</router-link>
+          <!-- <router-link class="navbar-item" to="/"><mdicon name="home" :size="20" />&nbsp;&nbsp;Home</router-link> -->
           <router-link class="navbar-item" to="/upload"><mdicon name="cloud-upload-outline" :size="20" />&nbsp;&nbsp;Upload</router-link>
           <router-link class="navbar-item" to="/submissions"><mdicon name="view-list-outline" :size="20" />&nbsp;&nbsp;Submissions</router-link>
-          <router-link class="navbar-item" to="/plugins"><mdicon name="video-input-component" :size="20" />&nbsp;&nbsp;Plugins</router-link>
           <router-link class="navbar-item" to="/jobs"><mdicon name="cog-outline" :size="20" />&nbsp;&nbsp;Jobs</router-link>
+          <router-link class="navbar-item" to="/plugins"><mdicon name="video-input-component" :size="20" />&nbsp;&nbsp;Plugins</router-link>
           
         </div>
 
