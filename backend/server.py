@@ -719,6 +719,40 @@ def get_process_events(uuid):
         "result": proc.events
     })
 
+@app.route('/api/v1/process/<uuid>/syscalls', methods=['GET'])
+def get_process_syscalls(uuid):
+    app._db.lock()
+    proc = Process(uuid=uuid)
+    proc.load(app._db)
+    if proc.uuid == None:
+        app._db.unlock()
+        return abort(404)
+    
+    skip_int = 0
+    limit_int = 20
+    if request.args.get('skip') is not None:
+        try:
+            skip_int = int(request.args.get('skip'))
+        except ValueError:
+            return abort(400)
+    if request.args.get('limit') is not None:
+        try:
+            limit_int = int(request.args.get('limit'))
+        except ValueError:
+            return abort(400)
+    
+    proc.load_syscalls(app._db, skip=skip_int, limit=limit_int)
+    
+    app._db.unlock()
+
+    return jsonify({
+        "ok": True,
+        "result": {
+            "total": proc.syscall_total,
+            "syscalls": proc.syscalls
+        }
+    })
+
 @app.route('/api/v1/process/<uuid>/metadata/<metatype>/list', methods=['GET'])
 def get_process_metadata_list(uuid, metatype):
     proc = Process(uuid=uuid)

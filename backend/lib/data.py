@@ -6,6 +6,7 @@ import hashlib
 from enum import Enum
 
 from .submission import SubmissionFile, Metadata
+from .db import ArangoConnection
 
 
 from .db import DBNotUniqueError
@@ -489,10 +490,13 @@ class Process(VertexObject):
         self._syscalls = []
         self._events = []
         self._event_count = -1
+        self._event_total = 0
         self._child_processes = []
         self._event_counter = 1
         self._metadata = []
         self._libs = []
+        self._syscalls = []
+        self._syscall_total = 0
 
     @property
     def pid(self):
@@ -560,6 +564,16 @@ class Process(VertexObject):
                 data.save(db)
                 self.insert_edge(db, 'has_process_metadata', data.id)
 
+        insert_syscalls = []
+
+        for syscall in self._syscalls:
+            if "_id" not in syscall:
+                insert_syscalls.append(syscall)
+
+        new_ids = db.insert_bulk('syscalls', insert_syscalls)
+        self.insert_edge_bulk(db, 'has_syscall', 'syscalls', new_ids)
+
+
     def load(self, db):
         document = {}
         if self.id is None:
@@ -594,14 +608,17 @@ class Process(VertexObject):
             else:
                 self._events = items
 
+            total_count = self.count_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1)[0]
+            self._event_total = total_count
+
             if limit > 0:
-                self._event_counter = self.count_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1)[0]
+                self._event_counter = total_count
         else:
             self._event_count = self.count_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1)[0]
     
     # We load metadata seperately so we don't grab everything every time.
     # Saves lots of time
-    def load_metadata(self, db):
+    def load_metadata(self, db : ArangoConnection):
         self._metadata = []
 
         items = self.get_connected_to(db, 'metadata', filter_edges=['has_process_metadata'], max=1, direction="out")
@@ -610,6 +627,11 @@ class Process(VertexObject):
             load_data.from_dict(item)
             self._metadata.append(load_data)
     
+    def load_syscalls(self, db : ArangoConnection, skip=0, limit=20):
+        self._syscall_total = self.count_connected_to(db, 'syscalls', filter_edges=['has_syscall'], direction='out', max=1)[0]
+        self._syscalls = self.get_connected_to(db, 'syscalls', filter_edges=['has_syscall'], max=1, 
+                                               direction="out", limit=limit, skip=skip, sort_by=('syscalls', 'timestamp', "ASC"))
+
     def add_child_process(self, proc_path, pid):
         child_proc = Process.new(proc_path, pid)
         self._child_processes.append(child_proc)
@@ -651,9 +673,27 @@ class Process(VertexObject):
     def add_shared_lib(self, lib_path):
         self._libs.append(lib_path)
     
+    def add_syscall(self, name, arg_list, return_code, timestamp, tid):
+        new_syscall = {
+            "name": name,
+            "args": arg_list,
+            "return_code": return_code,
+            "timestamp": timestamp,
+            "tid": tid
+        }
+        self._syscalls.append(new_syscall)
+
     @property
     def events(self):
         return self._events
+    
+    @property
+    def syscalls(self):
+        return self._syscalls
+    
+    @property
+    def syscall_total(self):
+        return self._syscall_total
 
     @property
     def event_count(self):

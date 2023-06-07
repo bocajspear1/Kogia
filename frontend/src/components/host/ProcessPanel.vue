@@ -4,6 +4,7 @@ import ProcessDropdown from '@/components/host/ProcessDropdown.vue'
 import EventTable from '@/components/host/EventTable.vue'
 import ProcessBlock from '@/components/host/ProcessBlock.vue'
 import MetadataTable from '../metadata/MetadataTable.vue';
+import SyscallTable from '@/components/host/SyscallTable.vue';
 </script>
 <template>
     <ExecInstDropdown :instances="exec_instances" @execinst_selected="instanceSelected"></ExecInstDropdown>
@@ -22,6 +23,7 @@ import MetadataTable from '../metadata/MetadataTable.vue';
         <EventTable :process_uuid="current_process.uuid" v-if="tab == 'events'"></EventTable>
         <ProcessBlock :process="current_process" v-if="tab == 'overview'"></ProcessBlock>
         <MetadataTable :process_uuid="current_process.uuid" v-if="tab == 'metadata'"></MetadataTable>
+        <SyscallTable :process_uuid="current_process.uuid" v-if="tab == 'syscalls'"></SyscallTable>
     </div>
      
     <div class="notification is-info m-2" v-else>

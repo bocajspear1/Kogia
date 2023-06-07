@@ -2,7 +2,7 @@ from arango import ArangoClient
 from arango.exceptions import DocumentInsertError
 from threading import RLock
 
-NO_INDEX = ('logs',)
+NO_INDEX = ('logs', 'syscalls')
 
 class DBNotUniqueError(Exception):
     pass
@@ -335,6 +335,17 @@ class ArangoConnection():
             pass
     
 
+    def insert_edge_bulk(self, graph_name, collection, from_item, to_collection, to_list, unique=True):
+        from_col = self._extract_collection_from_id(from_item)
+        self._get_edges(graph_name, collection, from_col, to_collection, unique=unique)
+
+        job_res = None
+        with self.db.begin_batch_execution(return_result=True) as batch_db:
+            batch_graph = batch_db.graph(graph_name)
+            batch_col = batch_graph.edge_collection(collection)
+            for item in to_list:
+                job_res = batch_col.link(from_item, item)
+
     def get_in_path(self, graph_name, from_item, end_item, path_pos, edges, max=2, return_fields=None):
         start_collection = from_item.split("/")[0]
 
@@ -418,7 +429,7 @@ FOR start IN @@startCollection FILTER start._id == @fromId
             sort_item = sort_by[0] + "_item"
             if sort_by[0] == end_collection:
                 sort_item = "v"
-            query += f" SORT {sort_item}.{sort_by[1]} {sort_by[2]}"
+            query += f" SORT {sort_item}.{sort_by[1]} {sort_by[2]} "
 
         if limit > 0:
             query += "LIMIT "
@@ -457,6 +468,13 @@ FOR start IN @@startCollection FILTER start._id == @fromId
         else:
             return None
         
+    def insert_bulk(self, collection, doc_array):
+        col = self._get_collection(collection)
+        db_meta = col.insert_many(doc_array)  
+        id_list = []
+        for item in db_meta:
+            id_list.append(item['_id'])
+        return id_list 
 
     def update(self, collection, id, document):
         col = self._get_collection(collection) 

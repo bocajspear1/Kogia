@@ -20,8 +20,17 @@ class MinkePlugin(HTTPPluginBase):
         else:
             self.args = {}
 
-    def _process_thread(self, process, thread_syscalls):
+    def _process_thread(self, process, thread_id, thread_syscalls):
         for item in thread_syscalls:
+
+            process.add_syscall(
+                item['api'], 
+                item['args'], 
+                item['ret'], 
+                item['counter'],
+                int(thread_id)
+            )
+
             if item['api'] in ("kernel32.createfilew", "kernel32.createfilea"):
                 path = item['args'][0][1:-1]
                 process.add_event("CREATE_FILE", event_src=path)
@@ -74,7 +83,7 @@ class MinkePlugin(HTTPPluginBase):
                 new_proc.add_shared_lib(lib_path)
 
             for thread in process['threads']:
-                self._process_thread(new_proc, process['threads'][thread])
+                self._process_thread(new_proc, thread, process['threads'][thread])
 
             if 'child_processes' in process:
                 self._add_child_process(process['child_processes'], parent_proc=new_proc)

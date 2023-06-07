@@ -1,3 +1,4 @@
+from .db import ArangoConnection
 
 class CollectionObject():
 
@@ -26,13 +27,13 @@ class CollectionObject():
     def get_list(self):
         pass
 
-    def save_doc(self, db, data):
+    def save_doc(self, db : ArangoConnection, data):
         if self._id is None:
             self._id = db.insert(self._collection, data)
         else:
             db.update(self._collection, self._id, data)
 
-    def load_doc(self, db, field=None, value=None):
+    def load_doc(self, db : ArangoConnection, field=None, value=None):
         doc = None
         if field is not None:
             doc = db.get_by_match(self._collection, field, value)
@@ -75,13 +76,13 @@ class VertexObject():
     def to_dict(self):
         raise NotImplementedError
 
-    def save_doc(self, db, data):
+    def save_doc(self, db : ArangoConnection, data):
         if self._id is None:
             self._id = db.insert_vertex(self.GRAPH_NAME, self._collection, data)
         else:
             db.update_vertex(self.GRAPH_NAME, self._collection, self._id, data)
 
-    def load_doc(self, db, field=None, value=None):
+    def load_doc(self, db : ArangoConnection, field=None, value=None):
         doc = None
         if field is not None:
             doc = db.get_vertex_by_match(self.GRAPH_NAME, self._collection, field, value)
@@ -102,14 +103,17 @@ class VertexObject():
     def get_list(self):
         pass
 
-    def insert_edge(self, db, collection, to_item, data=None):
+    def insert_edge(self, db : ArangoConnection, collection, to_item, data=None):
         db.insert_edge(self.GRAPH_NAME, collection, self._id, to_item, data=data)
 
-    def get_connected_to(self, db, end_collection, filter_edges=None, max=2, direction='both', limit=0, skip=0):
-        return db.get_connected_to(self.GRAPH_NAME, self._id, end_collection, filter_edges=filter_edges, max=max, direction=direction, limit=limit, skip=skip)
+    def insert_edge_bulk(self, db : ArangoConnection, collection, to_collection, to_items):
+        db.insert_edge_bulk(self.GRAPH_NAME, collection, self._id, to_collection, to_items)
+
+    def get_connected_to(self, db : ArangoConnection, end_collection, filter_edges=None, max=2, direction='both', limit=0, skip=0, sort_by=None):
+        return db.get_connected_to(self.GRAPH_NAME, self._id, end_collection, filter_edges=filter_edges, max=max, direction=direction, limit=limit, skip=skip, sort_by=sort_by)
     
-    def count_connected_to(self, db, end_collection, filter_edges=None, max=2, direction='both'):
+    def count_connected_to(self, db : ArangoConnection, end_collection, filter_edges=None, max=2, direction='both'):
         return db.get_connected_to(self.GRAPH_NAME, self._id, end_collection, filter_edges=filter_edges, max=max, direction=direction, length_only=True)
     
-    def get_in_path(self, db, end_item, path_pos, edges, max=2, return_fields=None):
+    def get_in_path(self, db : ArangoConnection, end_item, path_pos, edges, max=2, return_fields=None):
         return db.get_in_path(self.GRAPH_NAME, self._id, end_item, path_pos, edges, max=max, return_fields=return_fields)
