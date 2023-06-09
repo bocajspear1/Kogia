@@ -1,3 +1,7 @@
+<script setup>
+import Paginator from "../general/Paginator.vue";
+</script>
+
 <template>
     <table class="table is-striped is-fullwidth is-hoverable" v-if="jobs.length > 0 && done == true">
         <thead>
@@ -9,8 +13,18 @@
                 <th>Start Time</th>
                 <th>End Time</th>
             </tr>
+            <tr>
+                <td :colspan="!submission_uuid ? '6' : '5'">
+                    <Paginator :item_total="job_count" :page_size="page_size" @new_page="onNewPage" :sync_page="current_page"></Paginator>
+                </td>
+            </tr>
         </thead>
         <tfoot>
+            <tr>
+                <td :colspan="!submission_uuid ? '6' : '5'">
+                    <Paginator :item_total="job_count" :page_size="page_size" @new_page="onNewPage" :sync_page="current_page"></Paginator>
+                </td>
+            </tr>
             <tr>
                 <th>Status</th>
                 <th>UUID</th>
@@ -51,12 +65,16 @@
 <script>
 import axios from 'axios';
 import time from "@/lib/time";
+import api from "@/lib/api";
 
 export default {
   data() {
     return {
         jobs: [],
-        done: false
+        done: false,
+        current_page: 1,
+        page_size: 20,
+        job_count: 0
     }
   },
   props: ["submission_uuid"],
@@ -67,29 +85,26 @@ export default {
     getJobs() {
 
         var self = this;
-        var url = "/api/v1/job/list";
 
-        if (self.submission_uuid != null) {
-            url += "?submission=" + self.submission_uuid;
-        }
+        var skip = (self.current_page-1)*self.page_size;
+        api.get_job_list(skip, self.page_size, self.submission_uuid, function(data){
+            self.job_count = data['total'];
+            for (var i in data['jobs']) {
+                var item = data['jobs'][i];
 
-        axios.get(url).then(function(resp){
-            var resp_data = resp['data'];
-
-            if (resp_data['ok'] == true) {
-                for (var i in resp_data['result']) {
-                    var item = resp_data['result'][i];
-
-                    item['complete_time'] = time.seconds_to_string(item['complete_time']);
-                    item['start_time'] = time.seconds_to_string(item['start_time']);
-                }
-                self.jobs = resp_data['result'];
-                self.done = true;
+                item['complete_time'] = time.seconds_to_string(item['complete_time']);
+                item['start_time'] = time.seconds_to_string(item['start_time']);
             }
-            
-        }).catch(function(resp){
-            console.log('FAILURE!!', resp);
+            self.jobs = data['jobs'];
+            self.done = true;
+        }, function(status, data) {
+
         });
+    },
+    onNewPage: function(page_num) {
+        console.log(page_num)
+        this.current_page = page_num;
+        this.getJobs();
     }
   }
 }

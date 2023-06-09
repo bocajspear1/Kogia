@@ -39,7 +39,9 @@
             
         </div>
     </template>
-    
+    <div class="notification is-info m-2" v-if="signatures.length == 0">
+        No signatures found
+    </div>
     
 </template>
 
@@ -95,31 +97,6 @@ export default {
             }
         }
     },
-    clickFile(uuid) {
-        var toggled = false;
-        if (this.toggle) {
-            
-            if (this.current == uuid) {
-                this.$refs[uuid][0].classList.remove('has-background-grey-light');
-                this.current = null;
-                toggled = false;
-            } else {
-                if (this.current != null) {
-                    this.$refs[this.current][0].classList.remove('has-background-grey-light');
-                }
-                this.$refs[uuid][0].classList.add('has-background-grey-light')
-                this.current = uuid;
-                toggled = true;
-            }
-        }
-        var file_data = null;
-        for (var i in this.files) {
-            if (this.files[i].uuid == uuid) {
-                file_data = this.files[i]
-            }
-        }
-        this.$emit('file_clicked', uuid, file_data, toggled);
-    }
   }
 }
 </script>

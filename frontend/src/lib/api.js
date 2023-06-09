@@ -45,6 +45,13 @@ export default  {
             this.api_call("/submission/list?file=" + file_uuid, on_succeeded, on_failed);
         }
     },
+    get_job_list: function(skip, limit, submission_uuid, on_succeeded, on_failed) {
+        var url_string = "/job/list?skip=" + skip.toString() + "&limit=" + limit.toString()
+        if (submission_uuid != "" && submission_uuid != null) {
+            url_string += "&submission=" + submission_uuid;;
+        }
+        this.api_call(url_string, on_succeeded, on_failed);
+    },
     get_job_info: function(job_uuid, on_succeeded, on_failed) {
         this.api_call("/job/" + job_uuid + "/info", on_succeeded, on_failed);
     },

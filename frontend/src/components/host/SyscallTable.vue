@@ -15,14 +15,14 @@ import Paginator from "../general/Paginator.vue";
             </tr>
             <tr>
                 <td colspan="4">
-                    <Paginator :item_total="syscall_count" :page_size="per_page" @new_page="onNewPage" :sync_page="syscall_page"></Paginator>
+                    <Paginator :item_total="syscall_count" :page_size="page_size" @new_page="onNewPage" :sync_page="syscall_page"></Paginator>
                 </td>
             </tr>
         </thead>
         <tfoot>
             <tr>
                 <td colspan="4">
-                    <Paginator :item_total="syscall_count" :page_size="per_page" @new_page="onNewPage" :sync_page="syscall_page"></Paginator>
+                    <Paginator :item_total="syscall_count" :page_size="page_size" @new_page="onNewPage" :sync_page="syscall_page"></Paginator>
                 </td>
             </tr>
            
@@ -70,7 +70,7 @@ export default {
         error: null,
         syscall_list: [],
         syscall_page: 1,
-        per_page: 30
+        page_size: 30
     }
   },
   props: ["process_uuid"],
@@ -86,7 +86,7 @@ export default {
     getSyscallList() {
         var self = this;
         self.done = false;
-        api.get_process_syscalls(self.process_uuid, ((self.syscall_page-1) * self.per_page), self.per_page,
+        api.get_process_syscalls(self.process_uuid, ((self.syscall_page-1) * self.page_size), self.page_size,
             function(data) {
                 console.log(data);
                 self.syscall_list = data['syscalls'];

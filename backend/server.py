@@ -563,17 +563,36 @@ def create_analysis_job():
 @app.route('/api/v1/job/list', methods=['GET'])
 def get_job_list():
     app._db.lock()
+
+    skip_int = 0
+    limit_int = 20
+    if request.args.get('skip') is not None:
+        try:
+            skip_int = int(request.args.get('skip'))
+        except ValueError:
+            return abort(400)
+    if request.args.get('limit') is not None:
+        try:
+            limit_int = int(request.args.get('limit'))
+        except ValueError:
+            return abort(400)
+        
+
     job_list = []
+    total_len = 0
     submission_uuid = request.args.get('submission')
     if submission_uuid is None:
-        job_list = Job.list_dict(app._db)
+        total_len, job_list = Job.list_dict(app._db, skip=skip_int, limit=limit_int)
     else:
-        job_list = Job.list_dict(app._db, submission_uuid=submission_uuid)
+        total_len, job_list = Job.list_dict(app._db, skip=skip_int, limit=limit_int, submission_uuid=submission_uuid)
         
     app._db.unlock()
     return jsonify({
         "ok": True,
-        "result": job_list
+        "result": {
+            "jobs": job_list,
+            "total": total_len
+        }
     })
 
 @app.route('/api/v1/job/<uuid>/info', methods=['GET'])

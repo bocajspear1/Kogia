@@ -25,6 +25,7 @@ import ProcessPanel from '@/components/host/ProcessPanel.vue';
             <SidebarMenuItem iconname="file-chart" @click="setPage('reports')" :active="page=='reports'">Reports</SidebarMenuItem>
             <SidebarMenuItem iconname="script-text" @click="setPage('logs')" :active="page=='logs'">Logs</SidebarMenuItem>
             <SidebarMenuItem iconname="information" @click="setPage('details')" :active="page=='details'">Details</SidebarMenuItem>
+            <SidebarMenuItem iconname="database-export" @click="setPage('export')" :active="page=='export'">Export</SidebarMenuItem>
             </template>
         </SidebarMenu>
     </div>
@@ -35,7 +36,17 @@ import ProcessPanel from '@/components/host/ProcessPanel.vue';
         <template v-if="done && page == 'overview'">
             <JobBlock v-if="job != null" :job="job"></JobBlock>
             <SubmissionBlock v-if="submission != null" :submission="submission"></SubmissionBlock>
-            <SignatureList v-if="all_signatures.length > 0" :signatures="all_signatures"></SignatureList>
+            
+            <div class="columns">
+                <div class="column">
+                    <h1 class="is-size-3">Signatures</h1>
+                    <SignatureList :signatures="all_signatures"></SignatureList>
+                </div>
+                <div class="column">
+                    Second column
+                </div>
+            </div>
+            
         </template>
         <template v-if="done && page == 'host'">
             <ProcessPanel :job_uuid="job_uuid"></ProcessPanel>

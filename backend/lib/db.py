@@ -152,7 +152,7 @@ class ArangoConnection():
         return filter_query, new_bind_vars
 
     # {"test": ()}
-    def get_vertex_list_joined(self, graph_name, main_collection, join_map, sort_by=None, filter_map=None, limit=None, skip=0):
+    def get_vertex_list_joined(self, graph_name, main_collection, join_map, sort_by=None, filter_map=None, limit=None, skip=0, length_only=False):
         aql_query = f"FOR doc IN {main_collection}"
         bind_vars = {}
 
@@ -230,14 +230,19 @@ class ArangoConnection():
         if limit is not None:
             aql_query += f" LIMIT {skip}, {limit}"
 
-        aql_query += " RETURN merge(doc, { "
 
-        for i,merge_data in enumerate(merge_list):
-            if i != 0:
-                aql_query += ", "
-            aql_query += merge_data[0] + ": "  + merge_data[1] + "_item"
+        if not length_only:
+            aql_query += " RETURN merge(doc, { "
 
-        aql_query += " })"
+            for i,merge_data in enumerate(merge_list):
+                if i != 0:
+                    aql_query += ", "
+                aql_query += merge_data[0] + ": "  + merge_data[1] + "_item"
+
+            aql_query += " })"
+        else:
+            aql_query += " COLLECT WITH COUNT INTO length RETURN length"
+
         print(aql_query)
         print(bind_vars)
             
@@ -250,7 +255,7 @@ class ArangoConnection():
         return items
 
 
-    def get_vertex_list_sorted(self, graph_name, collection, sort_field, sort_dir, filter_map=None, limit=None, skip=0):
+    def get_vertex_list_sorted(self, graph_name, collection, sort_field, sort_dir, filter_map=None, limit=None, skip=0, length_only=False):
         self._insert_indexed_collection(graph_name, collection)
 
         aql_query = f"FOR doc IN {collection}"
@@ -270,7 +275,10 @@ class ArangoConnection():
         if limit is not None:
             aql_query += f" LIMIT {skip}, {limit}"
 
-        aql_query += " RETURN doc"
+        if not length_only:
+            aql_query += " RETURN doc"
+        else:
+            aql_query += " COLLECT WITH COUNT INTO length RETURN length"
 
         cursor = self._db.aql.execute(
             aql_query,
@@ -411,20 +419,23 @@ FOR start IN @@startCollection FILTER start._id == @fromId
         query = f"""
 FOR start IN @@startCollection FILTER start._id == @fromId
     FOR v, e, p IN 1..@max {query_dir} start 
-    GRAPH @graphName
-    FILTER IS_SAME_COLLECTION('{end_collection}', v._id)"""
+    GRAPH @graphName"""
 
         filter_edge_query = ""
         if filter_edges is not None:
-            for edge in filter_edges:
-                if filter_edge_query == "":
-                    filter_edge_query = f" AND (IS_SAME_COLLECTION('{edge}', e._id)"
-                else:
-                    filter_edge_query += f" OR IS_SAME_COLLECTION('{edge}', e._id)"
+            query += " OPTIONS { "
+            query += "edgeCollections: " + repr(filter_edges)
+            query += " }"
+            # for edge in filter_edges:
+            #     if filter_edge_query == "":
+            #         filter_edge_query = f" AND (IS_SAME_COLLECTION('{edge}', e._id)"
+            #     else:
+            #         filter_edge_query += f" OR IS_SAME_COLLECTION('{edge}', e._id)"
 
-            if filter_edge_query != "":
-                query += filter_edge_query + ")"
+            # if filter_edge_query != "":
+            #     query += filter_edge_query + ")"
 
+        query += f" FILTER IS_SAME_COLLECTION('{end_collection}', v._id)"
         if sort_by is not None:
             sort_item = sort_by[0] + "_item"
             if sort_by[0] == end_collection:

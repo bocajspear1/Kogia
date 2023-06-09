@@ -25,13 +25,13 @@ class Job(VertexObject):
         return new_cls
 
     @classmethod
-    def list_dict(cls, db, submission_uuid=None):
+    def list_dict(cls, db, skip=0, limit=20, submission_uuid=None):
         new_list = []
         job_items = []
         if submission_uuid is None:
-            job_items = db.get_vertex_list_joined(cls.GRAPH_NAME, cls.COLLECTION_NAME, {"submissions": ("uuid", "submission")}, sort_by=('jobs', 'start_time', 'DESC'))
+            job_items = db.get_vertex_list_joined(cls.GRAPH_NAME, cls.COLLECTION_NAME, {"submissions": ("uuid", "submission")}, sort_by=('jobs', 'start_time', 'DESC'), skip=skip, limit=limit)
         else:
-            job_items = db.get_vertex_list_joined(cls.GRAPH_NAME, cls.COLLECTION_NAME, {"submissions": ("uuid", "submission")}, filter_map={"submissions": ('uuid', submission_uuid)}, sort_by=('jobs', 'start_time', 'DESC'))
+            job_items = db.get_vertex_list_joined(cls.GRAPH_NAME, cls.COLLECTION_NAME, {"submissions": ("uuid", "submission")}, filter_map={"submissions": ('uuid', submission_uuid)}, sort_by=('jobs', 'start_time', 'DESC'), skip=skip, limit=limit)
 
         for job_item in job_items:
             del job_item['submission']['_id']
@@ -47,7 +47,17 @@ class Job(VertexObject):
                     job_item['primary_name'] = ""
             new_list.append(job_item)
         
-        return new_list
+        total_len = 0
+        if submission_uuid is None:
+            total_len = db.get_vertex_list_sorted(cls.GRAPH_NAME, cls.COLLECTION_NAME, 'start_time', 'DESC', length_only=True)[0]
+        else:
+            total_len = db.get_vertex_list_joined(cls.GRAPH_NAME, cls.COLLECTION_NAME, {"submissions": ("uuid", "submission")}, 
+                                                  filter_map={"submissions": ('uuid', submission_uuid)}, 
+                                                  sort_by=('jobs', 'start_time', 'DESC'),
+                                                  length_only=True
+                                                )[0]
+
+        return total_len, new_list
 
     def __init__(self, db, uuid=None, id=None):
         super().__init__(self.COLLECTION_NAME, id)
