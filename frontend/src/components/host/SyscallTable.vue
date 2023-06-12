@@ -8,16 +8,17 @@ import Paginator from "../general/Paginator.vue";
         <table class="table is-striped is-fullwidth">
         <thead>
             <tr>
+                <td colspan="4">
+                    <Paginator :item_total="syscall_count" :page_size="page_size" @new_page="onNewPage" :sync_page="syscall_page"></Paginator>
+                </td>
+            </tr>
+            <tr>
                 <th>API Name</th>
                 <th>Args</th>
                 <th>Return Code</th>
                 <th>TID</th>
             </tr>
-            <tr>
-                <td colspan="4">
-                    <Paginator :item_total="syscall_count" :page_size="page_size" @new_page="onNewPage" :sync_page="syscall_page"></Paginator>
-                </td>
-            </tr>
+            
         </thead>
         <tfoot>
             <tr>
@@ -70,7 +71,8 @@ export default {
         error: null,
         syscall_list: [],
         syscall_page: 1,
-        page_size: 30
+        page_size: 30,
+        syscall_count: 0
     }
   },
   props: ["process_uuid"],

@@ -38,6 +38,12 @@ export default  {
             }
         });
     },
+    get_system_stats: function(on_succeeded, on_failed) {
+        this.api_call("/system/stats", on_succeeded, on_failed);
+    },
+    get_system_usage: function(on_succeeded, on_failed) {
+        this.api_call("/system/usage", on_succeeded, on_failed);
+    },
     get_submission_list: function(file_uuid, on_succeeded, on_failed) {
         if (!file_uuid) {   
             this.api_call("/submission/list", on_succeeded, on_failed);

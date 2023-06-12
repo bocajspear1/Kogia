@@ -13,3 +13,7 @@ websocket-client==1.2.3
 Werkzeug==2.0.3
 pyzipper==0.3.6
 python-arango==7.3.4
+
+## Docs
+Sphinx==3.5.1
+sphinx-rtd-theme==1.0.0

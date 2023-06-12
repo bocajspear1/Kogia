@@ -23,19 +23,19 @@ import Notifications from '@/components/general/Notifications.vue';
   <h3 class="subtitle is-spaced is-3">Select plugins:</h3>
   <div class="columns">
     <div class="column">
-      <h5 class="title is-5">Metadata</h5>
-      <div v-for="plugin in plugins">
-        <PluginCard v-if="plugin.type == 'metadata'" :plugin="plugin"></PluginCard>
-      </div>
-    </div>
-    <div class="column">
-      <h5 class="title is-5">Syscall</h5>
+      <h5 class="title is-5" title="Dynamically executes the submission to get syscalls and other info">Syscall</h5>
       <div v-for="plugin in plugins">
         <PluginCard v-if="plugin.type == 'syscall'" :plugin="plugin"></PluginCard>
       </div>
     </div>
     <div class="column">
-      <h5 class="title is-5">Signature</h5>
+      <h5 class="title is-5" title="Extracts metadata from the submission">Metadata</h5>
+      <div v-for="plugin in plugins">
+        <PluginCard v-if="plugin.type == 'metadata'" :plugin="plugin"></PluginCard>
+      </div>
+    </div>
+    <div class="column">
+      <h5 class="title is-5" title="Runs scanning tools and runs analysis against extracted data">Signature</h5>
       <div v-for="plugin in plugins">
         <PluginCard v-if="plugin.type == 'signature'" :plugin="plugin"></PluginCard>
       </div>
