@@ -9,6 +9,7 @@ import FileSingleView from "@/views/FileSingleView.vue";
 import JobCreateView from "@/views/JobCreateView.vue";
 import JobsView from "@/views/JobsView.vue";
 import JobSingleView from "@/views/JobSingleView.vue";
+import LoginView from "@/views/LoginView.vue";
 
 const routes = [
   {
@@ -60,6 +61,11 @@ const routes = [
     path: "/job/:job_uuid/:page?",
     name: "JobSingle",
     component: JobSingleView,
+  },
+  {
+    path: "/login",
+    name: "LoginPage",
+    component: LoginView,
   },
 ];
 

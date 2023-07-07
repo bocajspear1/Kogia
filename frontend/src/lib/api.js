@@ -1,5 +1,6 @@
 import axios from 'axios';
-
+import { getCurrentInstance } from 'vue';
+import router from '../router'
 
 export default  {
     api_call_raw: function(path, on_succeeded, on_failed) {
@@ -16,7 +17,11 @@ export default  {
             var resp_data = resp['data'];
             on_succeeded(resp_data);
         }).catch(function(resp){
-            on_failed(resp.response.status, resp.message);
+            if (resp.response != null && resp.response.status == 401) {
+                router.push({ name: 'LoginPage'});
+            } else {
+                on_failed(resp.response.status, resp.message);
+            }
         });
     },
     api_call: function(path, on_succeeded, on_failed) {

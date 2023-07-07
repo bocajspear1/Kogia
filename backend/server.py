@@ -18,7 +18,7 @@ import zipfile
 import io
 import json
 
-from flask import Flask, g, jsonify, current_app, request, send_file, send_from_directory, abort
+from flask import Flask, g, jsonify, current_app, request, send_file, send_from_directory, abort, Response
 
 
 from backend.lib.plugin_manager import PluginManager
@@ -33,6 +33,8 @@ from backend.api.plugin import plugin_endpoints
 from backend.api.report import report_endpoints
 from backend.api.execinstance import execinstance_endpoints
 from backend.api.system import system_endpoints
+
+from backend.auth.db import DBAuth
 
 from backend.version import VERSION 
 
@@ -66,6 +68,9 @@ def create_app():
 
         app._db = app._db_factory.new()
 
+        
+
+
         submission_dir = app._config['kogia']['submission_dir']
         if not os.path.exists(submission_dir):
             app.logger.info("Creating submission directory %s", submission_dir)
@@ -79,9 +84,27 @@ def create_app():
         
         app.logger.info("Server %s started", VERSION)
 
+        app._auth = None
+        if app._config['kogia']['auth_type'] == "db":
+            app.logger.info("Enabling local DB authentication")
+            app._auth = DBAuth()
+        else:
+            app.logger.info("No authentication configured")
+
     return app
 
 app = create_app()
+
+@app.before_request
+def check_req():
+    # request is available
+    print(request.path)
+    if app._auth is not None:
+        authkey = request.headers.get('X-Kogia-API-Auth', default=None)
+
+        if authkey is None:
+            return Response(response="Unauthorized", status=401)
+
 
 app.register_blueprint(job_endpoints, url_prefix='/api/v1/job')
 app.register_blueprint(process_endpoints, url_prefix='/api/v1/process')
