@@ -112,6 +112,9 @@ def get_submission_info(uuid):
     submission = Submission(uuid=uuid)
     current_app._db.lock()
     submission.load(current_app._db)
+    if submission.uuid == None:
+        current_app._db.unlock()
+        return abort(404)
     submission.load_files(current_app._db)
     if submission.uuid == None:
         current_app._db.unlock()

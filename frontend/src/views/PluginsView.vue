@@ -46,7 +46,7 @@
 </style>
 
 <script>
-import axios from 'axios';
+import api from '@/lib/api';
 
 export default {
   data() {
@@ -63,17 +63,12 @@ export default {
     getPlugins() {
 
         var self = this;
-
-        axios.get("/api/v1/plugin/list").then(function(resp){
-            var resp_data = resp['data'];
-
-            if (resp_data['ok'] == true) {
-                self.plugins = resp_data['result'];
-                self.done = true;
-            }
-            
-        }).catch(function(resp){
-            console.log('FAILURE!!', resp);
+        api.get_plugin_list(function(result) {
+            self.plugins = result;
+            self.done = true;
+        }, 
+        function(status, error){
+            console.log('FAILURE!!', status, error);
         });
     }
   }

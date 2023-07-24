@@ -63,7 +63,6 @@ import Paginator from "../general/Paginator.vue";
 </style>
 
 <script>
-import axios from 'axios';
 import time from "@/lib/time";
 import api from "@/lib/api";
 

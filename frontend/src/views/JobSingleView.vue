@@ -97,7 +97,6 @@ import ProcessPanel from '@/components/host/ProcessPanel.vue';
 </style>
 
 <script>
-import axios from 'axios';
 import api from '@/lib/api';
 import time from "@/lib/time";
 
@@ -185,19 +184,13 @@ export default {
     getSubmission(submission_uuid) {
         var self = this;
         
-        axios.get("/api/v1/submission/" + submission_uuid + "/info").then(function(resp){
-            var resp_data = resp['data'];
-
-            if (resp_data['ok'] == true) {
-                self.submission = resp_data['result'];
-                self.submission['submit_time'] = time.seconds_to_string(self.submission['submit_time']);
-                self.done = true;
-                self.files = self.submission.files;
-            }
-            
-            
-        }).catch(function(resp){
-            console.log('FAILURE!!', resp);
+        api.get_submission_info(submission_uuid, function(result) {
+            self.submission = result;
+            self.submission['submit_time'] = time.seconds_to_string(self.submission['submit_time']);
+            self.done = true;
+            self.files = self.submission.files;
+        }, function(status, error){
+            console.log('FAILURE!!', status, error);
         });
     },
     getJob() {

@@ -13,6 +13,7 @@
     "dayjs": "^1.11.7",
     "mdi-vue": "^3.0.13",
     "pinia": "^2.1.4",
+    "pinia-plugin-persistedstate": "^3.2.0",
     "vue": "^3.2.33",
     "vue-router": "^4.0.16"
   },

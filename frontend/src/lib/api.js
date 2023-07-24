@@ -1,18 +1,29 @@
 import axios from 'axios';
 import { getCurrentInstance } from 'vue';
 import router from '../router'
+import { useUserSession } from '@/lib/store';
+
+function getFullPath(in_path) {
+    let full_path = "/api/v1";
+    if (in_path[0] != "/") {
+        full_path += "/";
+    }
+    full_path += in_path;
+    return full_path
+}
 
 export default  {
     api_call_raw: function(path, on_succeeded, on_failed) {
         let data = {
             headers: { }
         }
-        var full_path = "/api/v1";
-        if (path[0] != "/") {
-            full_path += "/";
-        }
         
-        full_path += path;
+        let session = useUserSession();
+        
+        let api_key = session.api_key;
+        data.headers['X-Kogia-API-Auth'] = api_key;
+        
+        let full_path = getFullPath(path);
         axios.get(full_path, data).then(function(resp){
             var resp_data = resp['data'];
             on_succeeded(resp_data);
@@ -38,11 +49,60 @@ export default  {
         function(resp) {
             if (resp == 404) {
                 on_failed(404, "Not Found");
+            } else if (resp == 500) {
+                on_failed(500, "Backend error. Please see console and submit a bug report!");
             } else {
                 on_failed(resp.response.status, resp.message);
             }
         });
     },
+    api_post_raw(path, start_headers, post_data, on_succeeded, on_failed) {
+        let config_data = {
+            headers: start_headers
+        }
+        let full_path = getFullPath(path);
+
+        let session = useUserSession();
+        let api_key = session.api_key;
+        config_data.headers['X-Kogia-API-Auth'] = api_key;
+        
+        axios.post(full_path, post_data, 
+            config_data
+        ).then(function (resp) {
+            var resp_data = resp['data'];
+            if (resp_data['ok'] === true) {
+                on_succeeded(resp_data['result']);
+            } else {
+                on_failed(200, resp_data['error']);
+            }
+        }).catch(function (resp) {
+            on_failed(resp.response.status, resp.message); 
+        });
+    },
+    api_post_json(path, post_data, on_succeeded, on_failed) {
+        this.api_post_raw(path, { 
+            'Content-Type': 'application/json'
+        }, post_data, on_succeeded, on_failed);
+    },
+    api_post_form(path, post_data, on_succeeded, on_failed) {
+        this.api_post_raw(path, { 
+            'Content-Type': 'multipart/form-data'
+        }, post_data, on_succeeded, on_failed);
+    },
+    do_login: function(username, password, on_succeeded, on_failed){
+        this.api_post_form('/authenticate', {
+            username: username,
+            password: password
+        }, on_succeeded, on_failed);
+    },
+    do_create_analysis: function(submission_uuid, primary_uuid, plugin_list, on_succeeded, on_failed){
+        this.api_post_json('/analysis/new', {
+            "submission_uuid": submission_uuid,
+            "primary_uuid": primary_uuid,
+            "plugins": plugin_list
+        }, on_succeeded, on_failed);
+    },
+    // do_submission_upload: function
     get_system_stats: function(on_succeeded, on_failed) {
         this.api_call("/system/stats", on_succeeded, on_failed);
     },
@@ -55,6 +115,9 @@ export default  {
         } else {
             this.api_call("/submission/list?file=" + file_uuid, on_succeeded, on_failed);
         }
+    },
+    get_submission_info: function(submission_uuid, on_succeeded, on_failed) {
+        this.api_call("submission/" + submission_uuid + "/info", on_succeeded, on_failed);
     },
     get_job_list: function(skip, limit, submission_uuid, on_succeeded, on_failed) {
         var url_string = "/job/list?skip=" + skip.toString() + "&limit=" + limit.toString()
@@ -108,6 +171,9 @@ export default  {
     },
     get_job_exec_instances: function(job_uuid, on_succeeded, on_failed) {
         this.api_call("/job/" + job_uuid + "/exec_instances", on_succeeded, on_failed);
+    },
+    get_plugin_list: function(on_succeeded, on_failed) {
+        this.api_call("/plugin/list", on_succeeded, on_failed);
     },
     get_plugin_data: function(plugin_name, on_succeeded, on_failed) {
         this.api_call("/plugin/" + plugin_name + "/info", on_succeeded, on_failed);

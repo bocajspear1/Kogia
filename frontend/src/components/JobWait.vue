@@ -10,7 +10,7 @@
 </style>
 
 <script>
-import axios from 'axios';
+import api from "@/lib/api";
 
 export default {
   data() {
@@ -28,20 +28,15 @@ export default {
         var self = this;
         var job_uuid = this.job_uuid;
         const interval = setInterval(function() {
-            axios.get("api/v1/job/" + job_uuid + "/info").then(function(resp){
-                var resp_data = resp['data'];
-
-                if (resp_data['ok'] == true) {
-                    var is_complete = resp_data['result']['complete'];
-                    if (is_complete) {
-                        self.$emit('jobdone', resp_data['result']);
-                        clearInterval(interval);
-                    }
-                }
-                
-            }).catch(function(resp){
-                console.log('FAILURE!!', resp);
-            });
+          api.get_job_info(job_uuid, function(result) {
+            var is_complete = result['complete'];
+            if (is_complete) {
+                self.$emit('jobdone', result);
+                clearInterval(interval);
+            }
+          }, function(status, error) {
+            console.log('FAILURE!!', status, error);
+          });
         }, 3000);
     },
     

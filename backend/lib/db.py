@@ -503,7 +503,10 @@ FOR start IN @@startCollection FILTER start._id == @fromId
     def get_by_match(self, collection, field, value):
         col = self._get_collection(collection) 
         cursor = col.find({field: value}, skip=0, limit=1)
-        item = cursor.next()
+        try:
+            item = cursor.next()
+        except StopIteration:
+            return None
         return item
 
     def get_by_id(self, collection, id):

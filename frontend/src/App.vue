@@ -1,5 +1,7 @@
 <script setup>
-
+import { useUserSession } from '@/lib/store'
+import router from '@/router'
+let session = useUserSession();
 </script>
 
 <template>
@@ -24,8 +26,42 @@
           <router-link class="navbar-item" to="/upload"><mdicon name="cloud-upload-outline" :size="20" />&nbsp;&nbsp;Upload</router-link>
           <router-link class="navbar-item" to="/submissions"><mdicon name="view-list-outline" :size="20" />&nbsp;&nbsp;Submissions</router-link>
           <router-link class="navbar-item" to="/jobs"><mdicon name="cog-outline" :size="20" />&nbsp;&nbsp;Jobs</router-link>
-          <router-link class="navbar-item" to="/plugins"><mdicon name="video-input-component" :size="20" />&nbsp;&nbsp;Plugins</router-link>
+          <router-link class="navbar-item" to="/explore"><mdicon name="flask-empty" :size="20" />&nbsp;&nbsp;Explore</router-link>
           
+        </div>
+
+        <div class="navbar-end">
+          <div class="navbar-item">
+            <div class="navbar-item has-dropdown is-hoverable">
+              <a class="navbar-link">
+                <mdicon name="information" :size="20" />
+              </a>
+
+              <div class="navbar-dropdown is-right">
+                <router-link class="navbar-item" to="/plugins"><mdicon name="video-input-component" :size="20" />&nbsp;&nbsp;Plugins</router-link>
+                <hr class="navbar-divider">
+                <router-link class="navbar-item" to="/userguide"><mdicon name="bookshelf" :size="20" />&nbsp;&nbsp;User Guide</router-link>
+              </div>
+            </div>
+          </div>
+          <div class="navbar-item">
+            <div class="navbar-item has-dropdown is-hoverable">
+              <a class="navbar-link">
+                <mdicon name="account" :size="20" />&nbsp;&nbsp;
+                {{ session.username }}
+              </a>
+
+              <div class="navbar-dropdown is-right">
+                <!-- <hr class="navbar-divider"> -->
+                <a class="navbar-item">
+                  Account
+                </a>
+                <a class="navbar-item" @click="logout">
+                  Logout
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -41,3 +77,24 @@
 
 
 </style>
+
+<script>
+export default {
+  data() {
+    return {
+        
+    }
+  },
+  mounted() {
+    
+  },
+  methods: {
+    logout: function() {
+      var self = this;
+      let session = useUserSession();
+      session.clearSession();
+      router.push({ name: 'LoginPage'});
+    }
+  }
+}
+</script>

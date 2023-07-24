@@ -37,7 +37,7 @@ import MenuBar from '@/components/menu/MenuBar.vue';
 </style>
 
 <script>
-import axios from 'axios';
+import api from "@/lib/api";
 
 export default {
   data() {
@@ -56,19 +56,14 @@ export default {
     getSubmission() {
       var self = this;
       this.submission_uuid = self.$route.params.submission_uuid;
-      axios.get("/api/v1/submission/" + this.submission_uuid + "/info").then(function(resp){
-            var resp_data = resp['data'];
-
-            if (resp_data['ok'] == true) {
-                self.submission = resp_data['result'];
-                var date = new Date(self.submission['submit_time']*1000);
-                self.submission['submit_time'] = date.toLocaleString() 
-                self.done = true;
-            }
-            
-        }).catch(function(resp){
-            console.log('FAILURE!!', resp);
-        });
+      api.get_submission_info(this.submission_uuid, function(result){
+        self.submission = result;
+        var date = new Date(self.submission['submit_time']*1000);
+        self.submission['submit_time'] = date.toLocaleString() 
+        self.done = true;
+      }, function(status, error) {
+        console.log(status, error);
+      })
     },
     resubmitSubmission() {
       this.$router.push({ name: 'JobCreate', params: { submission_uuid: this.submission_uuid } });

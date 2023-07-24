@@ -50,7 +50,7 @@ import Notifications from '@/components/general/Notifications.vue';
 </style>
 
 <script>
-import axios from 'axios';
+import api from "@/lib/api";
 
 export default {
   data() {
@@ -103,78 +103,48 @@ export default {
       }
       
       var self = this;
-      var form_data = {
-        "submission_uuid": this.submission_uuid,
-        "primary_uuid": this.primary_file,
-        "plugins": plugin_list
-      }
-      axios.post('/api/v1/analysis/new',
-        form_data,
-        {
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        }
-        ).then(function(resp){
-            var resp_data = resp['data'];
 
-            if (resp_data['ok'] == true) {
-               console.log("done")
-                
-            } else {
-                console.log(resp)
-                self.$refs.notifications.addNotification("error", "Analysis Create Error: " + resp_data['error']);
-            }
-            // this.$refs.waitItem.startWait();
+      api.do_create_analysis(this.submission_uuid, this.primary_file, plugin_list,
+      function(result) {
 
-        })
-        .catch(function(resp){
-            console.log(resp)
-            self.$refs.notifications.addNotification("error", "Analysis Create Error: " + resp);
-        });
+      },
+      function(status, error){
+        console.log(resp)
+        self.$refs.notifications.addNotification("error", "Analysis Create Error: " + error);
+      });
     },
     getSubmission() {
       var self = this;
       this.submission_uuid = self.$route.params.submission_uuid;
-      axios.get("/api/v1/submission/" + this.submission_uuid + "/info").then(function(resp){
-            var resp_data = resp['data'];
-
-            if (resp_data['ok'] == true) {
-                self.submission = resp_data['result'];
-                var date = new Date(self.submission['submit_time']*1000);
-                self.submission['submit_time'] = date.toLocaleString() 
-                self.done = true;
-            }
-            
-        }).catch(function(resp){
-            console.log('FAILURE!!', resp);
-        });
+      api.get_submission_info(this.submission_uuid, function(result) {
+        self.submission = result;
+        var date = new Date(self.submission['submit_time']*1000);
+        self.submission['submit_time'] = date.toLocaleString() 
+        self.done = true;
+      }, function(status, error) {
+        self.$refs.notifications.addNotification("error", "Error getting submission: " + error);
+      })
     },
     getPlugins() {
       var self = this;
-      axios.get("/api/v1/plugin/list").then(function(resp){
-            var resp_data = resp['data'];
-            var shown_plugin_types = ['syscall', 'metadata', 'signature'];
+      api.get_plugin_list(function(result) {
+        const shown_plugin_types = ['syscall', 'metadata', 'signature'];
+        var new_list = [];
+        
+        for (var i in result) {
+          var item = result[i];
+          if (shown_plugin_types.includes(item['type'])) {
+            item['enabled'] = true;
+            new_list.push(item);
+          }
+        }
 
-            if (resp_data['ok'] == true) {
-              var new_list = [];
-              
-              
-              for (var i in resp_data['result']) {
-                var item = resp_data['result'][i];
-                if (shown_plugin_types.includes(item['type'])) {
-                  item['enabled'] = true;
-                  new_list.push(item);
-                }
+        self.plugins = new_list;
 
-              }
-
-              self.plugins = new_list;
-            }
-            
-        }).catch(function(resp){
-            console.log('FAILURE!!', resp);
-        });
+      }, function(status, error){
+        self.$refs.notifications.addNotification("error", "Error getting plugin kist: " + error);
+      })
+      
     }
   }
 }

@@ -1,5 +1,6 @@
 <script setup>
-
+import { useUserSession } from '@/lib/store'
+import router from '../router'
 </script>
 
 <template>
@@ -16,7 +17,7 @@
                         <div class="field">
                             <label class="label">Username</label>
                             <div class="control has-icons-left has-icons-right">
-                                <input class="input" type="text">
+                                <input class="input" type="text" ref="username">
                                 <span class="icon is-small is-left">
                                     <mdicon name="account" :size="24" />
                                 </span>
@@ -25,7 +26,7 @@
                         <div class="field">
                             <label class="label">Password</label>
                             <div class="control has-icons-left has-icons-right">
-                                <input class="input" type="password">
+                                <input class="input" type="password" ref="password" @keyup.enter="login">
                                 <span class="icon is-small is-left">
                                     <mdicon name="key" :size="24" />
                                 </span>
@@ -33,7 +34,7 @@
                         </div>
                         <div class="field is-grouped">
                             <div class="control">
-                                <button class="button is-link">Login</button>
+                                <button class="button is-link" @click="login">Login</button>
                             </div>
                         </div>
                     </div>
@@ -69,11 +70,18 @@ export default {
     
   },
   methods: {
-    updateStats() {
-        
-    },
-    updateUsage() {
-        
+    login() {
+        var self = this;
+        let session = useUserSession();
+        api.do_login(self.$refs.username.value, self.$refs.password.value, 
+            function(response){
+                session.updateSession(self.$refs.username.value, response['api_key'], response['roles']);
+                router.push({ name: 'Home'});
+            },
+            function(status_code, response){
+                
+            }
+        )
     },
   }
 }

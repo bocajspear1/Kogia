@@ -1,11 +1,11 @@
 <script setup>
-import JobList from '@/components/job/JobList.vue'
+
 </script>
     
 <template>
 
 <div class="container column is-10">
-     <JobList></JobList>
+    Coming Soon!
 </div>
    
 </template>

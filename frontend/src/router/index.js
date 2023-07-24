@@ -10,6 +10,8 @@ import JobCreateView from "@/views/JobCreateView.vue";
 import JobsView from "@/views/JobsView.vue";
 import JobSingleView from "@/views/JobSingleView.vue";
 import LoginView from "@/views/LoginView.vue";
+import ExploreView from "@/views/ExploreView.vue";
+import UserGuideView from "@/views/UserGuideView.vue";
 
 const routes = [
   {
@@ -58,6 +60,11 @@ const routes = [
     component: JobsView,
   },
   {
+    path: "/explore",
+    name: "Explore",
+    component: ExploreView,
+  },
+  {
     path: "/job/:job_uuid/:page?",
     name: "JobSingle",
     component: JobSingleView,
@@ -66,6 +73,11 @@ const routes = [
     path: "/login",
     name: "LoginPage",
     component: LoginView,
+  },
+  {
+    path: "/userguide",
+    name: "UserGuide",
+    component: UserGuideView,
   },
 ];
 

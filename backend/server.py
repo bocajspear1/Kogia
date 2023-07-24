@@ -15,8 +15,8 @@ import time
 import binascii
 import pyzipper
 import zipfile
-import io
 import json
+import secrets
 
 from flask import Flask, g, jsonify, current_app, request, send_file, send_from_directory, abort, Response
 
@@ -33,6 +33,9 @@ from backend.api.plugin import plugin_endpoints
 from backend.api.report import report_endpoints
 from backend.api.execinstance import execinstance_endpoints
 from backend.api.system import system_endpoints
+
+from backend.lib.config import load_config
+from backend.auth import ROLES
 
 from backend.auth.db import DBAuth
 
@@ -53,10 +56,8 @@ def create_app():
         app._manager.load_all()
 
         
-        config_file = open("./config.json", "r")
-        config_data = json.loads(config_file.read())
-        config_file.close()
-        app._config = config_data
+        
+        app._config = load_config("./config.json")
 
         app._db_factory = ArangoConnectionFactory(
             app._config['kogia']['db_host'], 
@@ -87,7 +88,7 @@ def create_app():
         app._auth = None
         if app._config['kogia']['auth_type'] == "db":
             app.logger.info("Enabling local DB authentication")
-            app._auth = DBAuth()
+            app._auth = DBAuth(app._db_factory.new())
         else:
             app.logger.info("No authentication configured")
 
@@ -95,15 +96,56 @@ def create_app():
 
 app = create_app()
 
+AUTH_PATH = '/api/v1/authenticate'
+
 @app.before_request
 def check_req():
     # request is available
-    print(request.path)
-    if app._auth is not None:
-        authkey = request.headers.get('X-Kogia-API-Auth', default=None)
+    # print(request.path)
+    if request.path != AUTH_PATH:
+        if app._auth is not None:
+            authkey = request.headers.get('X-Kogia-API-Auth', default=None)
 
-        if authkey is None:
-            return Response(response="Unauthorized", status=401)
+            if authkey is None:
+                return Response(response="Unauthorized", status=401)
+            else:
+                ok, username, roles = app._auth.authenticate_existing(authkey)
+                if not ok:
+                    return Response(response="Unauthorized", status=401)
+                else:
+                    g.req_username = username
+                    g.req_roles = roles
+        else:
+            g.req_username = 'user'
+            g.req_roles = ['admin']
+
+
+@app.route(AUTH_PATH, methods=['POST'])
+def authenticate():
+    if app._auth is not None:
+        if 'username' not in request.form or request.form['username'].strip() == "":
+            return Response(response="Invalid authentication request", status=400)
+        if 'password' not in request.form or request.form['password'].strip() == "":
+            return Response(response="Invalid authentication request", status=400)
+
+        ok, token, roles = app._auth.authenticate_new(request.form['username'].strip(), request.form['password'].strip())
+
+        if "admin" in roles:
+            roles += ROLES
+
+        if not ok:
+            return jsonify({
+                "ok": False,
+                "error": f"Unauthorized: {token}"
+            }), 401
+        else:
+            return jsonify({
+                "ok": True,
+                "result": {
+                    "api_key": token,
+                    "roles": roles
+                }
+            })
 
 
 app.register_blueprint(job_endpoints, url_prefix='/api/v1/job')

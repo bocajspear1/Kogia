@@ -56,7 +56,6 @@ export default {
             console.log("ext update")
         }
         this.did_update = false;
-        console.log("hi")
     }
   },
   props: ['item_total', 'page_size', "sync_page"],
