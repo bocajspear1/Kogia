@@ -1,8 +1,8 @@
-FROM alpine:3.15
+FROM alpine:3.13
 
 WORKDIR /
-RUN apk add -U --repository http://dl-cdn.alpinelinux.org/alpine/edge/testing yara
-RUN apk add -U --no-cache python2 python3 python3-dev build-base linux-headers capstone-dev
+
+RUN apk add -U --no-cache wget python2 python3 python3-dev build-base linux-headers capstone-dev openssl-dev unzip
 RUN python3 -m ensurepip && pip3 install --upgrade pip wheel
 RUN pip3 install unipacker
 

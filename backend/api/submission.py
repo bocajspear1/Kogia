@@ -53,27 +53,25 @@ def submit_sample():
             "error": "Name not set for submission"
         })
 
-    
-    
-    submission_dir = current_app._config['kogia']['submission_dir']
 
-    new_submission = Submission.new(submission_dir)
+    new_submission = Submission.new(current_app._filestore, g.req_username)
 
     if 'description' in request.form:
         new_submission.description = request.form['description']
 
     new_submission.name = request.form['name']
 
-    for file in file_list:
-        filename = secure_filename(file.filename)
+    for uploaded_file in file_list:
+        filename = secure_filename(uploaded_file.filename)
         new_file = new_submission.generate_file(filename)
 
-        # Save file to filesystem
-        file.save(new_file.file_path)
+        # Save file to filestore
+        file_io = new_file.create_file()
+        uploaded_file.save(file_io)
+        new_file.close_file()
 
         current_app._db.lock()
         
-        new_file.set_read_only()
         new_submission.add_file(new_file)
         new_file.save(current_app._db)
         # Don't need to load_metadata, since a generate_file initialies metadata
@@ -84,10 +82,10 @@ def submit_sample():
     new_submission.save(current_app._db)
     current_app._db.unlock()
 
-    print(new_submission.files)
+    print("new_submission.files", new_submission.files)
 
 
-    new_job = Job.new(new_submission, None, current_app._db_factory.new())
+    new_job = Job.new(new_submission, None, current_app._db_factory.new(), current_app._filestore)
     # No primary is set, since we are just identifying
     identify_plugins = current_app._manager.get_plugin_list('identify')
     new_job.add_plugin_list(identify_plugins)
@@ -115,7 +113,7 @@ def get_submission_info(uuid):
     if submission.uuid == None:
         current_app._db.unlock()
         return abort(404)
-    submission.load_files(current_app._db)
+    submission.load_files(current_app._db, current_app._filestore)
     if submission.uuid == None:
         current_app._db.unlock()
         return abort(404)
@@ -136,7 +134,7 @@ def download_submission(uuid):
 
     nopassword = request.args.get('nopassword')
 
-    submission.load_files(current_app._db)
+    submission.load_files(current_app._db, current_app._filestore)
 
     new_zip = None
     out_stream = io.BytesIO()

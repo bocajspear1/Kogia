@@ -45,7 +45,7 @@ def get_job_list():
 @job_endpoints.route('/<uuid>/info', methods=['GET'])
 def get_job_status(uuid):
     current_app._db.lock()
-    job = Job(current_app._db, uuid=uuid)
+    job = Job(current_app._db, current_app._filestore, uuid=uuid)
     job.load(current_app._manager)
     if job.uuid == None:
         return abort(404)
@@ -61,7 +61,7 @@ def get_job_status(uuid):
 @job_endpoints.route('/<uuid>/logs', methods=['GET'])
 def get_job_logs(uuid):
     current_app._db.lock()
-    job = Job(current_app._db, uuid=uuid)
+    job = Job(current_app._db, current_app._filestore, uuid=uuid)
     job.load(current_app._manager)
     if job.uuid == None:
         return abort(404)
@@ -76,7 +76,7 @@ def get_job_logs(uuid):
 @job_endpoints.route('/<uuid>/reports', methods=['GET'])
 def get_job_reports(uuid):
     current_app._db.lock()
-    job = Job(current_app._db, uuid=uuid)
+    job = Job(current_app._db, current_app._filestore, uuid=uuid)
     job.load(current_app._manager)
     if job.uuid == None:
         return abort(404)
@@ -94,7 +94,7 @@ def get_job_reports(uuid):
 @job_endpoints.route('/<uuid>/signatures', methods=['GET'])
 def get_job_signatures(uuid):
     current_app._db.lock()
-    job = Job(current_app._db, uuid=uuid)
+    job = Job(current_app._db, current_app._filestore, uuid=uuid)
     job.load(current_app._manager)
     if job.uuid == None:
         return abort(404)
@@ -112,7 +112,7 @@ def get_job_signatures(uuid):
 @job_endpoints.route('/<uuid>/exec_instances', methods=['GET'])
 def get_job_exec_instances(uuid):
     current_app._db.lock()
-    job = Job(current_app._db, uuid=uuid)
+    job = Job(current_app._db, current_app._filestore, uuid=uuid)
     job.load(current_app._manager)
     if job.uuid == None:
         return abort(404)

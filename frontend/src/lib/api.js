@@ -132,6 +132,9 @@ export default  {
     get_file_info: function(file_uuid, on_succeeded, on_failed) {
         this.api_call("/file/" + file_uuid + "/info", on_succeeded, on_failed);
     },
+    get_file_token: function(file_uuid, on_succeeded, on_failed) {
+        this.api_call("/file/" + file_uuid + "/gettoken", on_succeeded, on_failed);
+    },
     get_file_hexdata: function(file_uuid, on_succeeded, on_failed) {
         this.api_call_raw("/file/" + file_uuid + "/download?format=hex", on_succeeded, on_failed);
     },

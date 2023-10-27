@@ -3,7 +3,7 @@
 mkdir /tmp/out/
 
 
-python3 /opt/runner.py ${TMPDIR}/${SUBMITFILE} /tmp/out/yara-malpedia.txt
+#python3 /opt/runner.py ${TMPDIR}/${SUBMITFILE} /tmp/out/yara-malpedia.txt
 
 yara -m /opt/combined/malpedia.yar \
      ${TMPDIR}/${SUBMITFILE} > /tmp/out/yara-malpedia.txt

@@ -43,7 +43,7 @@ def create_analysis_job():
     submission = Submission(uuid=submission_uuid)
     submission.load(current_app._db)
 
-    new_job = Job.new(submission, primary_file_uuid, current_app._db_factory.new())
+    new_job = Job.new(submission, primary_file_uuid, current_app._db_factory.new(), current_app._filestore)
 
     for plugin in request_data[plugins_param]:
         if 'name' not in plugin:

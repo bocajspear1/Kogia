@@ -11,7 +11,7 @@ class PluginManager():
 
         self.docker = docker.from_env()
 
-    def load_all(self):
+    def load_all(self, check=True):
         module_list = os.listdir(self._plugin_dir)
         for module_dir in module_list:
             dir_list = os.listdir(os.path.join(self._plugin_dir, module_dir))
@@ -20,7 +20,8 @@ class PluginManager():
                 shortname = temp.__PLUGIN__.__name__
                 self.plugins[shortname] = temp.__PLUGIN__
                 temp = self.plugins[shortname](self)
-                temp.check()
+                if check:
+                    temp.check()
 
         # print(self.plugins)
 

@@ -23,6 +23,7 @@ class PluginBase():
     def __init__(self, plugin_manager):
         self.pm = plugin_manager
         self._enabled = True
+        self._container = False
         self.config = {}
         self._display = {}
         self._options = {}
@@ -52,6 +53,10 @@ class PluginBase():
             options_file.close()
             
         # print(self.config)
+
+    @property
+    def has_container(self):
+        return self._container
 
     @property
     def name(self):
@@ -158,7 +163,8 @@ class DockerPluginBase(PluginBase):
         self._network = False
         self._name = name
         self._running_name = ""
-        self._tmp_dirs = []   
+        self._tmp_dirs = []  
+        self._container = True 
     
     def docker_image_exists(self):
         try:
@@ -175,7 +181,13 @@ class DockerPluginBase(PluginBase):
 
     def docker_build(self, nocache=False):
         plugin_dir = self.get_plugin_dir()
-        self.pm.docker.images.build(path=plugin_dir, tag=self._name, rm=True, nocache=nocache)
+        try:
+            self.pm.docker.images.build(path=plugin_dir, tag=self._name, rm=True, nocache=nocache)
+        except docker.errors.BuildError as e:
+            for line in e.build_log:
+                if 'stream' in line:
+                    print(line['stream'].strip())
+            raise
 
     def docker_rebuild(self):
         self.docker_build(nocache=True)

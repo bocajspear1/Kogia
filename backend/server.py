@@ -39,6 +39,8 @@ from backend.auth import ROLES
 
 from backend.auth.db import DBAuth
 
+from backend.filestore.fs import FSFileStore
+
 from backend.version import VERSION 
 
 from flask.logging import default_handler
@@ -50,6 +52,10 @@ def create_app():
     with app.app_context():
 
         app._workers = []
+
+        # TODO: Improve to avoid starvation
+        app._file_tokens = []
+        app._file_tokens_lock = threading.RLock()
 
         app._queue = queue.Queue()
         app._manager = PluginManager()
@@ -68,14 +74,10 @@ def create_app():
         )
 
         app._db = app._db_factory.new()
-
-        
-
-
-        submission_dir = app._config['kogia']['submission_dir']
-        if not os.path.exists(submission_dir):
-            app.logger.info("Creating submission directory %s", submission_dir)
-            os.mkdir(submission_dir)
+        if 'fs' in app._config['filestore']:
+            app._filestore = FSFileStore(app._config['filestore']['fs'])
+        else:
+            raise ValueError("Filestore not set")
         
         if os.getenv("KOGIA_DEBUG") is not None:
             app.logger.setLevel(logging.DEBUG)
@@ -97,13 +99,25 @@ def create_app():
 app = create_app()
 
 AUTH_PATH = '/api/v1/authenticate'
+FILE_PATH = "/api/v1/file/"
 
 @app.before_request
 def check_req():
     # request is available
     # print(request.path)
-    if request.path != AUTH_PATH:
-        if app._auth is not None:
+    file_token = request.args.get('file_token')
+    if request.path != AUTH_PATH or file_token is not None:
+        if file_token is not None:
+            if request.path.startswith(FILE_PATH):
+                app._file_tokens_lock.acquire()
+                if file_token in app._file_tokens:
+                    app._file_tokens.remove(file_token)
+                else:
+                    return Response(response="Unauthorized", status=401)
+                app._file_tokens_lock.release()
+            else:
+                return Response(response="Unauthorized", status=401)
+        elif app._auth is not None:
             authkey = request.headers.get('X-Kogia-API-Auth', default=None)
 
             if authkey is None:

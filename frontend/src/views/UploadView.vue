@@ -34,6 +34,7 @@ import Notifications from '@/components/general/Notifications.vue'
 
 <script>
 import axios from 'axios';
+import api from "@/lib/api";
 
 export default {
   data() {
@@ -64,30 +65,17 @@ export default {
         var description = self.$refs.descriptionInput.value;
         formData.append('description', description);
 
-        axios.post('api/v1/submission/new',
-            formData,
-            {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
-            }
-        ).then(function(resp){
-            console.log('SUCCESS!!', resp);
-            var resp_data = resp['data'];
+        api.api_post_form('/submission/new', formData, function(response){
+            console.log('SUCCESS!!', response);
+            var resp_data = response;
 
-            if (resp_data['ok'] == true) {
-                var job_uuid = resp_data['result']['job_uuid'];
-                self.job_uuid = job_uuid;
-                self.submission_uuid = resp_data['result']['submission_uuid'];
-                self.stage = "wait";
-             
-            } else {
-                self.$refs.notifications.addNotification("error", "Upload Error: " + resp_data['error']);
-            }
+            var job_uuid = resp_data['job_uuid'];
+            self.job_uuid = job_uuid;
+            self.submission_uuid = resp_data['submission_uuid'];
+            self.stage = "wait";
+        }, function(){
+            self.$refs.notifications.addNotification("error", "Upload Error: " + resp);
         })
-        .catch(function(resp){
-            console.log('FAILURE!!', resp);
-        });
     }
   }
 }

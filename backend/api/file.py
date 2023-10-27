@@ -1,5 +1,6 @@
 import io
 import zipfile
+import secrets
 
 import pyzipper
 
@@ -14,7 +15,7 @@ file_endpoints = Blueprint('file_endpoints', __name__)
 
 @file_endpoints.route('/<uuid>/info', methods=['GET'])
 def get_file_info(uuid):
-    file_info = SubmissionFile(uuid=uuid)
+    file_info = SubmissionFile(uuid=uuid, filestore=current_app._filestore)
     current_app._db.lock()
     file_info.load(current_app._db)
     current_app._db.unlock()
@@ -24,9 +25,48 @@ def get_file_info(uuid):
         "result": file_info.to_dict()
     })
 
+@file_endpoints.route('/<uuid>/gettoken', methods=['GET'])
+def get_file_token(uuid):
+    file_info = SubmissionFile(uuid=uuid, filestore=current_app._filestore)
+    current_app._db.lock()
+    file_info.load(current_app._db)
+
+    # TODO: Perform any file access permissions here, as /download doesn't have the user info
+    
+
+    if file_info.uuid == None:
+        current_app._db.unlock()
+        return abort(404)
+    
+    current_app._db.lock()
+    
+    # Get file token lock
+    current_app._file_tokens_lock.acquire()
+
+    # Generate new token
+    new_token = g.req_username + ":" + secrets.token_hex(48)
+
+    found = False
+    # Replace any other token from this user
+    for i in range(len(current_app._file_tokens)):
+        token = current_app._file_tokens[i]
+        if token.startswith(f"{g.req_username}:"):
+            found = True
+            current_app._file_tokens[i] = new_token
+    
+    if not found:
+        current_app._file_tokens.append(new_token)
+    current_app._file_tokens_lock.release()
+    return jsonify({
+        "ok": True,
+        "result": {
+            "file_token": new_token
+        }
+    })
+
 @file_endpoints.route('/<uuid>/download', methods=['GET'])
 def download_file(uuid):
-    file_info = SubmissionFile(uuid=uuid)
+    file_info = SubmissionFile(uuid=uuid, filestore=current_app._filestore)
     current_app._db.lock()
     file_info.load(current_app._db)
     
@@ -37,11 +77,14 @@ def download_file(uuid):
 
     ret_format = request.args.get('format')
 
+    
+
     if ret_format is None or ret_format not in ('raw', 'zip', 'enczip', 'hex'):
         return jsonify({
             "ok": False,
             "error": "'format' parameter must be set to 'raw', 'zip', 'enczip', or 'hex'."
         })
+    raw_file = file_info.open_file()
 
     if ret_format == 'zip' or ret_format == 'enczip':
         new_zip = None
@@ -53,7 +96,8 @@ def download_file(uuid):
         elif ret_format == 'zip':
             new_zip = zipfile.ZipFile(out_stream, "w", compression=pyzipper.ZIP_DEFLATED)
 
-        new_zip.write(file_info.file_path,file_info.name)
+        new_zip.writestr(file_info.name, raw_file.read())
+        file_info.close_file()
 
         new_zip.close()
         out_stream.seek(0)
@@ -61,7 +105,6 @@ def download_file(uuid):
         return send_file(out_stream, mimetype='application/zip', as_attachment=True,
                          download_name=f"{file_info.name}.zip")
     elif ret_format == 'raw' or ret_format == 'hex':
-        raw_file = open(file_info.file_path, "rb")
         if ret_format == 'raw':
             current_app._db.unlock()
             return send_file(raw_file, mimetype='application/octet-stream', as_attachment=True,
@@ -71,6 +114,10 @@ def download_file(uuid):
             raw_file.close()
             return hex_data.encode('utf-8')
     else:
+        raw_file.close_file()
+        current_app._file_tokens_lock.acquire()
+        current_app._file_tokens.remove(new_token)
+        current_app._file_tokens_lock.release()
         abort(500)
         
 
@@ -79,7 +126,7 @@ def download_file(uuid):
 
 @file_endpoints.route('/<uuid>/metadata/list', methods=['GET'])
 def get_file_metadata_types(uuid):
-    file_obj = SubmissionFile(uuid=uuid)
+    file_obj = SubmissionFile(uuid=uuid, filestore=current_app._filestore)
     current_app._db.lock()
     file_obj.load(current_app._db)
     file_obj.load_metadata(current_app._db)
@@ -100,7 +147,7 @@ def get_file_metadata_types(uuid):
 
 @file_endpoints.route('/<uuid>/metadata/<metatype>/list', methods=['GET'])
 def get_file_metadata_list(uuid, metatype):
-    file_obj = SubmissionFile(uuid=uuid)
+    file_obj = SubmissionFile(uuid=uuid, filestore=current_app._filestore)
     current_app._db.lock()
     file_obj.load(current_app._db)
     file_obj.load_metadata(current_app._db)
@@ -128,8 +175,8 @@ def get_file_metadata_list(uuid, metatype):
     })
 
 @file_endpoints.route('/<uuid>/resubmit', methods=['POST'])
-def resumbit_file(uuid):
-    resub_file = SubmissionFile(uuid=uuid)
+def resubmit_file(uuid):
+    resub_file = SubmissionFile(uuid=uuid, filestore=current_app._filestore)
     current_app._db.lock()
     resub_file.load(current_app._db)
     current_app._db.unlock()

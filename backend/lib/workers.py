@@ -40,7 +40,7 @@ class FileWorker (threading.Thread):
                         if self._job.primary is not None and self._job.primary != "":
                             print("Creating sub-job")
                             # Create an identify sub-job
-                            new_job = Job.new(self._job.submission, None, self._job.db)
+                            new_job = Job.new(self._job.submission, None, self._job.db, self._job.db.filestore)
                             new_job.add_limit_to_file(new_file_obj.uuid)
                             # No primary is set, since we are just identifying
                             identify_plugins = self._pm.get_plugin_list('identify')

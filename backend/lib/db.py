@@ -56,6 +56,17 @@ class ArangoConnection():
     def unlock(self):
         self._db_lock.release()
 
+    def truncate_all_collections(self):
+        collection_list = self._db.collections()
+        for collection in collection_list:
+            if collection['name'].startswith("_"):
+                continue
+            self.truncate_collection(collection['name'])
+
+    def truncate_collection(self, collection):
+        if self._db.has_collection(collection):
+            self._db.collection(collection).truncate()
+
     def _insert_indexed_collection(self, graph_name, collection):
         graph = self._get_graph(graph_name)
         if not graph.has_vertex_collection(collection):
@@ -484,6 +495,8 @@ FOR start IN @@startCollection FILTER start._id == @fromId
         db_meta = col.insert_many(doc_array)  
         id_list = []
         for item in db_meta:
+            if isinstance(item, DocumentInsertError):
+                continue
             id_list.append(item['_id'])
         return id_list 
 

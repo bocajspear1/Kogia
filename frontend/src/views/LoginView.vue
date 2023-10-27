@@ -37,6 +37,9 @@ import router from '../router'
                                 <button class="button is-link" @click="login">Login</button>
                             </div>
                         </div>
+                        <div v-if="error_message != null" class="notification is-danger">
+                            {{ error_message }}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -63,7 +66,7 @@ import api from '@/lib/api';
 export default {
   data() {
     return {
-       
+       error_message: null,
     }
   },
   mounted() {
@@ -73,13 +76,18 @@ export default {
     login() {
         var self = this;
         let session = useUserSession();
+        self.error_message = null;
         api.do_login(self.$refs.username.value, self.$refs.password.value, 
             function(response){
                 session.updateSession(self.$refs.username.value, response['api_key'], response['roles']);
                 router.push({ name: 'Home'});
             },
             function(status_code, response){
-                
+                if (status_code == 401) {
+                    self.error_message = "Login failed. Wrong username or password."
+                } else {
+                    self.error_message = "An error occcured. Please contact system administator."
+                }   
             }
         )
     },

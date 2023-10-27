@@ -13,12 +13,12 @@ class Job(VertexObject):
     COLLECTION_NAME = 'jobs'
 
     @classmethod
-    def new(cls, submission, primary, db):
-        new_cls = cls(db, uuid=str(uuid.uuid4()))
+    def new(cls, submission, primary, db, filestore):
+        new_cls = cls(db, filestore, uuid=str(uuid.uuid4()))
         new_cls._submission = submission
         new_cls._primary = primary
         # Ensure files and their metadata are all loaded
-        new_cls._submission.load_files(db)
+        new_cls._submission.load_files(db, filestore)
         for file in new_cls._submission.files:
             file.load_metadata(db)
 
@@ -37,7 +37,6 @@ class Job(VertexObject):
             del job_item['submission']['_id']
             del job_item['submission']['_key']
             del job_item['submission']['_rev']
-            del job_item['submission']['base_dir']
 
             if job_item.get('primary', '') != '':
                 file_data = db.get_vertex_by_match(cls.GRAPH_NAME, 'files', 'uuid', job_item['primary'])
@@ -59,7 +58,7 @@ class Job(VertexObject):
 
         return total_len, new_list
 
-    def __init__(self, db, uuid=None, id=None):
+    def __init__(self, db, filestore, uuid=None, id=None):
         super().__init__(self.COLLECTION_NAME, id)
 
         self._user = ""
@@ -72,6 +71,7 @@ class Job(VertexObject):
         self._plugins = []
         self._uuid = uuid
         self._db = db
+        self._filestore = filestore
         self._arg_map = {}
         self._reports = []
         self._matches = []
@@ -112,6 +112,10 @@ class Job(VertexObject):
     @property
     def db(self):
         return self._db
+    
+    @property
+    def filestore(self):
+        return self._filestore
 
     @property
     def primary(self):

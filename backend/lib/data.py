@@ -85,10 +85,10 @@ class SignatureMatch(VertexObject):
         if document is not None:
             self.from_dict(document)
 
-    def load_file(self, db):
+    def load_file(self, db, filestore):
         my_file_list = self.get_connected_to(db, 'has_match')
         if len(my_file_list) > 0:
-            self._file = SubmissionFile(id=my_file_list[0]['_id'])
+            self._file = SubmissionFile(id=my_file_list[0]['_id'], filestore=filestore)
             self._file.from_dict(my_file_list[0])
     
 

@@ -120,13 +120,40 @@ export default {
         );
     },
     download() {
-      this.$refs.download_iframe.src = '/api/v1/file/' + this.$route.params.file_uuid + "/download?format=raw";
+      var self = this;
+      api.get_file_token(self.$route.params.file_uuid,
+            function(data) {
+              var file_token = data['file_token'];
+              self.$refs.download_iframe.src = '/api/v1/file/' + self.$route.params.file_uuid + "/download?format=raw&file_token=" + file_token;
+            },
+            function(status, data) {
+                console.log('FAILURE!!', status, data);
+            }
+        );
     },
     zip_download() {
-      this.$refs.download_iframe.src = '/api/v1/file/' + this.$route.params.file_uuid + "/download?format=zip";
+      var self = this;
+      api.get_file_token(self.$route.params.file_uuid,
+            function(data) {
+              var file_token = data['file_token'];
+              self.$refs.download_iframe.src = '/api/v1/file/' + self.$route.params.file_uuid + "/download?format=zip&file_token=" + file_token;
+            },
+            function(status, data) {
+                console.log('FAILURE!!', status, data);
+            }
+        );
     },
     encrypt_download() {
-      this.$refs.download_iframe.src = '/api/v1/file/' + this.$route.params.file_uuid + "/download?format=enczip";
+      var self = this;
+      api.get_file_token(self.$route.params.file_uuid,
+            function(data) {
+              var file_token = data['file_token'];
+              self.$refs.download_iframe.src = '/api/v1/file/' + self.$route.params.file_uuid + "/download?format=enczip&file_token=" + file_token;
+            },
+            function(status, data) {
+                console.log('FAILURE!!', status, data);
+            }
+        );
     },
     setTab(new_tab) {
       var self = this;

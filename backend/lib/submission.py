@@ -4,6 +4,7 @@ import os
 import stat
 import time
 import hashlib
+import shutil
 
 
 from .db import DBNotUniqueError
@@ -12,8 +13,19 @@ from .objects import VertexObject
 
 class Metadata(VertexObject):
 
+    COLLECTION = 'metadata'
+
+    @classmethod
+    def bulk_insert(cls, db, insert_items):
+        insert_metadata = []
+        for metadata in insert_items:
+            if metadata.is_modified:
+                insert_metadata.append(metadata.to_dict())
+
+        return db.insert_bulk(cls.COLLECTION, insert_metadata)
+        
     def __init__(self, uuid=None, id=None):
-        super().__init__('metadata', id)
+        super().__init__(self.COLLECTION, id)
         self._key = "" 
         self._value = ""
         self._uuid = uuid
@@ -81,20 +93,22 @@ class Metadata(VertexObject):
 class SubmissionFile(VertexObject):
 
     @classmethod
-    def new(cls, parent_dir, filename):
+    def new(cls, filestore, store_prefix, filename):
         new_cls = cls(uuid=str(uuid.uuid4()))
         new_cls._modified = True
-        new_cls._parent_path = parent_dir
         new_cls._name = filename
         new_cls._metadata = []
+        new_cls._filestore = filestore
+        new_cls._file_id = f"{store_prefix}:{filename}-{new_cls.uuid}"
         return new_cls
     
-    def __init__(self, uuid=None, id=None):
+    def __init__(self, uuid=None, id=None, filestore=None):
         super().__init__('files', id)
 
         self._name = ""
         self._uuid = uuid
-        self._parent_path = ""
+        self._filestore = filestore
+        self._file_id = ""
         self._mime_type = ""
         self._unpacked_archive = False
         self._exec_format = "" # e.g. elf or pe
@@ -108,11 +122,16 @@ class SubmissionFile(VertexObject):
         self._hash = ""
         self._parent = ""
 
+        self._handle = None
+
+    # def __del__(self):
+    #     self.close_file()
+
     def to_dict(self):
         return {
             "uuid": self._uuid,
             "name": self._name,
-            "parent_path": self._parent_path,
+            "file_id": self._file_id,
             "mime_type": self._mime_type,
             "unpacked_archive": self._unpacked_archive,
             "exec_format": self._exec_format,
@@ -128,7 +147,7 @@ class SubmissionFile(VertexObject):
     def from_dict(self, data_obj):
         self._uuid = data_obj.get('uuid', '')
         self._name = data_obj.get('name', '')
-        self._parent_path = data_obj.get('parent_path', '')
+        self._file_id = data_obj.get('file_id', '')
         self._mime_type = data_obj.get('mime_type', '')
         self._unpacked_archive = data_obj.get('unpacked_archive', False)
         self._exec_format = data_obj.get('exec_format', '')
@@ -142,18 +161,16 @@ class SubmissionFile(VertexObject):
     def update_hash(self):
         sha256 = hashlib.sha256()
 
-        with open(self.file_path, 'rb') as f:
-            while True:
-                data = f.read(65536)
-                if not data:
-                    break
-                sha256.update(data)
+        handle = self.open_file()
+        while True:
+            data = handle.read(65536)
+            if not data:
+                break
+            sha256.update(data)
+        self.close_file()
 
         self._hash = sha256.hexdigest()
     
-    @property
-    def file(self):
-        return open(self.file_path, "rb")
 
     @property
     def hash(self):
@@ -165,28 +182,31 @@ class SubmissionFile(VertexObject):
         return ext
 
     @property
-    def file_path(self):
-        return os.path.join(self._parent_path, self._name)
-
-    @property
     def uuid(self):
         return self._uuid
+    
+    @property
+    def file_id(self):
+        return self._file_id
 
     @property
     def name(self):
         return self._name
 
+    def create_file(self):
+        self._handle = self._filestore.create_file(self._file_id)
+        return self._handle
+
+    def open_file(self):
+        self._handle = self._filestore.open_file(self._file_id)
+        return self._handle
+    
+    def close_file(self):
+        if self._handle is not None:
+            return self._filestore.close_file(self._file_id, self._handle)
+
     def set_parent(self, parent_file):
         self._parent = parent_file.id
-
-    def set_read_only(self):
-        path = self.file_path
-
-        if os.path.exists(path):
-            os.chmod(path, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
-            return True
-        else:
-            return False
 
     def save(self, db):
         self.save_doc(db, self.to_dict())
@@ -195,10 +215,8 @@ class SubmissionFile(VertexObject):
         # Check if metadata has been loaded our added
         # None indicates not loaded and no additions
         if self._metadata is not None:
-            for data in self._metadata:
-                if data.is_modified:
-                    data.save(db)
-                    self.insert_edge(db, 'has_metadata', data.id)
+            new_ids = Metadata.bulk_insert(db, self._metadata)
+            self.insert_edge_bulk(db, 'has_metadata', Metadata.COLLECTION, new_ids)
 
         if self._parent != "":
             self.insert_edge(db, 'has_parent', self._parent)
@@ -342,13 +360,11 @@ class Submission(VertexObject):
     COLLECTION_NAME = 'submissions'
 
     @classmethod
-    def new(cls, base_dir):
-        base_dir = os.path.abspath(base_dir)
+    def new(cls, filestore, owner):
         new_cls = cls(uuid=str(uuid.uuid4()))
-        if not os.path.exists(base_dir):
-            os.mkdir(base_dir)
         new_cls._modified = True
-        new_cls._base_dir = base_dir
+        new_cls._filestore = filestore
+        new_cls._owner = owner
         return new_cls
 
     @classmethod
@@ -393,7 +409,8 @@ class Submission(VertexObject):
         self._uuid = uuid
         self._submit_time = int(time.time())
         self._owner = ""
-        self._base_dir = ""
+        self._filestore = None
+        self._submission_dir = ""
         self._description = ""
         self._name = ""
 
@@ -402,10 +419,15 @@ class Submission(VertexObject):
 
     @property
     def submission_dir(self):
-        full_path = os.path.join(self._base_dir, str(self._uuid))
-        if not os.path.exists(full_path):
-            os.mkdir(full_path)
-        return full_path
+        if self._submission_dir == "":
+            self._submission_dir = os.path.join("/tmp", "kogia-" + str(self._uuid))
+            if not os.path.exists(self._submission_dir):
+                os.mkdir(self._submission_dir)
+            for file in self._files:
+                file_path =  os.path.join(self._submission_dir, file.name)
+                if not os.path.exists(file_path):
+                    self._filestore.copy_file_to(file.file_id, file_path)
+        return self._submission_dir
 
     def get_file(self, name=None, uuid=None):
         for file in self._files:
@@ -420,12 +442,11 @@ class Submission(VertexObject):
     def files(self):
         return self._files
 
-
     def generate_file(self, filename):
         found = self.get_file(filename)
         if found is None:
             self._modified = True
-            new_file = SubmissionFile.new(self.submission_dir, filename)
+            new_file = SubmissionFile.new(self._filestore, self._uuid, filename)
             return new_file
         else:
             return None
@@ -436,7 +457,6 @@ class Submission(VertexObject):
             if new_file.hash == file.hash:
                 return
         self._files.append(new_file)
-        
         
 
     def load(self, db):
@@ -451,14 +471,18 @@ class Submission(VertexObject):
             return
 
         self.from_dict(document)
+        
 
-    def load_files(self, db):
+    def load_files(self, db, filestore):
         self._files = []
         items = self.get_connected_to(db, 'files')
+        self._filestore = filestore
+
         for item in items:
-            load_file = SubmissionFile(id=item['_id'])
+            load_file = SubmissionFile(id=item['_id'], filestore=filestore)
             load_file.from_dict(item)
             self._files.append(load_file)
+        
 
     def to_dict(self, files=False):
         data_dict = {
@@ -467,7 +491,6 @@ class Submission(VertexObject):
             "submit_time": self._submit_time,
             "name": self._name,
             "description": self._description,
-            "base_dir": self._base_dir
         }
         if files:
             files_list = []
@@ -484,7 +507,6 @@ class Submission(VertexObject):
         self._submit_time = data_obj.get('submit_time', 0)
         self._name = data_obj.get('name', '')
         self._description = data_obj.get('description', '')
-        self._base_dir = data_obj.get('base_dir', '')
         
 
     def save(self, db):
