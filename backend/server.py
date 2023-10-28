@@ -36,10 +36,10 @@ from backend.api.system import system_endpoints
 
 from backend.lib.config import load_config
 from backend.auth import ROLES
+from backend.lib.helpers import get_filestore_modules
 
 from backend.auth.db import DBAuth
 
-from backend.filestore.fs import FSFileStore
 
 from backend.version import VERSION 
 
@@ -51,11 +51,17 @@ def create_app():
 
     with app.app_context():
 
+        if os.getenv("KOGIA_DEBUG") is not None:
+            app.logger.setLevel(logging.DEBUG)
+            app.logger.debug("Debugging is on!")
+        else:
+            app.logger.setLevel(logging.INFO)
+
         app._workers = []
 
-        # TODO: Improve to avoid starvation
-        app._file_tokens = []
-        app._file_tokens_lock = threading.RLock()
+
+        app._download_tokens = []
+        app._download_tokens_lock = threading.RLock()
 
         app._queue = queue.Queue()
         app._manager = PluginManager()
@@ -74,19 +80,22 @@ def create_app():
         )
 
         app._db = app._db_factory.new()
-        if 'fs' in app._config['filestore']:
-            app._filestore = FSFileStore(app._config['filestore']['fs'])
-        else:
-            raise ValueError("Filestore not set")
-        
-        if os.getenv("KOGIA_DEBUG") is not None:
-            app.logger.setLevel(logging.DEBUG)
-            app.logger.debug("Debugging is on!")
-        else:
-            app.logger.setLevel(logging.INFO)
-        
-        app.logger.info("Server %s started", VERSION)
 
+        # Load filestore modules
+        available_filestores = get_filestore_modules()
+
+        loaded_filestore = False
+        for filestore_class in available_filestores:
+            class_name = filestore_class.__name__
+            if class_name in app._config['filestore'] and loaded_filestore == False:
+                app.logger.info("Loaded filestore %s", class_name)
+                app._filestore = filestore_class(app._config['filestore'][class_name])
+                loaded_filestore = True
+      
+        if not loaded_filestore:
+            raise ValueError("Filestore not set")
+
+        # Load authentication
         app._auth = None
         if app._config['kogia']['auth_type'] == "db":
             app.logger.info("Enabling local DB authentication")
@@ -94,27 +103,31 @@ def create_app():
         else:
             app.logger.info("No authentication configured")
 
+        app.logger.info("Server %s started", VERSION)
+
     return app
 
 app = create_app()
 
 AUTH_PATH = '/api/v1/authenticate'
 FILE_PATH = "/api/v1/file/"
+SUBMISSION_PATH = "/api/v1/submission/"
 
 @app.before_request
 def check_req():
     # request is available
     # print(request.path)
-    file_token = request.args.get('file_token')
-    if request.path != AUTH_PATH or file_token is not None:
-        if file_token is not None:
-            if request.path.startswith(FILE_PATH):
-                app._file_tokens_lock.acquire()
-                if file_token in app._file_tokens:
-                    app._file_tokens.remove(file_token)
+    download_token = request.args.get('download_token')
+    if request.path != AUTH_PATH or download_token is not None:
+        if download_token is not None:
+            if request.path.startswith(FILE_PATH) or request.path.startswith(SUBMISSION_PATH):
+                app._download_tokens_lock.acquire()
+                if download_token in app._download_tokens:
+                    app._download_tokens.remove(download_token)
+                    app._download_tokens_lock.release()
                 else:
+                    app._download_tokens_lock.release()
                     return Response(response="Unauthorized", status=401)
-                app._file_tokens_lock.release()
             else:
                 return Response(response="Unauthorized", status=401)
         elif app._auth is not None:

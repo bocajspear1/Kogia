@@ -72,10 +72,28 @@ export default {
 
     },
     zipDownload() {
-      this.$refs.download_iframe.src = '/api/v1/submission/' + this.submission_uuid + "/download?nopassword=1";
+      var self = this;
+      api.get_submission_token(self.submission_uuid,
+          function(data) {
+            var download_token = data['download_token'];
+            self.$refs.download_iframe.src = '/api/v1/submission/' + self.submission_uuid + "/download?nopassword=1&download_token=" + download_token;
+          },
+          function(status, data) {
+              console.log('FAILURE!!', status, data);
+          }
+      );
     },
     encryptDownload() {
-      this.$refs.download_iframe.src = '/api/v1/submission/' + this.submission_uuid + "/download";
+      var self = this;
+      api.get_submission_token(self.submission_uuid,
+          function(data) {
+            var download_token = data['download_token'];
+            self.$refs.download_iframe.src = '/api/v1/submission/' + self.submission_uuid + "/download?download_token=" + download_token;
+          },
+          function(status, data) {
+              console.log('FAILURE!!', status, data);
+          }
+      );
     },
   }
 }

@@ -19,7 +19,7 @@
         <div class="level-item has-text-centered">
           <div>
             <p class="title is-6 is-spaced">Submitter</p>
-            <p class="subtitle is-6">{{ submission.user }}</p>
+            <p class="subtitle is-6">{{ submission.owner }}</p>
           </div>
         </div>
       </div>

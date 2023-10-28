@@ -123,8 +123,8 @@ export default {
       var self = this;
       api.get_file_token(self.$route.params.file_uuid,
             function(data) {
-              var file_token = data['file_token'];
-              self.$refs.download_iframe.src = '/api/v1/file/' + self.$route.params.file_uuid + "/download?format=raw&file_token=" + file_token;
+              var download_token = data['download_token'];
+              self.$refs.download_iframe.src = '/api/v1/file/' + self.$route.params.file_uuid + "/download?format=raw&download_token=" + download_token;
             },
             function(status, data) {
                 console.log('FAILURE!!', status, data);
@@ -134,21 +134,21 @@ export default {
     zip_download() {
       var self = this;
       api.get_file_token(self.$route.params.file_uuid,
-            function(data) {
-              var file_token = data['file_token'];
-              self.$refs.download_iframe.src = '/api/v1/file/' + self.$route.params.file_uuid + "/download?format=zip&file_token=" + file_token;
-            },
-            function(status, data) {
-                console.log('FAILURE!!', status, data);
-            }
-        );
+          function(data) {
+            var download_token = data['download_token'];
+            self.$refs.download_iframe.src = '/api/v1/file/' + self.$route.params.file_uuid + "/download?format=zip&download_token=" + download_token;
+          },
+          function(status, data) {
+              console.log('FAILURE!!', status, data);
+          }
+      );
     },
     encrypt_download() {
       var self = this;
       api.get_file_token(self.$route.params.file_uuid,
             function(data) {
-              var file_token = data['file_token'];
-              self.$refs.download_iframe.src = '/api/v1/file/' + self.$route.params.file_uuid + "/download?format=enczip&file_token=" + file_token;
+              var download_token = data['download_token'];
+              self.$refs.download_iframe.src = '/api/v1/file/' + self.$route.params.file_uuid + "/download?format=enczip&download_token=" + download_token;
             },
             function(status, data) {
                 console.log('FAILURE!!', status, data);

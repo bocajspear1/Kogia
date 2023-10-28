@@ -1,5 +1,6 @@
 import io
 import zipfile
+import secrets
 
 import pyzipper
 
@@ -9,6 +10,7 @@ from werkzeug.utils import secure_filename
 from backend.lib.job import Job
 from backend.lib.submission import Submission
 from backend.lib.workers import JobWorker
+from backend.lib.helpers import generate_download_token
 
 submission_endpoints = Blueprint('submission_endpoints', __name__)
 
@@ -123,6 +125,29 @@ def get_submission_info(uuid):
         "result": submission.to_dict(files=True)
     })
 
+@submission_endpoints.route('/<uuid>/gettoken', methods=['GET'])
+def get_submission_token(uuid):
+    submission = Submission(uuid=uuid)
+    current_app._db.lock()
+    submission.load(current_app._db)
+
+    # TODO: Perform any file access permissions here, as /download doesn't have the user info
+    
+
+    if submission.uuid == None:
+        current_app._db.unlock()
+        return abort(404)
+    
+    current_app._db.lock()
+    
+    new_token = generate_download_token(current_app, g)
+    return jsonify({
+        "ok": True,
+        "result": {
+            "download_token": new_token
+        }
+    })
+
 @submission_endpoints.route('/<uuid>/download', methods=['GET'])
 def download_submission(uuid):
     submission = Submission(uuid=uuid)
@@ -148,8 +173,9 @@ def download_submission(uuid):
     
 
     for file in submission.files:
-        print(file.file_path)
-        new_zip.write(file.file_path,file.name)
+        file_handle = file.open_file()
+        new_zip.writestr(file.name, file_handle.read())
+        file.close_file()
 
     new_zip.close()
     out_stream.seek(0)

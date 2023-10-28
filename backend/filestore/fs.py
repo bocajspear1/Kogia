@@ -3,7 +3,7 @@ import stat
 import shutil
 
 
-class FSFileStore():
+class FileStoreFS():
 
     def __init__(self, config):
         self._config = config

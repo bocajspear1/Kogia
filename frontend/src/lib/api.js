@@ -119,6 +119,9 @@ export default  {
     get_submission_info: function(submission_uuid, on_succeeded, on_failed) {
         this.api_call("submission/" + submission_uuid + "/info", on_succeeded, on_failed);
     },
+    get_submission_token: function(submission_uuid, on_succeeded, on_failed) {
+        this.api_call("/submission/" + submission_uuid + "/gettoken", on_succeeded, on_failed);
+    },
     get_job_list: function(skip, limit, submission_uuid, on_succeeded, on_failed) {
         var url_string = "/job/list?skip=" + skip.toString() + "&limit=" + limit.toString()
         if (submission_uuid != "" && submission_uuid != null) {

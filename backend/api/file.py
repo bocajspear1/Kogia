@@ -6,6 +6,7 @@ import pyzipper
 
 from flask import Blueprint, Flask, g, jsonify, current_app, request, send_file, send_from_directory, abort
 from backend.lib.submission import SubmissionFile
+from backend.lib.helpers import generate_download_token
 
 file_endpoints = Blueprint('file_endpoints', __name__)
 
@@ -40,27 +41,11 @@ def get_file_token(uuid):
     
     current_app._db.lock()
     
-    # Get file token lock
-    current_app._file_tokens_lock.acquire()
-
-    # Generate new token
-    new_token = g.req_username + ":" + secrets.token_hex(48)
-
-    found = False
-    # Replace any other token from this user
-    for i in range(len(current_app._file_tokens)):
-        token = current_app._file_tokens[i]
-        if token.startswith(f"{g.req_username}:"):
-            found = True
-            current_app._file_tokens[i] = new_token
-    
-    if not found:
-        current_app._file_tokens.append(new_token)
-    current_app._file_tokens_lock.release()
+    new_token = generate_download_token(current_app, g)
     return jsonify({
         "ok": True,
         "result": {
-            "file_token": new_token
+            "download_token": new_token
         }
     })
 
@@ -115,9 +100,9 @@ def download_file(uuid):
             return hex_data.encode('utf-8')
     else:
         raw_file.close_file()
-        current_app._file_tokens_lock.acquire()
-        current_app._file_tokens.remove(new_token)
-        current_app._file_tokens_lock.release()
+        current_app._download_tokens_lock.acquire()
+        current_app._download_tokens.remove(new_token)
+        current_app._download_tokens_lock.release()
         abort(500)
         
 
