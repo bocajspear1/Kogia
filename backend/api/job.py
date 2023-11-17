@@ -48,6 +48,7 @@ def get_job_status(uuid):
     job = Job(current_app._db, current_app._filestore, uuid=uuid)
     job.load(current_app._manager)
     if job.uuid == None:
+        current_app._db.unlock()
         return abort(404)
     resp = job.to_dict()
     signature_list = job.get_signatures()

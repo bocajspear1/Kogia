@@ -11,6 +11,7 @@ import DynamicFilterTable from '@/components/dynamic/DynamicFilterTable.vue';
 import ReportDisplay from '@/components/report/ReportDisplay.vue';
 import SignatureList from '@/components/signature/SignatureList.vue';
 import ProcessPanel from '@/components/host/ProcessPanel.vue';
+import NetworkPanel from '@/components/host/NetworkPanel.vue';
 </script>
 
 <template>
@@ -19,7 +20,7 @@ import ProcessPanel from '@/components/host/ProcessPanel.vue';
             <template v-slot:main>
             <SidebarMenuItem iconname="monitor-dashboard" @click="setPage('overview')" :active="page=='overview'">Overview</SidebarMenuItem>
             <SidebarMenuItem iconname="desktop-tower-monitor" @click="setPage('host')" :active="page=='host'">Host Activity</SidebarMenuItem>
-            <SidebarMenuItem iconname="server-network">Network Activity</SidebarMenuItem>
+            <SidebarMenuItem iconname="server-network" @click="setPage('network')" :active="page=='network'">Network Activity</SidebarMenuItem>
             <SidebarMenuItem iconname="folder-file" @click="setPage('files')" :active="page=='files'">Files</SidebarMenuItem>
             <SidebarMenuItem iconname="table-multiple" @click="setPage('metadata')" :active="page=='metadata'">Metadata</SidebarMenuItem>
             <SidebarMenuItem iconname="file-chart" @click="setPage('reports')" :active="page=='reports'">Reports</SidebarMenuItem>
@@ -50,6 +51,9 @@ import ProcessPanel from '@/components/host/ProcessPanel.vue';
         </template>
         <template v-if="done && page == 'host'">
             <ProcessPanel :job_uuid="job_uuid"></ProcessPanel>
+        </template>
+        <template v-if="done && page == 'network'">
+            <NetworkPanel :job_uuid="job_uuid"></NetworkPanel>
         </template>
         <template v-if="done && page == 'files'">
             <FileList v-if="files != null" :toggle="false" :files="files" @file_clicked="fileClicked"></FileList>
@@ -134,9 +138,10 @@ export default {
         var self = this;
 
         if (self.page == 'overview' || self.page == '') {
-            self.all_signatures = [];
+            
             api.get_job_signatures(self.job_uuid, "", 
                 function(data) {
+                    self.all_signatures = [];
                     for (var i = 0; i < data.length; i++) {
                         self.all_signatures.push(data[i]);
                     }

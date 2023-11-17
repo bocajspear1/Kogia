@@ -20,7 +20,7 @@ class PluginManager():
                 shortname = temp.__PLUGIN__.__name__
                 self.plugins[shortname] = temp.__PLUGIN__
                 temp = self.plugins[shortname](self)
-                if check:
+                if check and temp.enabled:
                     temp.check()
 
         # print(self.plugins)

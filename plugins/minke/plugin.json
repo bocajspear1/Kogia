@@ -3,5 +3,5 @@
     "ssl": true,
     "ssl_verify": false,
     "apikey": "thisisakey",
-    "enabled": true
+    "enabled": false
 }

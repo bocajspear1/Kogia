@@ -1,7 +1,7 @@
 FROM alpine:3.18
 
 WORKDIR /
-RUN apk add -U --repository http://dl-cdn.alpinelinux.org/alpine/edge/testing yara
+RUN apk add -U --repository http://dl-cdn.alpinelinux.org/alpine/edge/community yara
 RUN apk add -U git 
 
 COPY combine_rules.sh /opt/combine_rules.sh

@@ -14,6 +14,7 @@ Werkzeug==2.0.3
 pyzipper==0.3.6
 python-arango==7.3.4
 colorama==0.4.6
+psutil==5.9.6
 
 ## Docs
 Sphinx==3.5.1

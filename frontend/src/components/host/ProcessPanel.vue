@@ -7,7 +7,7 @@ import MetadataTable from '../metadata/MetadataTable.vue';
 import SyscallTable from '@/components/host/SyscallTable.vue';
 </script>
 <template>
-    <ExecInstDropdown :instances="exec_instances" @execinst_selected="instanceSelected"></ExecInstDropdown>
+    <ExecInstDropdown :job_uuid="job_uuid" @execinst_selected="instanceSelected" @execinst_loaded="instancesLoaded"></ExecInstDropdown>
     <span v-if="current_instance != null" class="m-2 is-vcentered" >
         <ProcessDropdown ref="procDropdown" :processes="current_instance.processes" @process_selected="processSelected"></ProcessDropdown>
     </span>
@@ -26,7 +26,7 @@ import SyscallTable from '@/components/host/SyscallTable.vue';
         <SyscallTable :process_uuid="current_process.uuid" v-if="tab == 'syscalls'"></SyscallTable>
     </div>
      
-    <div class="notification is-info m-2" v-else>
+    <div v-else class="notification is-info m-2" v-if="instance_count != null && instance_count > 0">
         Select an execution instance and process
     </div>
     
@@ -43,12 +43,12 @@ import api from "@/lib/api";
 export default {
   data() {
     return {
-        exec_instances: [],
         tab: "overview",
         process_list: [],
         current_instance: null,
         metadata_list: [],
-        current_process: null
+        current_process: null,
+        instance_count: null
     }
   },
   props: ["job_uuid"],
@@ -57,24 +57,7 @@ export default {
     ExecInstDropdown
   },
   mounted() {
-    var self = this;
-    api.get_job_exec_instances(self.job_uuid, 
-        function(data) {
-            for (var i in data) {
-                var item = data[i];
-
-                var end_time_num = item['end_time'];
-                item['end_time'] = time.seconds_to_string(end_time_num);
-                var start_time_num = item['start_time'];
-                item['start_time'] = time.seconds_to_string(start_time_num);
-                item['duration'] = time.seconds_duration(start_time_num, end_time_num);
-            }
-            self.exec_instances = data;
-        },
-        function(status, data) {
-
-        }
-    )
+    
   },
   methods: {
     setTab(new_tab) {
@@ -96,6 +79,9 @@ export default {
 
             }
         )
+    },
+    instancesLoaded(instance_count){
+        this.instance_count = instance_count;
     },
     processSelected(new_process) {
         var self = this;

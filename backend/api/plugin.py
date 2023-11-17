@@ -15,6 +15,8 @@ def get_plugin_list():
     init_plugins = current_app._manager.initialize_plugins(plugins)
     ret_list = []
     for plugin in init_plugins:
+        if not plugin.enabled:
+            continue
         ret_list.append(plugin.to_dict())
     current_app._db.unlock()
     return jsonify({

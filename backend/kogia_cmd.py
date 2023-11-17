@@ -48,12 +48,16 @@ def main():
     parser = argparse.ArgumentParser('Kogia maintenance commands')
     subparsers = parser.add_subparsers(dest="command")
 
-    # adduser
-    adduser_parser = subparsers.add_parser("adduser")
+    # localuser
+    localuser_parser = subparsers.add_parser("localuser")
 
-    adduser_parser.add_argument('--username', "-u", help="Set username")
-    adduser_parser.add_argument('--password', "-p", help="Set password")
-    adduser_parser.add_argument('--role', action='append', choices=ROLES)
+    localuser_subparser = localuser_parser.add_subparsers(dest="localuser_subcmd")
+    add_user_parser = localuser_subparser.add_parser("add")
+
+
+    add_user_parser.add_argument('--username', "-u", help="Set username")
+    add_user_parser.add_argument('--password', "-p", help="Set password")
+    add_user_parser.add_argument('--role', action='append', choices=ROLES, required=True)
 
     # container
     container_parser = subparsers.add_parser("container")
@@ -130,20 +134,23 @@ def main():
             print(f"{Fore.YELLOW}All data truncated!{Style.RESET_ALL}")
 
 
-    elif args.command == "adduser":
-        username = args.username
-        if username is None:
-            username = input("Username> ")
-        password = args.password
-        if password is None:
-            password = getpass.getpass("Password> ")
-        auth = DBAuth(db)
+    elif args.command == "localuser":
+        if args.localuser_subcmd is None:
+            print(localuser_parser.format_help())
+        elif args.localuser_subcmd == "add":
+            username = args.username
+            if username is None:
+                username = input("Username> ")
+            password = args.password
+            if password is None:
+                password = getpass.getpass("Password> ")
+            auth = DBAuth(db)
 
-        if args.role is None or len(args.role) <= 0: 
-            print(f"ERROR: Add at least one from from: {ROLES}")
-            return 1
-        auth.insert_user(username, password, args.role)
-        print(f"User {username} added")
+            if args.role is None or len(args.role) <= 0: 
+                print(f"ERROR: Add at least one from from: {ROLES}")
+                return 1
+            auth.insert_user(username, password, args.role)
+            print(f"{Fore.GREEN}User {username} added{Style.RESET_ALL}")
         
 
 

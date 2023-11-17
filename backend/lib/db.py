@@ -1,5 +1,5 @@
 from arango import ArangoClient
-from arango.exceptions import DocumentInsertError
+from arango.exceptions import DocumentInsertError, AQLQueryExecuteError
 from threading import RLock
 
 NO_INDEX = ('logs', 'syscalls')
@@ -87,6 +87,7 @@ class ArangoConnection():
             return new_collection
         else:
             return graph.vertex_collection(collection)
+
 
     def _get_edges(self, graph_name, collection, from_collection, to_collection, unique=True):
         graph = self._get_graph(graph_name)
@@ -396,7 +397,6 @@ FOR start IN @@startCollection FILTER start._id == @fromId
             query += "}"
 
         print(query)
-
         cursor = self._db.aql.execute(query, 
             bind_vars={
                 '@startCollection': start_collection,
@@ -407,7 +407,6 @@ FOR start IN @@startCollection FILTER start._id == @fromId
                 "pos": path_pos
             })
         return list(cursor)
-
 
     def get_connected_to(self, graph_name, from_item, end_collection, filter_edges=None, sort_by=None, max=2, direction='both', limit=0, skip=0, length_only=False):
 
@@ -468,10 +467,20 @@ FOR start IN @@startCollection FILTER start._id == @fromId
 
         print(query)
 
-        cursor = self._db.aql.execute(query, 
-            bind_vars=bind_vars
-        )
-        return list(cursor)
+        try:
+            cursor = self._db.aql.execute(query, 
+                bind_vars=bind_vars
+            )
+            return list(cursor)
+        except AQLQueryExecuteError as e:
+            print(e, e.error_code)
+            if e.error_code == 1203:
+                # Print We are missing a collection, probably hasn't been created yet.
+                return []
+            else:
+                raise e
+
+        
 
         # from_col = self._extract_collection_from_id(from_item)
         # col = self._get_edges(graph_name, collection, from_col, None)
