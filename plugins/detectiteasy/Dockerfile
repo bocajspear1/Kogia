@@ -4,7 +4,7 @@ RUN apt-get -qq update \
 && DEBIAN_FRONTEND="noninteractive" apt-get -q install -y wget
 
 WORKDIR /opt
-RUN wget https://github.com/horsicq/DIE-engine/releases/download/3.04/die_3.04_Ubuntu_20.04_amd64.deb
+RUN wget https://github.com/horsicq/DIE-engine/releases/download/3.08/die_3.08_Ubuntu_20.04_amd64.deb
 
 RUN dpkg -i /opt/die_*.deb || true
 

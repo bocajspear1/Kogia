@@ -28,13 +28,13 @@ class CapaPlugin(DockerPluginBase):
                     if "meta" in capa_json['rules'][item] and 'description' in capa_json['rules'][item]['meta']:
                         description = capa_json['rules'][item]['meta']['description']
                     job.add_signature(self.name, signature_name, file_obj, description)
-                # job.add_report("Full CAPA JSON Output", file_obj, json.dumps(capa_json, indent=4))
+                job.add_report("Full CAPA JSON Output", file_obj, json.dumps(capa_json, indent=4))
                 # print(json.dumps(capa_json, indent=4))
             except json.decoder.JSONDecodeError:
                 pass
 
-        file_out = self.extract_single_file(submission, file_obj, "/tmp/capa-output.txt")
-        job.add_report("Full CAPA Output", file_obj, file_out)
+        # file_out = self.extract_single_file(submission, file_obj, "/tmp/capa-output.txt")
+        # job.add_report("Full CAPA Output", file_obj, file_out)
 
         # print(file_out)
         # 

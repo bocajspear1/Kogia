@@ -106,7 +106,6 @@ def main():
                 else:
                     print(f"{plugin_obj.name}: {Fore.RED}MISSING{Style.RESET_ALL}")
         elif args.container_subcmd == 'rebuild':
-            pm = load_plugin_manager()
             plugin_cls = pm.get_plugin(args.plugin)
             if plugin_cls is None:
                 print(f"{Fore.RED}Could not find plugin '{args.plugin}'{Style.RESET_ALL}")
