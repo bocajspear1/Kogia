@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import sys 
-import sqlite3
+import secrets
 import sys
 import logging
 import platform
@@ -21,7 +21,7 @@ import secrets
 from flask import Flask, g, jsonify, current_app, request, send_file, send_from_directory, abort, Response
 
 
-from backend.lib.plugin_manager import PluginManager
+
 from backend.lib.db import ArangoConnection, ArangoConnectionFactory
 
 from backend.api.job import job_endpoints
@@ -36,78 +36,28 @@ from backend.api.system import system_endpoints
 
 from backend.lib.config import load_config
 from backend.auth import ROLES
-from backend.lib.helpers import get_filestore_modules
+from backend.lib.helpers import prepare_all
 
 from backend.auth.db import DBAuth
-
+from backend.lib.workers import WorkerManager
 
 from backend.version import VERSION 
 
 from flask.logging import default_handler
 
-def create_app():
-    app = Flask(__name__)
-    app.secret_key = os.environ['FLASK_KEY']
+app = Flask(__name__)
+flask_key = None
+if os.path.exists(".flask_key"):
+    flask_key_file = open(".flask_key", "r")
+    flask_key = flask_key_file.read().strip()
+    flask_key_file.close()
+else:
+    flask_key = secrets.token_hex(20)
+    flask_key_file = open(".flask_key", "w")
+    flask_key_file.write(flask_key)
+    flask_key_file.close()
 
-    with app.app_context():
-
-        if os.getenv("KOGIA_DEBUG") is not None:
-            app.logger.setLevel(logging.DEBUG)
-            app.logger.debug("Debugging is on!")
-        else:
-            app.logger.setLevel(logging.INFO)
-
-        app._workers = []
-
-
-        app._download_tokens = []
-        app._download_tokens_lock = threading.RLock()
-
-        app._queue = queue.Queue()
-        app._manager = PluginManager()
-        app._manager.load_all()
-
-        
-        
-        app._config = load_config("./config.json")
-
-        app._db_factory = ArangoConnectionFactory(
-            app._config['kogia']['db_host'], 
-            app._config['kogia']['db_port'], 
-            app._config['kogia']['db_user'], 
-            app._config['kogia']['db_password'],
-            app._config['kogia']['db_name']
-        )
-
-        app._db = app._db_factory.new()
-
-        # Load filestore modules
-        available_filestores = get_filestore_modules()
-
-        loaded_filestore = False
-        for filestore_class in available_filestores:
-            class_name = filestore_class.__name__
-            if class_name in app._config['filestore'] and loaded_filestore == False:
-                app.logger.info("Loaded filestore %s", class_name)
-                app._filestore = filestore_class(app._config['filestore'][class_name])
-                loaded_filestore = True
-      
-        if not loaded_filestore:
-            raise ValueError("Filestore not set")
-
-        # Load authentication
-        app._auth = None
-        if app._config['kogia']['auth_type'] == "db":
-            app.logger.info("Enabling local DB authentication")
-            app._auth = DBAuth(app._db_factory.new())
-        else:
-            app.logger.info("No authentication configured")
-
-        app.logger.info("Server %s started", VERSION)
-
-    return app
-
-app = create_app()
+app.secret_key = flask_key
 
 AUTH_PATH = '/api/v1/authenticate'
 FILE_PATH = "/api/v1/file/"
@@ -174,7 +124,6 @@ def authenticate():
                 }
             })
 
-
 app.register_blueprint(job_endpoints, url_prefix='/api/v1/job')
 app.register_blueprint(process_endpoints, url_prefix='/api/v1/process')
 app.register_blueprint(file_endpoints, url_prefix='/api/v1/file')
@@ -185,6 +134,50 @@ app.register_blueprint(report_endpoints, url_prefix='/api/v1/report')
 app.register_blueprint(execinstance_endpoints, url_prefix='/api/v1/exec_instance')
 app.register_blueprint(system_endpoints, url_prefix='/api/v1/system')
 
+with app.app_context():
 
+    if os.getenv("KOGIA_DEBUG") is not None:
+        app.logger.setLevel(logging.DEBUG)
+        app.logger.debug("Debugging is on!")
+    else:
+        app.logger.setLevel(logging.INFO)
+
+
+    app._download_tokens = []
+    app._download_tokens_lock = threading.RLock()
+
+    app._queue = queue.Queue()
+
+    app._config = load_config("./config.json")
+
+    dbf, pm, filestore, workers = prepare_all(app._config)
+    app._manager = pm
+    app._db_factory = dbf
+    app._db = app._db_factory.new()
+    app._filestore = filestore
+
+    app.logger.info("Loaded filestore %s", filestore.__class__.__name__)
+
+    app._worker_manager = WorkerManager()
+    for worker in workers:
+        app.logger.info("Loaded worker module %s", worker.__class__.__name__)
+        app._worker_manager.add_worker(worker)
+        worker.start_worker_senders()
+
+
+    # Load authentication
+    app._auth = None
+    if app._config['auth_type'] == "db":
+        app.logger.info("Enabling local DB authentication")
+        app._auth = DBAuth(app._db_factory.new())
+    else:
+        app.logger.info("No authentication configured")
+
+    app.logger.info("Server %s started", VERSION)
+
+# return app
+
+# app = create_app()
+    
 if __name__== '__main__':
     app.run()

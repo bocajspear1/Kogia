@@ -10,15 +10,10 @@ from backend.auth.db import DBAuth
 from backend.auth import ROLES
 from backend.lib.plugin_manager import PluginManager
 
+from backend.lib.helpers import prepare_all
 
-def load_plugin_manager():
-    pm = PluginManager()
-    pm.load_all(check=False)
-    return pm
-   
 
-def get_all_plugin_objs(container_only=False):
-    pm = load_plugin_manager()
+def get_all_plugin_objs(pm, container_only=False):
     plugin_list = pm.get_plugin_list('*')
     inited_plugins = pm.initialize_plugins(plugin_list)
 
@@ -35,18 +30,19 @@ def get_all_plugin_objs(container_only=False):
 def main():
     config = load_config("./config.json")
 
-    db_factory = ArangoConnectionFactory(
-        config['kogia']['db_host'], 
-        config['kogia']['db_port'], 
-        config['kogia']['db_user'], 
-        config['kogia']['db_password'],
-        config['kogia']['db_name']
-    )
+    dbf, pm, filestore, workers = prepare_all(config, check=False)
 
-    db = db_factory.new()
+    db = dbf.new()
 
     parser = argparse.ArgumentParser('Kogia maintenance commands')
     subparsers = parser.add_subparsers(dest="command")
+
+    # run
+    run_parser = subparsers.add_parser("run")
+    run_subparser = run_parser.add_subparsers(dest="run_subcmd")
+    web_parser = run_subparser.add_parser("web")
+    web_parser.add_argument('--port', "-p", help="Port to bind to", default=4000)
+    web_parser.add_argument('--addr', "-a", help="Set address to bind to", default="0.0.0.0")
 
     # localuser
     localuser_parser = subparsers.add_parser("localuser")
@@ -80,18 +76,29 @@ def main():
 
     if args.command is None:
         print(parser.format_help())
+    elif args.command == "run":
+        if args.run_subcmd is None:
+            print(run_parser.format_help())
+        elif args.run_subcmd == 'web':
+            print("Starting server...")
+            from backend.run import run_gunicorn
+            run_gunicorn(config, workers, args.addr, int(args.port))
+            # from backend.run import run_waitress
+            # run_waitress(args.addr, int(args.port))
+
+
     elif args.command == "container":
         if args.container_subcmd is None:
             print(container_parser.format_help())
         elif args.container_subcmd == 'build':
-            plugin_objs = get_all_plugin_objs(container_only=True)
+            plugin_objs = get_all_plugin_objs(pm, container_only=True)
             c = 1
             for plugin_obj in plugin_objs:
                 print(f"{Fore.BLUE}{c}/{len(plugin_objs)}{Style.RESET_ALL} Building {plugin_obj.name} container")
                 plugin_obj.docker_build()
                 c += 1
         elif args.container_subcmd == 'check':
-            plugin_objs = get_all_plugin_objs(container_only=True)
+            plugin_objs = get_all_plugin_objs(pm, container_only=True)
             for plugin_obj in plugin_objs:
                 
                 if plugin_obj.docker_image_exists():
@@ -111,7 +118,7 @@ def main():
             print(f"{Fore.GREEN}Rebuild complete!{Style.RESET_ALL}")
 
 
-            # plugin_objs = get_all_plugin_objs(container_only=True)
+            # plugin_objs = get_all_plugin_objs(pm, container_only=True)
             # for plugin_obj in plugin_objs:
                 
             #     if plugin_obj.docker_image_exists():

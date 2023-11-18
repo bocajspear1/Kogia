@@ -18,7 +18,7 @@ class ImportsExportsPlugin(DockerPluginBase):
         self.wait_and_stop()
         
         output = self.extract_single_file(submission, file_obj, "/tmp/out/output.txt")
-        # print(output)
+        print(output)
 
         output_split = output.split("\n")
         for line in output_split:

@@ -45,12 +45,12 @@ class SignatureMatch(VertexObject):
         if self._uuid == "":
             self._gen_uuid()
         return {
-            "uuid": self._uuid,
+            "_key": self._uuid,
             "match_time": self._match_time,
         }
 
     def from_dict(self, data_obj):
-        self._uuid = data_obj.get('uuid', '')
+        self._uuid = data_obj.get('_key', '')
         self._match_time = data_obj.get('match_time', '')
         if 'signature' in data_obj:
             self._signature = Signature(uuid=data_obj['signature'])
@@ -78,7 +78,7 @@ class SignatureMatch(VertexObject):
         if self.id is None:
             if self._uuid == "":
                 self._gen_uuid()
-            document = self.load_doc(db, field='uuid', value=self._uuid)
+            document = self.load_doc(db, field='_key', value=self._uuid)
         else:
             document = self.load_doc(db)
 
@@ -166,6 +166,7 @@ class Signature(VertexObject):
         if self._uuid == "" or self._uuid is None:
             self._gen_uuid()
         return {
+            "_key": self._uuid,
             "uuid": self._uuid,
             "name": self.name,
             "description": self.description,
@@ -174,7 +175,7 @@ class Signature(VertexObject):
         }
 
     def from_dict(self, data_obj):
-        self._uuid = data_obj.get('uuid', '')
+        self._uuid = data_obj.get('_key', '')
         self.name = data_obj.get('name', '')
         self.description = data_obj.get('description', '')
         self.plugin_name = data_obj.get('plugin', '')
@@ -193,7 +194,7 @@ class Signature(VertexObject):
         if self.id is None:
             if self._uuid == "":
                 self._gen_uuid()
-            document = self.load_doc(db, field='uuid', value=self._uuid)
+            document = self.load_doc(db, field='_key', value=self._uuid)
         else:
             document = self.load_doc(db)
 
@@ -239,6 +240,7 @@ class Report(VertexObject):
         if self._uuid == "":
             self._gen_uuid()
         return {
+            "_key": self._uuid,
             "uuid": self._uuid,
             "value": self._value,
             "file_uuid": self._file_uuid,
@@ -246,7 +248,7 @@ class Report(VertexObject):
         }
 
     def from_dict(self, data_obj):
-        self._uuid = data_obj.get('uuid', '')
+        self._uuid = data_obj.get('_key', '')
         self._value = data_obj.get('value', '')
         self._file_uuid = data_obj.get('file_uuid', '')
         self.name = data_obj.get('name', '')
@@ -262,7 +264,7 @@ class Report(VertexObject):
         if self.id is None:
             if self._uuid == "":
                 self._gen_uuid()
-            document = self.load_doc(db, field='uuid', value=self._uuid)
+            document = self.load_doc(db, field='_key', value=self._uuid)
         else:
             document = self.load_doc(db)
 
@@ -292,6 +294,7 @@ class ExecInstance(VertexObject):
 
     def to_dict(self, full=True):
         ret_dict = {
+            "_key": self._uuid,
             "uuid": self._uuid,
             "start_time": self._start_time,
             "end_time": self._end_time,
@@ -305,7 +308,7 @@ class ExecInstance(VertexObject):
         return ret_dict
 
     def from_dict(self, data_obj):
-        self._uuid = data_obj.get('uuid', '')
+        self._uuid = data_obj.get('_key', '')
         self._start_time = data_obj.get('start_time', 0)
         self._end_time = data_obj.get('end_time', 0)
         self.exec_module = data_obj.get('exec_module', '')
@@ -328,7 +331,7 @@ class ExecInstance(VertexObject):
     def load(self, db):
         document = {}
         if self.id is None:
-            document = self.load_doc(db, field='uuid', value=self._uuid)
+            document = self.load_doc(db, field='_key', value=self._uuid)
         else:
             document = self.load_doc(db)
 
@@ -393,6 +396,7 @@ class Event(VertexObject):
     def to_dict(self, full=True):
         self._gen_uuid()
         ret_dict = {
+            "_key": self._uuid,
             "uuid": self._uuid,
             "key": self._key,
             "src": self._src,
@@ -404,7 +408,7 @@ class Event(VertexObject):
         return ret_dict
 
     def from_dict(self, data_obj):
-        self._uuid = data_obj.get('uuid', '')
+        self._uuid = data_obj.get('_key', '')
         self._key = data_obj.get('key', '')
         self._src = data_obj.get('src', '')
         self._dest = data_obj.get('dest', '')
@@ -421,7 +425,7 @@ class Event(VertexObject):
     def load(self, db):
         document = {}
         if self.id is None:
-            document = self.load_doc(db, field='uuid', value=self._uuid)
+            document = self.load_doc(db, field='_key', value=self._uuid)
         else:
             document = self.load_doc(db)
 
@@ -508,6 +512,7 @@ class Process(VertexObject):
     
     def to_dict(self, get_children=True):
         ret_dict = {
+            "_key": self._uuid,
             "uuid": self._uuid,
             "pid": self._pid,
             "path": self._path,
@@ -523,7 +528,7 @@ class Process(VertexObject):
         return ret_dict
 
     def from_dict(self, data_obj):
-        self._uuid = data_obj.get('uuid', '')
+        self._uuid = data_obj.get('_key', '')
         self._pid = data_obj.get('pid', 0)
         self._path = data_obj.get('path', '')
         self._start_time = data_obj.get('start_time', 0)
@@ -536,7 +541,7 @@ class Process(VertexObject):
 
         if 'child_processes' in data_obj:
             for item in data_obj['child_processes']:
-                add_proc = Process(uuid=item['uuid'])
+                add_proc = Process(uuid=item['_key'])
                 add_proc.from_dict(item)
                 self._child_processes.append(add_proc)
 
@@ -577,7 +582,7 @@ class Process(VertexObject):
     def load(self, db):
         document = {}
         if self.id is None:
-            document = self.load_doc(db, field='uuid', value=self._uuid)
+            document = self.load_doc(db, field='_key', value=self._uuid)
         else:
             document = self.load_doc(db)
 

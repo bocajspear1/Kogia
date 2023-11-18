@@ -63,31 +63,34 @@ class Metadata(VertexObject):
         return {
             "key": self._key,
             "value": self._value,
-            "uuid": self._uuid
+            "uuid": self._uuid,
+            "_key": self._uuid
         }
 
     def from_dict(self, data_obj):
-        self._uuid = data_obj.get('uuid', '')
+        self._uuid = data_obj.get('_key', '')
         self._key = data_obj.get('key', '')
         self._value = data_obj.get('value', '')
 
     def save(self, db):
-        if self.is_modified:
-            try:
-                self.save_doc(db, self.to_dict())
-            except DBNotUniqueError:
-                pass
+        try:
+            self.save_doc(db, self.to_dict())
+        except DBNotUniqueError:
+            pass
 
     def load(self, db):
         document = {}
         if self.id is None:
             if self._uuid == "":
                 self._gen_uuid()
-            document = self.load_doc(db, field='uuid', value=self.uuid)
+            document = self.load_doc(db, field='_key', value=self.uuid)
         else:
             document = self.load_doc(db)
 
         self.from_dict(document)
+
+    def __str__(self):
+        return "{} - {}:{}".format(self._uuid, self._key, self._value)
 
 
 class SubmissionFile(VertexObject):
@@ -118,7 +121,7 @@ class SubmissionFile(VertexObject):
         self._exec_interpreter = ""
         self._exec_packer = ""
         self._target_os = ""
-        self._metadata = None
+        self._metadata = []
         self._hash = ""
         self._parent = ""
 
@@ -129,6 +132,7 @@ class SubmissionFile(VertexObject):
 
     def to_dict(self):
         return {
+            "_key": self._uuid,
             "uuid": self._uuid,
             "name": self._name,
             "file_id": self._file_id,
@@ -145,7 +149,7 @@ class SubmissionFile(VertexObject):
         }
 
     def from_dict(self, data_obj):
-        self._uuid = data_obj.get('uuid', '')
+        self._uuid = data_obj.get('_key', '')
         self._name = data_obj.get('name', '')
         self._file_id = data_obj.get('file_id', '')
         self._mime_type = data_obj.get('mime_type', '')
@@ -201,6 +205,9 @@ class SubmissionFile(VertexObject):
         self._handle = self._filestore.open_file(self._file_id)
         return self._handle
     
+    def copy_file_from(self, src_path):
+        self._filestore.copy_file_from(src_path, self._file_id)
+    
     def close_file(self):
         if self._handle is not None:
             return self._filestore.close_file(self._file_id, self._handle)
@@ -225,7 +232,7 @@ class SubmissionFile(VertexObject):
     def load(self, db):
         document = {}
         if self.id is None:
-            document = self.load_doc(db, field='uuid', value=self._uuid)
+            document = self.load_doc(db, field='_key', value=self._uuid)
         else:
             document = self.load_doc(db)
 
@@ -325,8 +332,8 @@ class SubmissionFile(VertexObject):
         self._unpacked_archive = False
 
     def add_metadata(self, key, value):
-        if self._metadata is None:
-            raise ValueError("Must call load_metadata before adding new metadata")
+        # if self._metadata is None:
+        #     raise ValueError("Must call load_metadata before adding new metadata")
 
         new_data = Metadata()
         new_data.key = key
@@ -335,8 +342,8 @@ class SubmissionFile(VertexObject):
         return new_data
 
     def add_metadata_unique(self, key, value):
-        if self._metadata is None:
-            raise ValueError("Must call load_metadata before adding new metadata")
+        # if self._metadata is None:
+        #     raise ValueError("Must call load_metadata before adding new metadata")
 
         found = False
         for data in self._metadata:
@@ -370,12 +377,17 @@ class Submission(VertexObject):
     @classmethod
     def list_dict(cls, db, file_uuid=None):
         if file_uuid is None:
-            return db.get_vertex_list_sorted(cls.GRAPH_NAME, cls.COLLECTION_NAME, "submit_time", "DESC")
+            submission_list = db.get_vertex_list_sorted(cls.GRAPH_NAME, cls.COLLECTION_NAME, "submit_time", "DESC")
         else:
             filter_file = SubmissionFile(uuid=file_uuid)
             filter_file.load(db)
-            return db.get_connected_to(cls.GRAPH_NAME, filter_file.id, cls.COLLECTION_NAME, filter_edges=['has_file'], sort_by=(cls.COLLECTION_NAME, 'submit_time', 'DESC'))
-
+            submission_list = db.get_connected_to(cls.GRAPH_NAME, filter_file.id, cls.COLLECTION_NAME, filter_edges=['has_file'], sort_by=(cls.COLLECTION_NAME, 'submit_time', 'DESC'))
+        for submission_item in submission_list:
+            del submission_item['_rev']
+            del submission_item['_id']
+            submission_item['uuid'] = submission_item['_key']
+        return submission_list
+        
     @property
     def uuid(self):
         return self._uuid
@@ -423,10 +435,10 @@ class Submission(VertexObject):
             self._submission_dir = os.path.join("/tmp", "kogia-" + str(self._uuid))
             if not os.path.exists(self._submission_dir):
                 os.mkdir(self._submission_dir)
-            for file in self._files:
-                file_path =  os.path.join(self._submission_dir, file.name)
-                if not os.path.exists(file_path):
-                    self._filestore.copy_file_to(file.file_id, file_path)
+        for file in self._files:
+            file_path = os.path.join(self._submission_dir, file.name)
+            if not os.path.exists(file_path):
+                self._filestore.copy_file_to(file.file_id, file_path)
         return self._submission_dir
 
     def get_file(self, name=None, uuid=None):
@@ -462,7 +474,7 @@ class Submission(VertexObject):
     def load(self, db):
         document = {}
         if self.id is None:
-            document = self.load_doc(db, field='uuid', value=self._uuid)
+            document = self.load_doc(db, field='_key', value=self._uuid)
         else:
             document = self.load_doc(db)
 
@@ -486,6 +498,7 @@ class Submission(VertexObject):
 
     def to_dict(self, files=False):
         data_dict = {
+            "_key": self._uuid,
             "uuid": self._uuid,
             "owner": self._owner,
             "submit_time": self._submit_time,
@@ -502,7 +515,7 @@ class Submission(VertexObject):
             return data_dict
 
     def from_dict(self, data_obj):
-        self._uuid = data_obj.get('uuid', '')
+        self._uuid = data_obj.get('_key', '')
         self._owner = data_obj.get('owner', '')
         self._submit_time = data_obj.get('submit_time', 0)
         self._name = data_obj.get('name', '')

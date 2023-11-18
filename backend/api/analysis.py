@@ -1,6 +1,5 @@
 from flask import Blueprint, Flask, g, jsonify, current_app, request, send_file, send_from_directory, abort
 from backend.lib.submission import Submission
-from backend.lib.workers import JobWorker
 from backend.lib.job import Job
 
 analysis_endpoints = Blueprint('analysis_endpoints', __name__)
@@ -67,10 +66,8 @@ def create_analysis_job():
         
         
     new_job.save()
-    
-    new_worker = JobWorker(current_app._manager, new_job)
-    current_app._workers.append(new_worker)
-    new_worker.start()
+
+    current_app._worker_manager.assign_job(new_job.uuid)
 
     return jsonify({
         "ok": True,

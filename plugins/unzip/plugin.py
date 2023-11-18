@@ -25,8 +25,8 @@ class UnzipPlugin(DockerPluginBase):
 
         uuid_list = []
         for item in items:
-            shutil.move(os.path.join(out_dir, item), submission.submission_dir)
             new_file = submission.generate_file(item)
+            new_file.copy_file_from(os.path.join(out_dir, item))
             uuid_list.append(new_file.uuid)
             submission.add_file(new_file)
 

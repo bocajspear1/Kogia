@@ -13,7 +13,7 @@ class DBAuth():
         self._db = db
 
     def authenticate_new(self, username, credential):
-        user_data = self._db.get_by_match('users', 'uuid', username)
+        user_data = self._db.get_by_match('users', '_key', username)
         if user_data is None:
             return False, "Authentication failed", []
         if "." not in user_data['password']:
@@ -24,7 +24,7 @@ class DBAuth():
         if hashed_password == user_data['password']:
             api_token = secrets.token_hex(48)
             self._db.insert("sessions", {
-                "uuid": api_token,
+                "_key": api_token,
                 "username": username,
                 "expire": int(time.time()) + TIMEOUT,
                 "roles": user_data['roles']
@@ -34,7 +34,7 @@ class DBAuth():
             return False, "Authentication failed", []
     
     def authenticate_existing(self, key):
-        session_data = self._db.get_by_match('sessions', 'uuid', key)
+        session_data = self._db.get_by_match('sessions', '_key', key)
         if session_data is None:
             return False, "Unauthenticated", []
         else:
@@ -44,11 +44,11 @@ class DBAuth():
         return False, "No authorization yet"
     
     def remove_session(self, key):
-        session_data = self._db.get_by_match('sessions', 'uuid', key)
+        session_data = self._db.get_by_match('sessions', '_key', key)
         if session_data is None:
             return False, "Session not found"
         else:
-            self._db.delete('sessions', {"uuid": key})
+            self._db.delete('sessions', {"_key": key})
             return True, ""
     
     def _hash_password(self, password, salt):
@@ -59,7 +59,7 @@ class DBAuth():
         salt = os.urandom(32)
         hashed_pass = self._hash_password(password, salt)
         self._db.insert('users', {
-            "uuid": username,
+            "_key": username,
             "password": hashed_pass,
             "roles": roles
         })

@@ -71,7 +71,6 @@ class ArangoConnection():
         graph = self._get_graph(graph_name)
         if not graph.has_vertex_collection(collection):
             new_collection = graph.create_vertex_collection(collection)
-            new_collection.add_hash_index(fields=['uuid'], unique=True)
 
     def _get_graph(self, graph_name):
         if not self._db.has_graph(graph_name):
@@ -83,7 +82,6 @@ class ArangoConnection():
         graph = self._get_graph(graph_name)
         if not graph.has_vertex_collection(collection):
             new_collection = graph.create_vertex_collection(collection)
-            new_collection.add_hash_index(fields=['uuid'], unique=True)
             return new_collection
         else:
             return graph.vertex_collection(collection)
@@ -108,8 +106,6 @@ class ArangoConnection():
     def _get_collection(self, collection, create_index=True):
         if not self._db.has_collection(collection):
             new_collection = self._db.create_collection(collection)
-            if create_index and collection not in NO_INDEX:
-                new_collection.add_hash_index(fields=['uuid'], unique=True)
             return new_collection
         else:
             return self._db.collection(collection)
@@ -160,7 +156,7 @@ class ArangoConnection():
             
             filter_query += " " + final_key + "." + filter_field + " " + compare + " @" + val_name + ""
 
-        print(filter_query)
+        # print(filter_query)
         return filter_query, new_bind_vars
 
     # {"test": ()}
@@ -255,8 +251,8 @@ class ArangoConnection():
         else:
             aql_query += " COLLECT WITH COUNT INTO length RETURN length"
 
-        print(aql_query)
-        print(bind_vars)
+        # print(aql_query)
+        # print(bind_vars)
             
         cursor = self._db.aql.execute(
             aql_query,
@@ -328,16 +324,16 @@ class ArangoConnection():
             else:
                 return None
         except DocumentInsertError as e:
-            if "unique constraint violated" in str(e) and 'uuid' in document:
-                obj = self.get_vertex_by_match(graph_name, collection, 'uuid', document['uuid'])
+            if "unique constraint violated" in str(e) and '_key' in document:
+                obj = self.get_vertex_by_match(graph_name, collection, '_key', document['_key'])
                 return obj['_id']
             else:
                 raise e
 
     def update_vertex(self, graph_name, collection, id, document):
         col = self._get_vertexes(graph_name, collection)
-        if 'uuid' in document:
-            del document['uuid']
+        if '_key' in document:
+            del document['_key']
         col.update_match({"_id": id}, document)
 
 
@@ -396,7 +392,7 @@ FOR start IN @@startCollection FILTER start._id == @fromId
                 query += f" {return_field}: p['vertices'][@pos].{return_field}, "
             query += "}"
 
-        print(query)
+        # print(query)
         cursor = self._db.aql.execute(query, 
             bind_vars={
                 '@startCollection': start_collection,
@@ -465,7 +461,7 @@ FOR start IN @@startCollection FILTER start._id == @fromId
         else:
             query += "    COLLECT WITH COUNT INTO length RETURN length"
 
-        print(query)
+        # print(query)
 
         try:
             cursor = self._db.aql.execute(query, 
@@ -501,12 +497,18 @@ FOR start IN @@startCollection FILTER start._id == @fromId
         
     def insert_bulk(self, collection, doc_array):
         col = self._get_collection(collection)
-        db_meta = col.insert_many(doc_array)  
+        
+        db_meta = col.insert_many(doc_array, overwrite=True, overwrite_mode="replace")  
+        
+        db_data = col.get_many(doc_array)
+
         id_list = []
-        for item in db_meta:
+        for item in db_data:
             if isinstance(item, DocumentInsertError):
+                # print(item.response.body)
                 continue
             id_list.append(item['_id'])
+        
         return id_list 
 
     def update(self, collection, id, document):
@@ -567,7 +569,7 @@ RETURN { "uniqueCount": uniqueCount }
                         'collection': collection,
                         'unique_by': unique_by,
                     })
-                print(cursor.next())
+                # print(cursor.next())
 
 
 

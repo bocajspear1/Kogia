@@ -29,17 +29,21 @@ class Job(VertexObject):
         new_list = []
         job_items = []
         if submission_uuid is None:
-            job_items = db.get_vertex_list_joined(cls.GRAPH_NAME, cls.COLLECTION_NAME, {"submissions": ("uuid", "submission")}, sort_by=('jobs', 'start_time', 'DESC'), skip=skip, limit=limit)
+            job_items = db.get_vertex_list_joined(cls.GRAPH_NAME, cls.COLLECTION_NAME, {"submissions": ("_key", "submission")}, sort_by=('jobs', 'start_time', 'DESC'), skip=skip, limit=limit)
         else:
-            job_items = db.get_vertex_list_joined(cls.GRAPH_NAME, cls.COLLECTION_NAME, {"submissions": ("uuid", "submission")}, filter_map={"submissions": ('uuid', submission_uuid)}, sort_by=('jobs', 'start_time', 'DESC'), skip=skip, limit=limit)
+            job_items = db.get_vertex_list_joined(cls.GRAPH_NAME, cls.COLLECTION_NAME, {"submissions": ("_key", "submission")}, filter_map={"submissions": ('_key', submission_uuid)}, sort_by=('jobs', 'start_time', 'DESC'), skip=skip, limit=limit)
 
         for job_item in job_items:
             del job_item['submission']['_id']
-            del job_item['submission']['_key']
+            job_item['submission']['uuid'] = job_item['submission']['_key']
             del job_item['submission']['_rev']
 
+            del job_item['_id']
+            job_item['uuid'] = job_item['_key']
+            del job_item['_rev']
+
             if job_item.get('primary', '') != '':
-                file_data = db.get_vertex_by_match(cls.GRAPH_NAME, 'files', 'uuid', job_item['primary'])
+                file_data = db.get_vertex_by_match(cls.GRAPH_NAME, 'files', '_key', job_item['primary'])
                 if file_data is not None:
                     job_item['primary_name'] = file_data['name']
                 else:
@@ -50,8 +54,8 @@ class Job(VertexObject):
         if submission_uuid is None:
             total_len = db.get_vertex_list_sorted(cls.GRAPH_NAME, cls.COLLECTION_NAME, 'start_time', 'DESC', length_only=True)[0]
         else:
-            total_len = db.get_vertex_list_joined(cls.GRAPH_NAME, cls.COLLECTION_NAME, {"submissions": ("uuid", "submission")}, 
-                                                  filter_map={"submissions": ('uuid', submission_uuid)}, 
+            total_len = db.get_vertex_list_joined(cls.GRAPH_NAME, cls.COLLECTION_NAME, {"submissions": ("_key", "submission")}, 
+                                                  filter_map={"submissions": ('_key', submission_uuid)}, 
                                                   sort_by=('jobs', 'start_time', 'DESC'),
                                                   length_only=True
                                                 )[0]
@@ -145,7 +149,7 @@ class Job(VertexObject):
         for plugin in self._plugins:
             plugin_list.append(plugin.__name__)
         return {
-            "uuid": self._uuid,
+            "_key": self._uuid,
             "user": self._user,
             "primary": self._primary,
             "start_time": self._start_time,
@@ -154,11 +158,12 @@ class Job(VertexObject):
             "error": self._error,
             "plugins": plugin_list,
             "submission": self._submission.uuid,
-            "plugin_args": self._arg_map
+            "plugin_args": self._arg_map,
+            "limit_to": self._limit_to
         }
 
     def from_dict(self, pm, data_obj):
-        self._uuid = data_obj.get('uuid', '')
+        self._uuid = data_obj.get('_key', '')
         self._name = data_obj.get('name', '')
         self._primary = data_obj.get('primary', '')
         self._start_time = data_obj.get('start_time', 0)
@@ -166,6 +171,7 @@ class Job(VertexObject):
         self._complete = data_obj.get('complete', False)
         self._error = data_obj.get('error', '')
         self._arg_map = data_obj.get('plugin_args', '')
+        self._limit_to = data_obj.get('limit_to', [])
 
         if 'submission' in data_obj:
             load_sub = Submission(uuid=data_obj['submission'])
@@ -252,7 +258,7 @@ class Job(VertexObject):
         else:
             file_obj = SubmissionFile(uuid=file_uuid)
             file_obj.load(self._db)
-            return file_obj.get_in_path(self._db, self.id, 1, ['has_report', 'added_report'], return_fields=['uuid', 'name'])
+            return file_obj.get_in_path(self._db, self.id, 1, ['has_report', 'added_report'], return_fields=['_key', 'name'])
 
     def get_signatures(self, file_uuid=None):
         # Ensure any stored reports are saved
@@ -263,7 +269,7 @@ class Job(VertexObject):
         else:
             file_obj = SubmissionFile(uuid=file_uuid)
             file_obj.load(self._db)
-            return file_obj.get_in_path(self._db, self.id, 1, ['has_match', 'added_match'], return_fields=['uuid', 'name'])
+            return file_obj.get_in_path(self._db, self.id, 1, ['has_match', 'added_match'], return_fields=['_key', 'name'])
 
 
     def get_exec_instances(self):
@@ -279,8 +285,10 @@ class Job(VertexObject):
         self._save_exec_instances()
 
     def load(self, pm):
-        doc = self.load_doc(self._db, 'uuid', self._uuid)
+        doc = self.load_doc(self._db, '_key', self._uuid)
         self.from_dict(pm, doc)
+        self._submission.load(self._db)
+        self._submission.load_files(self._db, self._filestore)
 
     def add_to_error(self, error_message):
         self._error.append(error_message)

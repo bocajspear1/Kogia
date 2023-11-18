@@ -9,7 +9,6 @@ from werkzeug.utils import secure_filename
 
 from backend.lib.job import Job
 from backend.lib.submission import Submission
-from backend.lib.workers import JobWorker
 from backend.lib.helpers import generate_download_token
 
 submission_endpoints = Blueprint('submission_endpoints', __name__)
@@ -66,7 +65,7 @@ def submit_sample():
     for uploaded_file in file_list:
         filename = secure_filename(uploaded_file.filename)
         new_file = new_submission.generate_file(filename)
-
+        
         # Save file to filestore
         file_io = new_file.create_file()
         uploaded_file.save(file_io)
@@ -95,9 +94,7 @@ def submit_sample():
     new_job.add_plugin_list(unarchive_plugins)
     new_job.save()
 
-    new_worker = JobWorker(current_app._manager, new_job)
-    current_app._workers.append(new_worker)
-    new_worker.start()
+    current_app._worker_manager.assign_job(new_job.uuid)
 
     return jsonify({
         "ok": True,

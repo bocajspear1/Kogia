@@ -12,7 +12,7 @@ class FileStoreFS():
             os.mkdir(self._dir)
 
     def _get_full_path(self, file_id : str):
-        print(f"'{file_id}'")
+        # print(f"'{file_id}'")
         dir_split = file_id.split(":")
         
         loc = 0
@@ -44,3 +44,7 @@ class FileStoreFS():
     def copy_file_to(self, file_id, dest_file):
         full_path = self._get_full_path(file_id)
         shutil.copy(full_path, dest_file)
+
+    def copy_file_from(self, src_file, file_id):
+        dest_file = self._get_full_path(file_id)
+        shutil.copy(src_file, dest_file)
