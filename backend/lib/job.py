@@ -150,6 +150,7 @@ class Job(VertexObject):
             plugin_list.append(plugin.__name__)
         return {
             "_key": self._uuid,
+            "uuid": self._uuid,
             "user": self._user,
             "primary": self._primary,
             "start_time": self._start_time,
@@ -189,6 +190,17 @@ class Job(VertexObject):
     def get_plugin_list(self):
         print(self._plugins)
         return copy.deepcopy(self._plugins)
+    
+    @property
+    def plugins(self):
+        output = {}
+        for plugin in self._plugins:
+            print(plugin, plugin.classname())
+            if plugin.classname() in self._arg_map:
+                output[plugin.classname()] = self._arg_map[plugin.classname()]
+            else:
+                output[plugin.classname()] = ""
+        return output
 
     def get_initialized_plugin_list(self, pm):
         return_list = []
@@ -253,24 +265,35 @@ class Job(VertexObject):
         # Ensure any stored reports are saved
         self._save_reports()
 
+        ret_reports = []
         if file_uuid is None:
-            return self.get_connected_to(self._db, 'reports', filter_edges=['added_report'])
+            ret_reports = self.get_connected_to(self._db, 'reports', filter_edges=['added_report'])
         else:
             file_obj = SubmissionFile(uuid=file_uuid)
             file_obj.load(self._db)
-            return file_obj.get_in_path(self._db, self.id, 1, ['has_report', 'added_report'], return_fields=['_key', 'name'])
+            ret_reports =  file_obj.get_in_path(self._db, self.id, 1, ['has_report', 'added_report'], return_fields=['_key', 'name'])
+
+        for ret_report in ret_reports:
+            ret_report['uuid'] = ret_report['_key']
+            del ret_report['_key']
+        return ret_reports
 
     def get_signatures(self, file_uuid=None):
         # Ensure any stored reports are saved
         self._save_matches()
 
+        ret_signatures = []
         if file_uuid is None:
-            return self.get_connected_to(self._db, 'signatures', filter_edges=['added_match', 'matched_signature'])
+            ret_signatures = self.get_connected_to(self._db, 'signatures', filter_edges=['added_match', 'matched_signature'])
         else:
             file_obj = SubmissionFile(uuid=file_uuid)
             file_obj.load(self._db)
-            return file_obj.get_in_path(self._db, self.id, 1, ['has_match', 'added_match'], return_fields=['_key', 'name'])
+            ret_signatures =  file_obj.get_in_path(self._db, self.id, 1, ['has_match', 'added_match'], return_fields=['_key', 'name'])
 
+        for ret_sig in ret_signatures:
+            ret_signatures['uuid'] = ret_sig['_key']
+            del ret_sig['_key']
+        return ret_signatures
 
     def get_exec_instances(self):
         self._save_exec_instances()

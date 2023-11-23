@@ -268,7 +268,10 @@ class Report(VertexObject):
         else:
             document = self.load_doc(db)
 
-        self.from_dict(document)
+        if document is not None:
+            self.from_dict(document)
+        else:
+            self._uuid = None
 
 class ExecInstance(VertexObject):
 

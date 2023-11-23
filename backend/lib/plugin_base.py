@@ -58,6 +58,10 @@ class PluginBase():
     def has_container(self):
         return self._container
 
+    @classmethod
+    def classname(cls):
+        return cls.__name__
+
     @property
     def name(self):
         return self.__class__.__name__
@@ -221,7 +225,7 @@ class DockerPluginBase(PluginBase):
         self._running_name = self._name + "-" + file_obj.uuid
 
         container = None
-        if not self._network:
+        if self._network is not None:
             job_obj.info_log(str(self.__class__.__name__), "Creating networked container " + self._name)
             container = self.pm.docker.containers.create(self._name, volumes=vols, environment=environment, detach=True, name=self._running_name, network_mode="none")
         else:

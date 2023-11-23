@@ -40,9 +40,18 @@ def main():
     # run
     run_parser = subparsers.add_parser("run")
     run_subparser = run_parser.add_subparsers(dest="run_subcmd")
+
+    # run web
     web_parser = run_subparser.add_parser("web")
     web_parser.add_argument('--port', "-p", help="Port to bind to", default=4000)
     web_parser.add_argument('--addr', "-a", help="Set address to bind to", default="0.0.0.0")
+    web_parser.add_argument("--debug", action="store_true", help="Run in debug mode")
+    web_parser.add_argument("--noworkers", action="store_true", help="Don't run workers too")
+    web_parser.add_argument("--waitress", action="store_true", help="Run with Waitress instead of the default gunicorn")
+
+    # run workers
+    workers_parser = run_subparser.add_parser("workers")
+    workers_parser.add_argument("--debug", action="store_true", help="Run in debug mode")
 
     # localuser
     localuser_parser = subparsers.add_parser("localuser")
@@ -80,11 +89,24 @@ def main():
         if args.run_subcmd is None:
             print(run_parser.format_help())
         elif args.run_subcmd == 'web':
-            print("Starting server...")
-            from backend.run import run_gunicorn
-            run_gunicorn(config, workers, args.addr, int(args.port))
-            # from backend.run import run_waitress
-            # run_waitress(args.addr, int(args.port))
+            if args.debug is True:
+                config['loglevel'] = 'debug'
+            try:
+                if not args.waitress:
+                    from backend.run import run_gunicorn
+                    run_gunicorn(config, workers, args.addr, int(args.port))
+                else:
+                    from backend.run import run_waitress
+                    run_waitress(config, workers, args.addr, int(args.port))
+            except KeyboardInterrupt:
+                print("Stopping...")
+
+        elif args.run_subcmd == 'workers':
+            try:
+                from backend.run import run_workers_only
+                run_workers_only(config, workers)
+            except KeyboardInterrupt:
+                print("Stopping...")
 
 
     elif args.command == "container":
@@ -158,7 +180,6 @@ def main():
             auth.insert_user(username, password, args.role)
             print(f"{Fore.GREEN}User {username} added{Style.RESET_ALL}")
         
-
 
 if __name__ == '__main__':
     main()

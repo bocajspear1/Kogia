@@ -132,6 +132,9 @@ export default  {
     get_job_info: function(job_uuid, on_succeeded, on_failed) {
         this.api_call("/job/" + job_uuid + "/info", on_succeeded, on_failed);
     },
+    get_job_details: function(job_uuid, on_succeeded, on_failed) {
+        this.api_call("/job/" + job_uuid + "/details", on_succeeded, on_failed);
+    },
     get_file_info: function(file_uuid, on_succeeded, on_failed) {
         this.api_call("/file/" + file_uuid + "/info", on_succeeded, on_failed);
     },

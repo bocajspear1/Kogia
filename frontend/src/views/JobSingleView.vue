@@ -12,6 +12,7 @@ import ReportDisplay from '@/components/report/ReportDisplay.vue';
 import SignatureList from '@/components/signature/SignatureList.vue';
 import ProcessPanel from '@/components/host/ProcessPanel.vue';
 import NetworkPanel from '@/components/host/NetworkPanel.vue';
+import JobDetails from '@/components/job/JobDetails.vue';
 </script>
 
 <template>
@@ -72,6 +73,9 @@ import NetworkPanel from '@/components/host/NetworkPanel.vue';
                                 :noFilter="['Message']"
                                 :limitFilter="{'Severity':['error', 'warning', 'debug', 'info']}"
                                 @onFilter="onLogFilter"></DynamicFilterTable>
+        </template>
+        <template v-if="done && page == 'details'">
+            <JobDetails :job="job"></JobDetails>
         </template>
         
         

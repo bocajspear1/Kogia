@@ -1,13 +1,26 @@
 import multiprocessing
-
-
+import time
+from backend.lib.helpers import configure_logging
 
 def run_worker_receivers(config, workers):
     for worker in workers:
         worker.start_worker_receivers()
 
-        
+def run_workers_only(config, workers):
+
+    configure_logging(config, extra="workers")
+
+    run_worker_receivers(config, workers)
+    try:
+        while True:
+            time.sleep(10)
+    except KeyboardInterrupt:
+        for worker in workers:
+            worker.stop_worker_receivers()
+
 def run_gunicorn(config, workers, address, port):
+
+    configure_logging(config)
 
     import gunicorn.app.base
     from gunicorn import util
@@ -44,11 +57,12 @@ def run_gunicorn(config, workers, address, port):
             return util.import_app(self.app_uri)
 
     StandaloneApplication("backend.server:app", options).run()
+    print("done")
 
 def run_waitress(config, workers, address, port):
     from waitress import serve
     from backend.server import app
 
-    run_worker_receivers(config)
+    run_worker_receivers(config, workers)
 
     serve(app, listen='%s:%s' % (address, port))

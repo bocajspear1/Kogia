@@ -44,7 +44,7 @@ export default {
   emits: [''],
   props: [],
   mounted() {
-    console.log(this.iconname)
+    
   },
   methods: {
     

@@ -1,9 +1,42 @@
 import secrets
 import importlib
 import os
+import logging
+import logging.config
 
 from backend.lib.plugin_manager import PluginManager
 from backend.lib.db import ArangoConnectionFactory
+
+def configure_logging(config, extra=None):
+    level = logging.INFO
+    logformat = "%(asctime)s %(levelname)s: (%(name)s) %(message)s"
+    if 'loglevel' in config:
+        loglevel = config['loglevel']
+        if loglevel.lower() == 'debug':
+            logformat = "%(asctime)s %(levelname)s (%(filename)s:%(lineno)d): %(message)s"
+            level = logging.DEBUG
+        elif loglevel.lower() == 'info':
+            level = logging.INFO
+        elif loglevel.lower() == 'error':
+            level = logging.ERROR
+
+    log_path = "./logs"
+    if 'logpath' in config:
+        log_path = config['logpath']
+    
+    log_name = "kogia.log"
+    if extra is not None:
+        log_name = f"kogia-{extra}.log"
+    full_log_path = os.path.join(log_path, log_name)
+
+    logging.basicConfig(
+        level=level,
+        format=logformat,
+        handlers=[
+            logging.FileHandler(full_log_path),
+            logging.StreamHandler()
+        ]
+    )
 
 def generate_download_token(current_app, g):
     # Get file token lock

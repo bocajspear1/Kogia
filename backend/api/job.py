@@ -125,3 +125,24 @@ def get_job_exec_instances(uuid):
         "ok": True,
         "result": resp
     })
+
+@job_endpoints.route('/<uuid>/details', methods=['GET'])
+def get_job_details(uuid):
+    current_app._db.lock()
+    job = Job(current_app._db, current_app._filestore, uuid=uuid)
+    job.load(current_app._manager)
+    if job.uuid == None:
+        return abort(404)
+    plugin_details = job.plugins
+    print(plugin_details)
+
+    job_data = {
+        "plugins": plugin_details
+    }
+
+    current_app._db.unlock()
+
+    return jsonify({
+        "ok": True,
+        "result": job_data
+    })
