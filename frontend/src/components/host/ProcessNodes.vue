@@ -29,15 +29,7 @@
 <script>
 export default {
   name: "ProcessNode",
-  props: {
-    processes: {
-      type: Array,
-      required: true
-    },
-    selected_process: {
-      type: String,
-    },
-  },
+  props: ['processes', 'selected_process'],
   emits: ["child_selected"],
   mounted() {
     var self = this;

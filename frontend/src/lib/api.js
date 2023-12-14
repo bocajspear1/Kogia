@@ -28,10 +28,15 @@ export default  {
             var resp_data = resp['data'];
             on_succeeded(resp_data);
         }).catch(function(resp){
-            if (resp.response != null && resp.response.status == 401) {
-                router.push({ name: 'LoginPage'});
+            if (resp.response != undefined && resp.response != null) {
+                if (resp.response.status == 401) {
+                    router.push({ name: 'LoginPage'});
+                } else {
+                    on_failed(resp.response.status, resp.message);
+                }
             } else {
-                on_failed(resp.response.status, resp.message);
+                console.log(resp);
+                on_failed(500, resp.message);
             }
         });
     },
@@ -187,8 +192,18 @@ export default  {
     get_plugin_data: function(plugin_name, on_succeeded, on_failed) {
         this.api_call("/plugin/" + plugin_name + "/info", on_succeeded, on_failed);
     },
-    get_exec_instance_data: function(plugin_name, on_succeeded, on_failed) {
-        this.api_call("/exec_instance/" + plugin_name, on_succeeded, on_failed);
+    get_instance_data: function(instance_uuid, on_succeeded, on_failed) {
+        this.api_call("/exec_instance/" + instance_uuid, on_succeeded, on_failed);
+    },
+    get_instance_metadata_types: function(instance_uuid, on_succeeded, on_failed) {
+        this.api_call("/exec_instance/" + instance_uuid  + "/metadata/list", on_succeeded, on_failed);
+    },
+    get_instance_metadata_list: function(instance_uuid, metadata, filter, on_succeeded, on_failed) {
+        if (!filter) {   
+            this.api_call("/exec_instance/" + instance_uuid + "/metadata/" + metadata + "/list", on_succeeded, on_failed);
+        } else {
+            this.api_call("/exec_instance/" + instance_uuid + "/metadata/" + metadata + "/list?filter=" + filter, on_succeeded, on_failed);
+        }
     },
     get_process_events: function(process_uuid, on_succeeded, on_failed) {
         this.api_call("/process/" + process_uuid + "/events", on_succeeded, on_failed);

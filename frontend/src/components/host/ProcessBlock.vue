@@ -6,7 +6,8 @@
         <div class="card-content">
             <div class="media">
                 <div class="media-content">
-                    <p class="title is-4">{{ process.path }} ({{ process.pid }})</p>
+                    <h4 class="title is-4">{{ process.path }} ({{ process.pid }})</h4>
+                    <h6 class="title is-6">{{ process.command_line }}</h6>
                 </div>
             </div>
 

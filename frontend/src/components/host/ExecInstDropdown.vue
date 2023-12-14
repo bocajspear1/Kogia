@@ -5,7 +5,7 @@ import GenericDropdown from '@/components/generic/GenericDropdown.vue'
 <div class="notification is-warning m-2" v-if="instances.length == 0 && loaded == true">
     No execution instances for this job
 </div>
-<GenericDropdown @item_selected="onSelect" ref="intDropdown" v-if="instances.length > 0 && loaded == true">
+<GenericDropdown @item_selected="onSelect" ref="intDropdown" v-if="instances.length > 0 && loaded == true"  :initSelect="selected">
     <template v-slot:selected="selected">
         <mdicon name="application-braces" :size="25" />&nbsp;
         <span v-if="selected.selected == null" >
@@ -36,6 +36,7 @@ import GenericDropdown from '@/components/generic/GenericDropdown.vue'
 
 <script>
 import api from "@/lib/api";
+import time from "@/lib/time";
 
 export default {
   data() {
@@ -48,9 +49,11 @@ export default {
   emits: ["execinst_selected", "execinst_loaded"],
   props: {
     job_uuid: String,
+    selected: null
   },
   mounted() {
     var self = this;
+    console.log("hello");
     api.get_job_exec_instances(self.job_uuid, 
         function(data) {
             for (var i in data) {
@@ -65,6 +68,10 @@ export default {
             self.instances = data;
             self.loaded = true;
             self.$emit('execinst_loaded', self.instances.length);
+            console.log(self.selected);
+            if (self.selected) {
+                self.current_instance = self.selected;
+            }
         },
         function(status, data) {
 
@@ -76,10 +83,9 @@ export default {
     
   },
   methods: {
-    onSelect(file) {
-        console.log(file);
-        this.current_instance = file;
-        this.$emit('execinst_selected', file);
+    onSelect(instance) {
+        this.current_instance = instance;
+        this.$emit('execinst_selected', instance);
     }
   }
 }

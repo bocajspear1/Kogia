@@ -6,107 +6,23 @@ import time
 import hashlib
 import shutil
 
+from .objects import VertexObject, VertexObjectWithMetadata
 
-from .db import DBNotUniqueError
-from .objects import VertexObject
-
-
-class Metadata(VertexObject):
-
-    COLLECTION = 'metadata'
-
-    @classmethod
-    def bulk_insert(cls, db, insert_items):
-        insert_metadata = []
-        for metadata in insert_items:
-            if metadata.is_modified:
-                insert_metadata.append(metadata.to_dict())
-
-        return db.insert_bulk(cls.COLLECTION, insert_metadata)
-        
-    def __init__(self, uuid=None, id=None):
-        super().__init__(self.COLLECTION, id)
-        self._key = "" 
-        self._value = ""
-        self._uuid = uuid
-
-    @property
-    def key(self):
-        return self._key 
-
-    @key.setter
-    def key(self, new_key):
-        self.set_modified()
-        self._key = new_key
-
-    @property
-    def value(self):
-        return self._value
-
-    @value.setter
-    def value(self, new_value):
-        self.set_modified()
-        self._value = new_value
-
-    @property
-    def uuid(self):
-        return self._uuid
-    
-    def _gen_uuid(self):
-        my_uuid  = hashlib.sha256((self._key + ":" + self._value).encode())
-        self._uuid = my_uuid.hexdigest()
-        self.set_modified()
-
-    def to_dict(self):
-        if self._uuid is None:
-            self._gen_uuid()
-        return {
-            "key": self._key,
-            "value": self._value,
-            "uuid": self._uuid,
-            "_key": self._uuid
-        }
-
-    def from_dict(self, data_obj):
-        self._uuid = data_obj.get('_key', '')
-        self._key = data_obj.get('key', '')
-        self._value = data_obj.get('value', '')
-
-    def save(self, db):
-        try:
-            self.save_doc(db, self.to_dict())
-        except DBNotUniqueError:
-            pass
-
-    def load(self, db):
-        document = {}
-        if self.id is None:
-            if self._uuid == "":
-                self._gen_uuid()
-            document = self.load_doc(db, field='_key', value=self.uuid)
-        else:
-            document = self.load_doc(db)
-
-        self.from_dict(document)
-
-    def __str__(self):
-        return "{} - {}:{}".format(self._uuid, self._key, self._value)
-
-
-class SubmissionFile(VertexObject):
+class SubmissionFile(VertexObjectWithMetadata):
+    """Object for a single file submitted as part of a submission.
+    """
 
     @classmethod
     def new(cls, filestore, store_prefix, filename):
         new_cls = cls(uuid=str(uuid.uuid4()))
         new_cls._modified = True
         new_cls._name = filename
-        new_cls._metadata = []
         new_cls._filestore = filestore
         new_cls._file_id = f"{store_prefix}:{filename}-{new_cls.uuid}"
         return new_cls
     
     def __init__(self, uuid=None, id=None, filestore=None):
-        super().__init__('files', id)
+        super().__init__('files', 'has_metadata', id)
 
         self._name = ""
         self._uuid = uuid
@@ -121,7 +37,6 @@ class SubmissionFile(VertexObject):
         self._exec_interpreter = ""
         self._exec_packer = ""
         self._target_os = ""
-        self._metadata = []
         self._hash = ""
         self._parent = ""
 
@@ -219,11 +134,7 @@ class SubmissionFile(VertexObject):
         self.save_doc(db, self.to_dict())
         self.reset_modified()
 
-        # Check if metadata has been loaded our added
-        # None indicates not loaded and no additions
-        if self._metadata is not None:
-            new_ids = Metadata.bulk_insert(db, self._metadata)
-            self.insert_edge_bulk(db, 'has_metadata', Metadata.COLLECTION, new_ids)
+        self.save_metadata(db)
 
         if self._parent != "":
             self.insert_edge(db, 'has_parent', self._parent)
@@ -239,17 +150,6 @@ class SubmissionFile(VertexObject):
         if document is not None:
             self.from_dict(document)
             self.reset_modified()
-
-    # We load metadata seperately so we don't grab everything every time.
-    # Saves lots of time
-    def load_metadata(self, db):
-        self._metadata = []
-
-        items = self.get_connected_to(db, 'metadata', filter_edges=['has_metadata'])
-        for item in items:
-            load_data = Metadata(id=item['_id'])
-            load_data.from_dict(item)
-            self._metadata.append(load_data)
 
     @property
     def mime_type(self):
@@ -321,49 +221,16 @@ class SubmissionFile(VertexObject):
     def target_os(self, new_target_os):
         self._target_os = new_target_os
 
-    @property
-    def metadata(self):
-        return self._metadata
-
     def is_unpacked_archive(self):
         self._unpacked_archive = True
 
     def is_not_unpacked_archive(self):
         self._unpacked_archive = False
 
-    def add_metadata(self, key, value):
-        # if self._metadata is None:
-        #     raise ValueError("Must call load_metadata before adding new metadata")
-
-        new_data = Metadata()
-        new_data.key = key
-        new_data.value = value
-        self._metadata.append(new_data)
-        return new_data
-
-    def add_metadata_unique(self, key, value):
-        # if self._metadata is None:
-        #     raise ValueError("Must call load_metadata before adding new metadata")
-
-        found = False
-        for data in self._metadata:
-            if data.key == key:
-                found = True
-                data.value = value 
-                return data
-
-        if not found:
-            new_data = Metadata()
-            new_data.value = value
-            new_data.key = key
-            self._metadata.append(new_data)
-            return new_data
-        
-
-
-
 class Submission(VertexObject):
-    
+    """Object for a submission, a group of files that a Job operates on.
+    """
+
     COLLECTION_NAME = 'submissions'
 
     @classmethod

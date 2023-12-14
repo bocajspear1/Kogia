@@ -137,6 +137,7 @@ class HTTPPluginBase(PluginBase):
                 value = self._token
             
             ret_headers[key_name] = value
+        return ret_headers
             
 
     def get(self, path : str):

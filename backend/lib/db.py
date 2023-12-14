@@ -495,12 +495,12 @@ FOR start IN @@startCollection FILTER start._id == @fromId
         else:
             return None
         
-    def insert_bulk(self, collection, doc_array):
+    def insert_bulk(self, collection, doc_array, requery=True):
         col = self._get_collection(collection)
         
-        db_meta = col.insert_many(doc_array, overwrite=True, overwrite_mode="replace")  
-        
-        db_data = col.get_many(doc_array)
+        db_data = col.insert_many(doc_array, overwrite=True, overwrite_mode="replace")  
+        if requery:
+            db_data = col.get_many(doc_array)
 
         id_list = []
         for item in db_data:

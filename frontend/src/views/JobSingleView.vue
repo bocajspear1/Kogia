@@ -13,6 +13,10 @@ import SignatureList from '@/components/signature/SignatureList.vue';
 import ProcessPanel from '@/components/host/ProcessPanel.vue';
 import NetworkPanel from '@/components/host/NetworkPanel.vue';
 import JobDetails from '@/components/job/JobDetails.vue';
+import TabMenuItem from '../components/menu/TabMenuItem.vue';
+import TabMenu from '../components/menu/TabMenu.vue';
+import ExecInstDropdown from '@/components/host/ExecInstDropdown.vue'
+import ProcessDropdown from '@/components/host/ProcessDropdown.vue'
 </script>
 
 <template>
@@ -51,7 +55,7 @@ import JobDetails from '@/components/job/JobDetails.vue';
             
         </template>
         <template v-if="done && page == 'host'">
-            <ProcessPanel :job_uuid="job_uuid"></ProcessPanel>
+            <ProcessPanel :job_uuid="job_uuid" :selected_instance="selected_instance" @instance_selected="instanceSelected"></ProcessPanel>
         </template>
         <template v-if="done && page == 'network'">
             <NetworkPanel :job_uuid="job_uuid"></NetworkPanel>
@@ -60,8 +64,29 @@ import JobDetails from '@/components/job/JobDetails.vue';
             <FileList v-if="files != null" :toggle="false" :files="files" @file_clicked="fileClicked"></FileList>
         </template>
         <template v-if="done && page == 'metadata'">
-            <FileDropdown :files="files" :selected="selected_file" @file_selected="fileSelected"></FileDropdown>
-            <MetadataTable :file_uuid="getFileUUID()"></MetadataTable>
+            <TabMenu>
+                <template v-slot:main>
+                <TabMenuItem iconname="folder-file" @click="metadataSelected('files')" :active="metadata_selected=='files'">Files</TabMenuItem>
+                <TabMenuItem iconname="application-braces" @click="metadataSelected('execinst')" :active="metadata_selected=='execinst'">Execution Instances</TabMenuItem>
+                <TabMenuItem iconname="file-cog" @click="metadataSelected('processes')" :active="metadata_selected=='processes'">Processes</TabMenuItem>
+                </template>
+            </TabMenu>
+            <template v-if="metadata_selected=='files'">
+                <FileDropdown :files="files" :selected="selected_file" @file_selected="fileSelected"></FileDropdown>
+                <MetadataTable :file_uuid="getFileUUID()"></MetadataTable>
+            </template>
+            <template v-if="metadata_selected=='execinst'">
+                <ExecInstDropdown :job_uuid="job_uuid" @execinst_selected="instanceSelected" :selected="selected_instance"></ExecInstDropdown>
+                <MetadataTable v-if="selected_instance != null" :instance_uuid="getInstanceUUID()"></MetadataTable>
+            </template>
+            <template v-if="metadata_selected=='processes'">
+                <ExecInstDropdown :job_uuid="job_uuid" @execinst_selected="instanceSelected" :selected="selected_instance"></ExecInstDropdown>
+                <span v-if="selected_instance != null" class="m-2 is-vcentered" >
+                    <ProcessDropdown ref="procDropdown" :processes="selected_instance.processes" @process_selected="processSelected"></ProcessDropdown>
+                </span>
+                <MetadataTable v-if="selected_process != null" :process_uuid="getProcessUUID()"></MetadataTable>
+            </template>
+            
         </template>
         <template v-if="done && page == 'reports'">
             <FileDropdown :files="files" :selected="selected_file" @file_selected="fileSelected"></FileDropdown>
@@ -118,8 +143,11 @@ export default {
       done: false,
       page: null,
       selected_file: null,
+      selected_instance: null,
+      selected_process: null,
       logs: [],
-      all_signatures: []
+      all_signatures: [],
+      metadata_selected: 'files'
     }
   },
   mounted() {
@@ -176,6 +204,22 @@ export default {
             return this.selected_file['uuid'];
         }
     },  
+    getInstanceUUID() {
+        console.log(this.selected_instance)
+        if (this.selected_instance == null) {
+            return null;
+        } else {
+            return this.selected_instance['uuid'];
+        }
+    },  
+    getProcessUUID() {
+        console.log(this.selected_process)
+        if (this.selected_process == null) {
+            return null;
+        } else {
+            return this.selected_process['uuid'];
+        }
+    },  
     setPage(page_name) {
         var self = this;
         self.$router.push({ name: 'JobSingle', params: { job_uuid: self.$route.params.job_uuid, page: page_name } });
@@ -184,8 +228,26 @@ export default {
     onLogFilter(column, new_filter) {
         console.log(column, new_filter);
     },
+    metadataSelected(metadata_type) {
+        this.metadata_selected = metadata_type;
+    },
     fileSelected(file) {
         this.selected_file = file;
+    },
+    instanceSelected(instance) {
+        var self = this;
+        api.get_instance_data(instance.uuid,
+            function(data) {
+                console.log(data);
+                self.selected_instance = data;
+            },
+            function(status, data) {
+
+            }
+        )
+    },
+    processSelected(process) {
+        this.selected_process = process;
     },
     fileClicked(uuid, data) {
       this.$router.push({ name: 'FileSingle', params: { file_uuid: uuid } });

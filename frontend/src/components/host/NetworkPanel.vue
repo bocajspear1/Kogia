@@ -20,6 +20,7 @@ import SyscallTable from '@/components/host/SyscallTable.vue';
 </style>
 
 <script>
+import api from "@/lib/api";
 import time from "@/lib/time";
 
 
@@ -50,7 +51,7 @@ export default {
             self.$refs.procDropdown.clear();
         }
         
-        api.get_exec_instance_data(new_instance.uuid,
+        api.get_instance_data(new_instance.uuid,
             function(data) {
                 console.log(data);
                 self.current_instance = data;
@@ -65,7 +66,6 @@ export default {
     },
     processSelected(new_process) {
         var self = this;
-        console.log("hi")
         self.current_process = new_process;
         
     }

@@ -3,7 +3,7 @@ import time
 import uuid
 import copy
 
-from backend.lib.submission import Metadata, Submission, SubmissionFile
+from backend.lib.submission import Submission, SubmissionFile
 from backend.lib.objects import VertexObject
 from backend.lib.data import Process, Signature, SignatureMatch, Report, ExecInstance
 

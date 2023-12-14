@@ -5,12 +5,12 @@ import time
 import hashlib
 from enum import Enum
 
-from .submission import SubmissionFile, Metadata
+from .submission import SubmissionFile
 from .db import ArangoConnection
 
 
 from .db import DBNotUniqueError
-from .objects import VertexObject
+from .objects import VertexObject, VertexObjectWithMetadata
 
 class SIGNATURE_SEVERITY:
     INFO = 1 # Just informational
@@ -273,7 +273,7 @@ class Report(VertexObject):
         else:
             self._uuid = None
 
-class ExecInstance(VertexObject):
+class ExecInstance(VertexObjectWithMetadata):
 
     COLLECTION_NAME = 'exec_instance'
 
@@ -285,7 +285,7 @@ class ExecInstance(VertexObject):
         return new_cls
 
     def __init__(self, id=None, uuid=None):
-        super().__init__(self.COLLECTION_NAME, id)
+        super().__init__(self.COLLECTION_NAME, 'has_instance_metadata', id)
         self._uuid = uuid
         self._start_time = 0
         self._end_time = 0
@@ -331,6 +331,8 @@ class ExecInstance(VertexObject):
                 process.save(db)
                 self.insert_edge(db, 'has_process', process.id)
 
+        self.save_metadata(db)
+
     def load(self, db):
         document = {}
         if self.id is None:
@@ -340,6 +342,7 @@ class ExecInstance(VertexObject):
 
         if document is not None:
             self.from_dict(document)
+        
 
     def load_processes(self, db):
         items = self.get_connected_to(db, 'processes', filter_edges=['has_process'])
@@ -349,10 +352,9 @@ class ExecInstance(VertexObject):
             load_data.load_child_processes(db, load_event_count=True)
             load_data.load_events(db, count_only=True)
             self._processes.append(load_data)
-            
 
-    def add_process(self, proc_path, pid):
-        new_proc = Process.new(proc_path, pid)
+    def add_process(self, proc_path, pid, command_line):
+        new_proc = Process.new(proc_path, pid, command_line)
             
         self._processes.append(new_proc)
         return new_proc
@@ -378,6 +380,7 @@ class ExecInstance(VertexObject):
         self._end_time = new_time
 
 class Event(VertexObject):
+    
     def __init__(self, id=None, uuid=None):
         super().__init__('events', id)
         self._uuid = uuid
@@ -475,23 +478,25 @@ class Event(VertexObject):
     def time(self, new_time):
         self._time = new_time
 
-class Process(VertexObject):
+class Process(VertexObjectWithMetadata):
 
     COLLECTION_NAME = 'processes'
 
     @classmethod
-    def new(cls, proc_path, pid):
+    def new(cls, proc_path, pid, command_line):
         new_cls = cls(uuid=str(uuid.uuid4()))
         new_cls._path = proc_path
+        new_cls._command_line = command_line
         new_cls._pid = pid
         return new_cls
 
 
     def __init__(self, id=None, uuid=None):
-        super().__init__(self.COLLECTION_NAME, id)
+        super().__init__(self.COLLECTION_NAME, 'has_process_metadata', id)
         self._uuid = uuid
         self._pid = 0
         self._path = ""
+        self._command_line = ""
         self._start_time = 0
         self._end_time = 0
         self._syscalls = []
@@ -500,7 +505,6 @@ class Process(VertexObject):
         self._event_total = 0
         self._child_processes = []
         self._event_counter = 1
-        self._metadata = []
         self._libs = []
         self._syscalls = []
         self._syscall_total = 0
@@ -513,12 +517,17 @@ class Process(VertexObject):
     def path(self):
         return self._path
     
+    @property
+    def command_line(self):
+        return self._command_line
+    
     def to_dict(self, get_children=True):
         ret_dict = {
             "_key": self._uuid,
             "uuid": self._uuid,
             "pid": self._pid,
             "path": self._path,
+            "command_line": self._command_line,
             "start_time": self._start_time,
             "end_time": self._end_time,
             "libraries": self._libs,
@@ -534,6 +543,7 @@ class Process(VertexObject):
         self._uuid = data_obj.get('_key', '')
         self._pid = data_obj.get('pid', 0)
         self._path = data_obj.get('path', '')
+        self._command_line = data_obj.get('command_line', '')
         self._start_time = data_obj.get('start_time', 0)
         self._end_time = data_obj.get('end_time', 0)
         
@@ -560,27 +570,35 @@ class Process(VertexObject):
                     process.save(db)
                     self.insert_edge(db, 'is_child_of', process.id)
 
+        # Save events
         for event in self._events:
             if isinstance(event, Event):
+                # Yeah, this will be slow, but we want to store the time of the event too
                 event.save(db)
                 self.insert_edge(db, 'has_event', event.id, data={
                     "event_time": event.time
                 })
 
-        for data in self._metadata:
-            if isinstance(data, Metadata):
-                data.save(db)
-                self.insert_edge(db, 'has_process_metadata', data.id)
+        self.save_metadata(db)
 
+        self.save_syscalls(db)
+        
+
+    def save_syscalls(self, db):
+        # Insert syscalls
         insert_syscalls = []
-
         for syscall in self._syscalls:
             if "_id" not in syscall:
                 insert_syscalls.append(syscall)
 
-        new_ids = db.insert_bulk('syscalls', insert_syscalls)
+        # Syscalls will not have _key, so we need to get the ids from the insert
+        new_ids = db.insert_bulk('syscalls', insert_syscalls, requery=False)
         self.insert_edge_bulk(db, 'has_syscall', 'syscalls', new_ids)
 
+        # Since we select syscalls to insert based on _id, we need to reload all the syscalls
+        # to ensur ewe don't insert multiple times
+        self._syscalls = []
+        self.load_syscalls(db)
 
     def load(self, db):
         document = {}
@@ -616,32 +634,30 @@ class Process(VertexObject):
             else:
                 self._events = items
 
-            total_count = self.count_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1)[0]
+            count_result = self.count_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1)
+            if len(count_result) > 0:
+                total_count = count_result[0]
+            else:
+                total_count = 0
+
             self._event_total = total_count
 
             if limit > 0:
                 self._event_counter = total_count
         else:
-            self._event_count = self.count_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1)[0]
-    
-    # We load metadata seperately so we don't grab everything every time.
-    # Saves lots of time
-    def load_metadata(self, db : ArangoConnection):
-        self._metadata = []
-
-        items = self.get_connected_to(db, 'metadata', filter_edges=['has_process_metadata'], max=1, direction="out")
-        for item in items:
-            load_data = Metadata(id=item['_id'])
-            load_data.from_dict(item)
-            self._metadata.append(load_data)
+            result = self.count_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1)
+            if len(result) > 0:
+                self._event_count = result[0]
+            else:
+                self._event_count = 0
     
     def load_syscalls(self, db : ArangoConnection, skip=0, limit=20):
         self._syscall_total = self.count_connected_to(db, 'syscalls', filter_edges=['has_syscall'], direction='out', max=1)[0]
         self._syscalls = self.get_connected_to(db, 'syscalls', filter_edges=['has_syscall'], max=1, 
                                                direction="out", limit=limit, skip=skip, sort_by=('syscalls', 'timestamp', "ASC"))
 
-    def add_child_process(self, proc_path, pid):
-        child_proc = Process.new(proc_path, pid)
+    def add_child_process(self, proc_path, pid, command_line):
+        child_proc = Process.new(proc_path, pid, command_line)
         self._child_processes.append(child_proc)
         return child_proc
 
@@ -663,20 +679,6 @@ class Process(VertexObject):
 
         self._events.append(new_event)
         return new_event
-
-    def add_metadata(self, key, value):
-        if self._metadata is None:
-            raise ValueError("Must call load_metadata before adding new metadata")
-
-        for data in self._metadata:
-            if data.key == key and data.value == value:
-                return data
- 
-        new_data = Metadata()
-        new_data.value = value
-        new_data.key = key
-        self._metadata.append(new_data)
-        return new_data
         
     def add_shared_lib(self, lib_path):
         self._libs.append(lib_path)
@@ -709,10 +711,6 @@ class Process(VertexObject):
             return len(self._events)
         else:
             return self._event_count
-
-    @property
-    def metadata(self):
-        return self._metadata
 
     @property
     def uuid(self):

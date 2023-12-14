@@ -7,7 +7,7 @@ import MetadataTable from '../metadata/MetadataTable.vue';
 import SyscallTable from '@/components/host/SyscallTable.vue';
 </script>
 <template>
-    <ExecInstDropdown :job_uuid="job_uuid" @execinst_selected="instanceSelected" @execinst_loaded="instancesLoaded"></ExecInstDropdown>
+    <ExecInstDropdown :job_uuid="job_uuid" @execinst_selected="instanceSelected" @execinst_loaded="instancesLoaded" :selected="selected_instance"></ExecInstDropdown>
     <span v-if="current_instance != null" class="m-2 is-vcentered" >
         <ProcessDropdown ref="procDropdown" :processes="current_instance.processes" @process_selected="processSelected"></ProcessDropdown>
     </span>
@@ -51,13 +51,18 @@ export default {
         instance_count: null
     }
   },
-  props: ["job_uuid"],
+  props: ["job_uuid", "selected_instance"],
+  emits: ["instance_selected"],
   components: {
     ProcessDropdown,
     ExecInstDropdown
   },
   mounted() {
-    
+    var self = this;
+    if (self.selected_instance != null && self.selected_instance != undefined) {
+        self.current_instance = self.selected_instance;
+        self.instanceSelected(self.current_instance);
+    }
   },
   methods: {
     setTab(new_tab) {
@@ -70,10 +75,11 @@ export default {
             self.$refs.procDropdown.clear();
         }
         
-        api.get_exec_instance_data(new_instance.uuid,
+        api.get_instance_data(new_instance.uuid,
             function(data) {
                 console.log(data);
                 self.current_instance = data;
+                self.$emit('instance_selected', self.current_instance);
             },
             function(status, data) {
 
