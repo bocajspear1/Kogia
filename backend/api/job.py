@@ -1,5 +1,6 @@
 from flask import Blueprint, Flask, g, jsonify, current_app, request, send_file, send_from_directory, abort
 from backend.lib.job import Job
+from backend.api.helpers import get_pagination
 
 job_endpoints = Blueprint('job_endpoints', __name__)
 
@@ -12,19 +13,12 @@ def get_job_list():
     current_app._db.lock()
 
     skip_int = 0
-    limit_int = 20
-    if request.args.get('skip') is not None:
-        try:
-            skip_int = int(request.args.get('skip'))
-        except ValueError:
-            return abort(400)
-    if request.args.get('limit') is not None:
-        try:
-            limit_int = int(request.args.get('limit'))
-        except ValueError:
-            return abort(400)
+    limit_int = 30
+    try:
+        limit_int, skip_int = get_pagination(request)
+    except ValueError:
+        return abort(400)
         
-
     job_list = []
     total_len = 0
     submission_uuid = request.args.get('submission')

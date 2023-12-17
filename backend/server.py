@@ -124,6 +124,7 @@ def authenticate():
                 }
             })
 
+
 app.register_blueprint(job_endpoints, url_prefix='/api/v1/job')
 app.register_blueprint(process_endpoints, url_prefix='/api/v1/process')
 app.register_blueprint(file_endpoints, url_prefix='/api/v1/file')

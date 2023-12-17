@@ -58,7 +58,7 @@ import ProcessDropdown from '@/components/host/ProcessDropdown.vue'
             <ProcessPanel :job_uuid="job_uuid" :selected_instance="selected_instance" @instance_selected="instanceSelected"></ProcessPanel>
         </template>
         <template v-if="done && page == 'network'">
-            <NetworkPanel :job_uuid="job_uuid"></NetworkPanel>
+            <NetworkPanel :job_uuid="job_uuid" :selected_instance="selected_instance" @instance_selected="instanceSelected"></NetworkPanel>
         </template>
         <template v-if="done && page == 'files'">
             <FileList v-if="files != null" :toggle="false" :files="files" @file_clicked="fileClicked"></FileList>
@@ -107,21 +107,6 @@ import ProcessDropdown from '@/components/host/ProcessDropdown.vue'
         
         
     </div>
-        
-    
-    <!-- 
-    <MenuBar>
-      <template v-slot:main>
-        <MenuButton iconname="refresh" @click="getSubmission"></MenuButton>
-        <MenuButton iconname="cog-refresh" @click="resubmitSubmission"></MenuButton>
-        
-      </template>
-      <template v-slot:right>
-        <MenuButton iconname="delete" @click="removeSubmission"></MenuButton>
-      </template>
-    </MenuBar>
-    
-    <JobList v-if="submission != null" :submission_uuid="submission_uuid"></JobList> -->
    
 </template>
 
@@ -230,6 +215,9 @@ export default {
     },
     metadataSelected(metadata_type) {
         this.metadata_selected = metadata_type;
+        if (metadata_type == "processes") {
+            this.selected_process = null;
+        }
     },
     fileSelected(file) {
         this.selected_file = file;
@@ -238,8 +226,9 @@ export default {
         var self = this;
         api.get_instance_data(instance.uuid,
             function(data) {
-                console.log(data);
+                data = time.add_pretty_times(data, ['start_time', 'end_time'], [['start_time', 'end_time', 'duration']]);
                 self.selected_instance = data;
+                self.selected_process = null;
             },
             function(status, data) {
 

@@ -8,13 +8,16 @@ import DynamicFilterTable from '@/components/dynamic/DynamicFilterTable.vue'
         {{ error }}
     </div>
     <template v-else-if="error == null && (file_uuid != null || instance_uuid != null || process_uuid != null)">
-        <div class="select is-fullwidth">
-            <select ref="metadataSelect">
-                <option selected>Select Metadata Type</option>
+        <div class="select is-fullwidth" v-if="Object.keys(metadata_types).length > 0 && types_done" >
+            <select ref="metadataSelect" @change="onSelect">
+                <option selected value="">Select Metadata Type</option>
                 <template v-for="(value, metadata_type) in metadata_types">    
-                <option @click="onSelect(metadata_type)">{{ metadata_type }} ({{value}})</option>
+                <option :value="metadata_type">{{ metadata_type }} ({{value}})</option>
                 </template>
             </select>
+        </div>
+        <div class="notification is-warning" v-else-if="types_done">
+            No metadata found
         </div>
         <DynamicFilterTable v-if="selected_type != ''" :columns="['Values']" :data="metadata_list" :pageCount="2" @onFilter="onFilter"></DynamicFilterTable>
     </template>
@@ -34,9 +37,10 @@ import api from "@/lib/api";
 export default {
   data() {
     return {
-        done: false,
+        types_done: false,
+        list_done: false,
         error: null,
-        metadata_types: [],
+        metadata_types: {},
         metadata_list: [],
         selected_type: ""
     }
@@ -70,7 +74,9 @@ export default {
     _updateMetadataTypes(data) {
         var self = this;
         self.error = null;
+        
         self.metadata_types = data;
+        self.types_done = true;
     },
     _metadataError(status, data) {
         var self = this;
@@ -78,8 +84,7 @@ export default {
     },
     getMetadataList() {
         var self = this;
-        console.log(self)
-
+        self.types_done = false;
         if (self.file_uuid != null) {
             api.get_file_metadata_types(self.file_uuid, self._updateMetadataTypes, self._metadataError);
         } else if (self.instance_uuid != null) {
@@ -88,10 +93,11 @@ export default {
             api.get_process_metadata_types(self.process_uuid, self._updateMetadataTypes, self._metadataError);
         } 
     },
-    onSelect(metadata_type) {
-        console.log("onSelect")
-        this.selected_type = metadata_type;
-        this.updateSelectFilter("");
+    onSelect(event) {
+        if (event.target.value != "") {
+            this.selected_type = event.target.value;
+            this.updateSelectFilter("");
+        }
     },
     _updateMetadataList(data) {
         var self = this;
@@ -100,10 +106,11 @@ export default {
         for (var i = 0; i < data.length; i++) {
             self.metadata_list.push([data[i]])
         }
+        self.list_done = true;
     },
     updateSelectFilter(filter) {
         var self = this;
-        console.log("update select filter")
+        self.list_done = false;
         if (self.file_uuid != null) {
             api.get_file_metadata_list(self.file_uuid, self.selected_type, filter, self._updateMetadataList, self._metadataError);
         } else if (self.instance_uuid != null) {

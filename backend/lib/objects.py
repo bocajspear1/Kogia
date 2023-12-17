@@ -114,8 +114,9 @@ class VertexObject():
     def insert_edge_bulk(self, db : ArangoConnection, collection, to_collection, to_items):
         db.insert_edge_bulk(self.GRAPH_NAME, collection, self._id, to_collection, to_items)
 
-    def get_connected_to(self, db : ArangoConnection, end_collection, filter_edges=None, max=2, direction='both', limit=0, skip=0, sort_by=None):
-        return db.get_connected_to(self.GRAPH_NAME, self._id, end_collection, filter_edges=filter_edges, max=max, direction=direction, limit=limit, skip=skip, sort_by=sort_by)
+    def get_connected_to(self, db : ArangoConnection, end_collection, filter_edges=None, max=2, direction='both', limit=0, skip=0, sort_by=None, add_edges=False):
+        return db.get_connected_to(self.GRAPH_NAME, self._id, end_collection, filter_edges=filter_edges, max=max, 
+                                   direction=direction, limit=limit, skip=skip, sort_by=sort_by, add_edges=add_edges)
     
     def count_connected_to(self, db : ArangoConnection, end_collection, filter_edges=None, max=2, direction='both'):
         return db.get_connected_to(self.GRAPH_NAME, self._id, end_collection, filter_edges=filter_edges, max=max, direction=direction, length_only=True)

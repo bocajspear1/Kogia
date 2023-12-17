@@ -1,3 +1,6 @@
+"""Analysis endpoints (/analysis)
+
+"""
 from flask import Blueprint, Flask, g, jsonify, current_app, request, send_file, send_from_directory, abort
 from backend.lib.submission import Submission
 from backend.lib.job import Job

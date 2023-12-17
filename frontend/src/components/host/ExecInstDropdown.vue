@@ -12,7 +12,7 @@ import GenericDropdown from '@/components/generic/GenericDropdown.vue'
             Select Execution Instance
         </span>
         <span v-if="selected.selected != null">
-            {{ selected.selected.exec_module }} (Finished: {{ selected.selected.end_time }}, Duration: {{ selected.selected.duration }})
+            {{ selected.selected.exec_module }} (Finished: {{ selected.selected.end_time_relative }}, Duration: {{ selected.selected.duration }})
         </span>
     </template>
     <template v-slot:dropcontent="dropcontent">
@@ -20,7 +20,7 @@ import GenericDropdown from '@/components/generic/GenericDropdown.vue'
         <a v-for="instance in instances" class="dropdown-item" @click="dropcontent.onSelect(instance)">
             <mdicon name="microsoft-windows" :size="25" v-if="instance.run_os=='windows'"/>
             <mdicon name="file-cog" :size="25" v-if="instance.run_os=='linux'"/>
-            {{ instance.exec_module }} (Finished: {{ instance.end_time }}, Duration: {{ instance.duration }})
+            {{ instance.exec_module }} (Finished: {{ instance.end_time_relative }}, Duration: {{ instance.duration }})
         </a>
         </template>
         <template v-if="instances.length == 0">
@@ -53,17 +53,10 @@ export default {
   },
   mounted() {
     var self = this;
-    console.log("hello");
     api.get_job_exec_instances(self.job_uuid, 
         function(data) {
             for (var i in data) {
-                var item = data[i];
-
-                var end_time_num = item['end_time'];
-                item['end_time'] = time.seconds_to_string(end_time_num);
-                var start_time_num = item['start_time'];
-                item['start_time'] = time.seconds_to_string(start_time_num);
-                item['duration'] = time.seconds_duration(start_time_num, end_time_num);
+                data[i] = time.add_pretty_times(data[i], ['start_time', 'end_time'], [['start_time', 'end_time', 'duration']]);
             }
             self.instances = data;
             self.loaded = true;

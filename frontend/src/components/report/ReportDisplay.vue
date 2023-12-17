@@ -9,10 +9,10 @@
     </div>
     <template v-else-if="error == null && file_uuid != null">
         <div class="select is-fullwidth">
-            <select ref="reportSelect">
-                <option selected>Select Report</option>
+            <select ref="reportSelect" @change="onSelect">
+                <option selected value="">Select Report</option>
                 <template v-for="report in report_list">    
-                <option @click="onSelect(report.uuid)">{{ report.name }}</option>
+                <option :value="report.uuid">{{ report.name }}</option>
                 </template>
             </select>
         </div>
@@ -82,9 +82,11 @@ export default {
             )
         }
     },
-    onSelect(report_uuid) {
-        this.selected_report = report_uuid;
-        this.updateReportData();
+    onSelect(event) {
+        if (event.target.value != "") {
+            this.selected_report = event.target.value;
+            this.updateReportData();
+        }
     },
     updateReportData() {
         var self = this;

@@ -205,6 +205,9 @@ export default  {
             this.api_call("/exec_instance/" + instance_uuid + "/metadata/" + metadata + "/list?filter=" + filter, on_succeeded, on_failed);
         }
     },
+    get_instance_netcomms: function(skip, limit, instance_uuid, on_succeeded, on_failed) {
+        this.api_call("/exec_instance/" + instance_uuid  + "/netcomm/list?skip=" + skip.toString() + "&limit=" + limit.toString(), on_succeeded, on_failed);
+    },
     get_process_events: function(process_uuid, on_succeeded, on_failed) {
         this.api_call("/process/" + process_uuid + "/events", on_succeeded, on_failed);
     },

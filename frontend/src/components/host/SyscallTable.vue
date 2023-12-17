@@ -36,10 +36,9 @@ import Paginator from "../general/Paginator.vue";
                     ({{ syscall.timestamp }}) {{ syscall.name }}
                 </td>
                 <td class="content m-0">
-                    <ul class="m-0">
+                    <ul class="m-0 no-long">
                         <li v-for="arg in syscall.args">{{ arg }}</li>
                     </ul>
-                    
                 </td>
                 <td>
                     {{ syscall.return_code }} <template v-if="syscall.return_code != 0">(0x{{ syscall.return_code.toString(16) }})</template>
@@ -58,7 +57,10 @@ import Paginator from "../general/Paginator.vue";
 </template>
 
 <style scoped>
-
+.no-long {
+    overflow-wrap: break-word;
+    max-inline-size: 500px;
+}
 </style>
 
 <script>

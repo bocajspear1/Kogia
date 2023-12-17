@@ -39,7 +39,7 @@ export default {
   },
   props: ["submission"],
   mounted() {
-    console.log(this.submission)
+    
   },
   methods: {
     fileCount() {

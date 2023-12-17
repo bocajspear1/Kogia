@@ -404,7 +404,8 @@ FOR start IN @@startCollection FILTER start._id == @fromId
             })
         return list(cursor)
 
-    def get_connected_to(self, graph_name, from_item, end_collection, filter_edges=None, sort_by=None, max=2, direction='both', limit=0, skip=0, length_only=False):
+    def get_connected_to(self, graph_name, from_item, end_collection, filter_edges=None, sort_by=None, max=2, direction='both', limit=0, 
+                         skip=0, length_only=False, add_edges=False):
 
         start_collection = from_item.split("/")[0]
 
@@ -442,10 +443,14 @@ FOR start IN @@startCollection FILTER start._id == @fromId
             #     query += filter_edge_query + ")"
 
         query += f" FILTER IS_SAME_COLLECTION('{end_collection}', v._id)"
+        
         if sort_by is not None:
             sort_item = sort_by[0] + "_item"
             if sort_by[0] == end_collection:
                 sort_item = "v"
+            elif sort_by[0] in filter_edges:
+                sort_item = "e"
+
             query += f" SORT {sort_item}.{sort_by[1]} {sort_by[2]} "
 
         if limit > 0:
@@ -457,11 +462,14 @@ FOR start IN @@startCollection FILTER start._id == @fromId
             bind_vars['limit'] = limit
 
         if not length_only:
-            query += "    RETURN v"
+            if not add_edges:
+                query += "    RETURN v"
+            else:
+                query += "    RETURN merge(v, {_edge: e})"
         else:
             query += "    COLLECT WITH COUNT INTO length RETURN length"
 
-        # print(query)
+        # print(query, bind_vars)
 
         try:
             cursor = self._db.aql.execute(query, 

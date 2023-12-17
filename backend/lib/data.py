@@ -294,6 +294,9 @@ class ExecInstance(VertexObjectWithMetadata):
         self._processes = []
         self._syscall_counter = 0
         self._event_counter = 0
+        self._network_comms = []
+        self._network_comms_total = 0
+        self._comm_counter = 1
 
     def to_dict(self, full=True):
         ret_dict = {
@@ -331,6 +334,12 @@ class ExecInstance(VertexObjectWithMetadata):
                 process.save(db)
                 self.insert_edge(db, 'has_process', process.id)
 
+        for networkcomm in self._network_comms:
+            networkcomm.save(db)
+            self.insert_edge(db, 'has_instance_netcomm', networkcomm.id, data={
+                "comm_time": networkcomm.time
+            })
+
         self.save_metadata(db)
 
     def load(self, db):
@@ -342,6 +351,8 @@ class ExecInstance(VertexObjectWithMetadata):
 
         if document is not None:
             self.from_dict(document)
+        else:
+            self._uuid = None
         
 
     def load_processes(self, db):
@@ -352,12 +363,51 @@ class ExecInstance(VertexObjectWithMetadata):
             load_data.load_child_processes(db, load_event_count=True)
             load_data.load_events(db, count_only=True)
             self._processes.append(load_data)
+        
+    def load_netcomms(self, db, as_dict=False, limit=30, skip=0):
+        self._network_comms_total = self.count_connected_to(db, NetworkComm.COLLECTION_NAME, filter_edges=['has_instance_netcomm'], direction='out', max=1)[0]
+        time_key = 'comm_time'
+        items = self.get_connected_to(db, NetworkComm.COLLECTION_NAME, filter_edges=['has_instance_netcomm'], direction='out', max=1, limit=limit, skip=skip, 
+                                          sort_by=('has_instance_netcomm', time_key, 'ASC'), add_edges=True)
+        
+        if not as_dict:
+            for item in items:
+                load_data = NetworkComm(id=item['_id'])
+                load_data.from_dict(item)
+                if '_edge' in item:
+                    load_data.time = item['_edge'][time_key]
+                self._network_comms.append(load_data)
+        else:
+            for i in range(len(items)):
+                if '_edge' in items[i]:
+                    items[i]['time'] = items[i]['_edge'][time_key]
+                    del items[i]['_edge']
+            self._network_comms = items
+
 
     def add_process(self, proc_path, pid, command_line):
         new_proc = Process.new(proc_path, pid, command_line)
             
         self._processes.append(new_proc)
         return new_proc
+    
+    def add_network_comm(self, protocol, src_addr, src_port, dest_addr, dest_port, data, comm_time=None):
+        new_comm = NetworkComm()
+        new_comm.protocol = protocol
+        new_comm.src_addr = src_addr
+        new_comm.src_port = src_port
+        new_comm.dest_addr = dest_addr
+        new_comm.dest_port = dest_port
+        new_comm.data = data
+
+        if comm_time is not None:
+            new_comm.time = comm_time
+        else:
+            new_comm.time = self._comm_counter
+            self._comm_counter += 1
+        
+        self._network_comms.append(new_comm)
+        return new_comm
     
     @property
     def uuid(self):
@@ -378,6 +428,14 @@ class ExecInstance(VertexObjectWithMetadata):
     @end_time.setter
     def end_time(self, new_time):
         self._end_time = new_time
+
+    @property
+    def network_comms(self):
+        return self._network_comms
+    
+    @property
+    def network_comms_total(self):
+        return self._network_comms_total
 
 class Event(VertexObject):
     
@@ -623,15 +681,22 @@ class Process(VertexObjectWithMetadata):
 
     def load_events(self, db, as_dict=False, limit=0, skip=0, count_only=False):
         if not count_only:
-            items = self.get_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1, limit=limit, skip=skip)
+            items = self.get_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1, limit=limit, skip=skip, 
+                                          sort_by=('has_event', 'event_time', 'ASC'), add_edges=True)
             
             if not as_dict:
                 for item in items:
                     load_data = Event(id=item['_id'])
-                    load_data.from_dict(load_data)
+                    load_data.from_dict(item)
+                    if '_edge' in item:
+                        load_data.time = item['_edge']['event_time']
                     self._events.append(load_data)
                     self._event_counter += 1
             else:
+                for i in range(len(items)):
+                    if '_edge' in items[i]:
+                        items[i]['time'] = items[i]['_edge']['event_time']
+                        del items[i]['_edge']
                 self._events = items
 
             count_result = self.count_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1)
@@ -715,3 +780,138 @@ class Process(VertexObjectWithMetadata):
     @property
     def uuid(self):
         return self._uuid
+
+class NetworkComm(VertexObject):
+
+    COLLECTION_NAME = 'networkcomm'
+
+    def __init__(self, id=None, uuid=None):
+        super().__init__(self.COLLECTION_NAME, id)
+        self._uuid = uuid
+        self._protocol = ""
+        self._src_addr = ""
+        self._src_port = ""
+        self._dest_addr = ""
+        self._dest_port = ""
+        self._data = ""
+        self._time = 0
+
+    def _gen_uuid(self):
+        my_uuid  = hashlib.sha256(
+            self.__str__().encode()
+        )
+        self._uuid = my_uuid.hexdigest()
+
+    def __str__(self):
+        return f"{self._protocol}|{self._src_addr}:{self._src_port}|{self._dest_addr}:{self._dest_port}|{self._data}"
+
+    def to_dict(self, full=True):
+        self._gen_uuid()
+        ret_dict = {
+            "_key": self._uuid,
+            "uuid": self._uuid,
+            "protocol": self._protocol,
+            "src_addr": self._src_addr,
+            "src_port": self._src_port,
+            "dest_addr": self._dest_addr,
+            "dest_port": self._dest_port,
+            "data": self._data,
+        }
+        if full:
+            ret_dict['time'] = self._time
+        return ret_dict
+
+    def from_dict(self, data_obj):
+        self._uuid = data_obj.get('_key', '')
+
+        self._protocol = data_obj.get('protocol', '')
+        self._src_addr = data_obj.get('src_addr', '')
+        self._src_port = data_obj.get('src_port', '')
+        self._dest_addr = data_obj.get('dest_addr', '')
+        self._dest_port = data_obj.get('dest_port', '')
+
+        self._data = data_obj.get('data', '')
+
+    def save(self, db):
+        try:
+            self.save_doc(db, self.to_dict(full=False))
+        except DBNotUniqueError:
+            pass
+
+    def load(self, db):
+        document = {}
+        if self.id is None:
+            document = self.load_doc(db, field='_key', value=self._uuid)
+        else:
+            document = self.load_doc(db)
+
+        if document is not None:
+            self.from_dict(document)
+
+    @property
+    def uuid(self):
+        return self._uuid
+
+    @property
+    def key(self):
+        return self._key
+
+    @key.setter
+    def key(self, new_key):
+        self._key = new_key
+
+    @property
+    def protocol(self):
+        return self._protocol
+
+    @protocol.setter
+    def protocol(self, new_protocol):
+        self._protocol = new_protocol 
+
+    @property
+    def src_addr(self):
+        return self._src_addr
+
+    @src_addr.setter
+    def src_addr(self, new_src_addr):
+        self._src_addr = new_src_addr
+
+    @property
+    def src_port(self):
+        return self._src_port
+
+    @src_port.setter
+    def src_port(self, new_src_port):
+        self._src_port = int(new_src_port)
+
+    @property
+    def dest_addr(self):
+        return self._dest_addr
+
+    @dest_addr.setter
+    def dest_addr(self, new_dest_addr):
+        self._dest_addr = new_dest_addr
+
+    @property
+    def dest_port(self):
+        return self._dest_port
+
+    @dest_port.setter
+    def dest_port(self, new_dest_port):
+        self._dest_port = int(new_dest_port)
+
+    @property
+    def data(self):
+        return self._data
+
+    @data.setter
+    def data(self, new_data):
+        self._data = new_data 
+
+    @property
+    def time(self):
+        return self._time
+
+    @time.setter
+    def time(self, new_time):
+        self._time = new_time
