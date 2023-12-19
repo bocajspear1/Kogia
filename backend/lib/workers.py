@@ -86,22 +86,26 @@ def process_job(new_job, pm, db, filestore, logger):
                 subjob.add_plugin_list(unarchive_plugins)
                 subjob.save()
 
-                # Now lets run our identify job
-                process_job(subjob)
-                # new_job.save()
+            # Now lets run our identify job
+            try:
+                process_job(subjob, pm, db, filestore, logger)
+            except Exception as e:
+                logger.error("Exception in sub-job: " + str(e))
+
         else:
             logger.info("Adding new and re-running job")
             for new_file_uuid in new_file_uuids:
                 new_job.add_limit_to_file(new_file_uuid)
 
             # Now lets rerun our identify job
-            process_job(new_job)
+            process_job(new_job, pm, db, filestore, logger)
             # Don't save again since our re-run should save for us
-    else:
-        new_job.complete = True
-        logger.info("Saving Job %s data...", new_job.uuid)
-        new_job.save()
-        logger.info("Job %s done", new_job.uuid)
+            return
+    # else:
+    new_job.complete = True
+    logger.info("Saving Job %s data...", new_job.uuid)
+    new_job.save()
+    logger.info("Job %s done", new_job.uuid)
 
 class WorkerManager():
     

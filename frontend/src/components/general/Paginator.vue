@@ -52,8 +52,7 @@ export default {
     },
     'sync_page' (to, from) {
         if (!this.did_update) { 
-            this.current_page = to;
-            console.log("ext update")
+            this.current_page = to;  
         }
         this.did_update = false;
     }
@@ -69,23 +68,19 @@ export default {
     },
     nextPage() {
         if (this.current_page < this.page_count) {
-            this.current_page += 1;
-            this.did_update = true;
-            this.$emit('new_page', this.current_page);
+            this.navToPage(this.current_page+1)
         }
     },
     lastPage() {
         if (this.current_page > 1) {
-            this.current_page -= 1;
-            this.did_update = true;
-            this.$emit('new_page', this.current_page);
+            this.navToPage(this.current_page-1)
         }
     },
     navToPage(page_num) {
         this.current_page = page_num;
         this.did_update = true;
         this.$emit('new_page', page_num);
-    }
+    },
   }
 }
 </script>

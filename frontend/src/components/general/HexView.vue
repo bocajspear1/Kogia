@@ -1,7 +1,7 @@
 
 <template>
      <div class="columns">
-        <div class="column is-two-thirds">
+        <div class="column is-two-thirds allow-newlines">
             <pre>
 {{ hex_data_out }}
             </pre>
@@ -17,7 +17,9 @@
 <style scoped>
 
 </style>
-
+.allow-newlines {
+    white-space: pre-wrap; 
+}
 <script>
 
 
@@ -54,8 +56,9 @@ export default {
             var hex_data_out = "";
             var hex_ascii_out = "";
 
-            for (var i = 0; i < hexdata.length/2; i+=2) {
+            for (var i = 0; i < hexdata.length; i+=2) {
                 var byte = hexdata[i] + hexdata[i+1];
+                var col = i/2;
 
                 var val = parseInt(byte, 16);
                 if (val >= 32 && val <= 126) {
@@ -63,8 +66,8 @@ export default {
                 } else {
                     hex_ascii_out += ".";
                 }
-
-                if (i % (width) == (width-2)) {
+                
+                if (col % (width) == width-1) {
                     hex_data_out += byte + "\\n";
                     hex_ascii_out += "\\n";
                 } else {

@@ -188,14 +188,12 @@ class Job(VertexObject):
 
 
     def get_plugin_list(self):
-        print(self._plugins)
         return copy.deepcopy(self._plugins)
     
     @property
     def plugins(self):
         output = {}
         for plugin in self._plugins:
-            print(plugin, plugin.classname())
             if plugin.classname() in self._arg_map:
                 output[plugin.classname()] = self._arg_map[plugin.classname()]
             else:
@@ -257,7 +255,7 @@ class Job(VertexObject):
         self._reports.append(new_report)
 
     def add_exec_instance(self, module_name, run_os):
-        new_exec_instance = ExecInstance.new(module_name, run_os)
+        new_exec_instance = ExecInstance.new(self._submission.uuid, module_name, run_os)
         self._exec_instances.append(new_exec_instance)
         return new_exec_instance
 
@@ -299,6 +297,8 @@ class Job(VertexObject):
         self._save_exec_instances()
         return self.get_connected_to(self._db, 'exec_instance', filter_edges=['has_exec_instance'])
 
+    def add_screenshot(self, exec_instance : ExecInstance, in_stream, format='png'):
+        exec_instance.add_screenshot(self._filestore, in_stream, format='png')
 
     def save(self):
         self.save_doc(self._db, self.to_dict())

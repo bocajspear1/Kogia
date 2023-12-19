@@ -105,13 +105,15 @@ export default {
     getFileHex() {
         var self = this;
         var file_uuid = self.$route.params.file_uuid;
-        console.log(self.$refs.my_column);
-        var column_width_guess = ((self.$refs.my_column.clientWidth / 3) * 2) - 50;
-        var char_width_guess = (column_width_guess / 12.5) - ((column_width_guess / 12.5) % 8) - 8;
-        console.log(char_width_guess);
+
+        var column_count = self.$refs.my_column.clientWidth / 42;
+        var set_columns = column_count - (column_count%16);
+        if (set_columns == 0) {
+          set_columns = 8;
+        }
         api.get_file_hexdata(file_uuid,
             function(data) {
-                self.hexdata_width = char_width_guess;
+                self.hexdata_width = set_columns;
                 self.hexdata = data;
             },
             function(status, data) {

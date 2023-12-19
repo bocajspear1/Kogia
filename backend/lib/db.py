@@ -404,7 +404,32 @@ FOR start IN @@startCollection FILTER start._id == @fromId
             })
         return list(cursor)
 
-    def get_connected_to(self, graph_name, from_item, end_collection, filter_edges=None, sort_by=None, max=2, direction='both', limit=0, 
+
+    def _parse_filter(self, collection, filter_item):
+        """Coverts a nest set of tuples into a string filter for AQL with binding parameters.
+
+           Note: Tuple columns should not be user provided!
+        
+        """
+        if filter_item[0] in ("OR", "AND"):
+            filter_str = ""
+            variable_map = {}
+            for subfilter in filter_item[1]:
+                new_vars, subfilter_str = self._parse_filter(collection, subfilter)
+                variable_map.update(new_vars)
+                if filter_str != "":
+                    filter_str += f" {filter_item[0]} "
+                filter_str += f"({subfilter_str})"
+            return variable_map, filter_str
+        else:
+            if len(filter_item) == 2:
+                var_name = f"{filter_item[0]}_val"
+                return {
+                    var_name: filter_item[1]
+                }, f"v.{filter_item[0]} == @{var_name}"
+                
+
+    def get_connected_to(self, graph_name, from_item, end_collection, filter_edges=None, filter_vertices=None, sort_by=None, max=2, direction='both', limit=0, 
                          skip=0, length_only=False, add_edges=False):
 
         start_collection = from_item.split("/")[0]
@@ -433,16 +458,13 @@ FOR start IN @@startCollection FILTER start._id == @fromId
             query += " OPTIONS { "
             query += "edgeCollections: " + repr(filter_edges)
             query += " }"
-            # for edge in filter_edges:
-            #     if filter_edge_query == "":
-            #         filter_edge_query = f" AND (IS_SAME_COLLECTION('{edge}', e._id)"
-            #     else:
-            #         filter_edge_query += f" OR IS_SAME_COLLECTION('{edge}', e._id)"
-
-            # if filter_edge_query != "":
-            #     query += filter_edge_query + ")"
 
         query += f" FILTER IS_SAME_COLLECTION('{end_collection}', v._id)"
+
+        if filter_vertices is not None:
+            new_bind_vars, filter_query = self._parse_filter(end_collection, filter_vertices)
+            bind_vars.update(new_bind_vars)
+            query += " AND " + filter_query
         
         if sort_by is not None:
             sort_item = sort_by[0] + "_item"

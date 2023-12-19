@@ -28,6 +28,8 @@ class FileStoreFS():
 
     def create_file(self, file_id):
         full_path = self._get_full_path(file_id)
+        if os.path.exists(full_path):
+            os.chmod(full_path, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH | stat.S_IWUSR)
         return open(full_path, "wb")
 
     def open_file(self, file_id):

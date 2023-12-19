@@ -205,11 +205,24 @@ export default  {
             this.api_call("/exec_instance/" + instance_uuid + "/metadata/" + metadata + "/list?filter=" + filter, on_succeeded, on_failed);
         }
     },
-    get_instance_netcomms: function(skip, limit, instance_uuid, on_succeeded, on_failed) {
-        this.api_call("/exec_instance/" + instance_uuid  + "/netcomm/list?skip=" + skip.toString() + "&limit=" + limit.toString(), on_succeeded, on_failed);
+    get_instance_netcomms: function(skip, limit, instance_uuid, address_filter, port_filter, on_succeeded, on_failed) {
+        var call = "/exec_instance/" + instance_uuid  + "/netcomm/list?skip=" + skip.toString() + "&limit=" + limit.toString();
+        if (address_filter != "") {
+            call += "&address=" + address_filter;
+        }
+        if (port_filter != "") {
+            call += "&port=" + port_filter;
+        }
+        this.api_call(call, on_succeeded, on_failed);
     },
-    get_process_events: function(process_uuid, on_succeeded, on_failed) {
-        this.api_call("/process/" + process_uuid + "/events", on_succeeded, on_failed);
+    get_instance_thumbnail: function(instance_uuid, screenshot_name, on_succeeded, on_failed) {
+        this.api_call("/exec_instance/" + instance_uuid  + "/thumbnail/" + screenshot_name, on_succeeded, on_failed);
+    },
+    get_instance_screenshot: function(instance_uuid, screenshot_name, on_succeeded, on_failed) {
+        this.api_call("/exec_instance/" + instance_uuid  + "/screenshot/" + screenshot_name, on_succeeded, on_failed);
+    },
+    get_process_events: function(skip, limit, process_uuid, on_succeeded, on_failed) {
+        this.api_call("/process/" + process_uuid + "/events?skip=" + skip.toString() + "&limit=" + limit.toString(), on_succeeded, on_failed);
     },
     get_process_metadata_types: function(process_uuid, on_succeeded, on_failed) {
         this.api_call("/process/" + process_uuid + "/metadata/list", on_succeeded, on_failed);

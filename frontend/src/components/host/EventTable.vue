@@ -1,5 +1,5 @@
 <script setup>
-
+import Paginator from "../general/Paginator.vue";
 </script>
 
 <template>
@@ -12,27 +12,18 @@
                 <th>Information</th>
                 <th>Data</th>
             </tr>
+            <tr>
+                <td colspan="3">
+                    <Paginator :item_total="event_count" :page_size="page_size" @new_page="onNewPage" :sync_page="event_page"></Paginator>
+                </td>
+            </tr>
         </thead>
         <tfoot>
             <tr>
                 <td colspan="3">
-                    <nav class="pagination is-centered" role="navigation" aria-label="pagination">
-                        <a class="pagination-previous">Previous</a>
-                        <a class="pagination-next">Next page</a>
-                        <ul class="pagination-list">
-                            <li><a class="pagination-link" aria-label="Goto page 1">1</a></li>
-                            <li><span class="pagination-ellipsis">&hellip;</span></li>
-                            <li><a class="pagination-link" aria-label="Goto page 45">45</a></li>
-                            <li><a class="pagination-link is-current" aria-label="Page 46" aria-current="page">46</a></li>
-                            <li><a class="pagination-link" aria-label="Goto page 47">47</a></li>
-                            <li><span class="pagination-ellipsis">&hellip;</span></li>
-                            <li><a class="pagination-link" aria-label="Goto page 86">86</a></li>
-                        </ul>
-                    </nav>
+                    <Paginator :item_total="event_count" :page_size="page_size" @new_page="onNewPage" :sync_page="event_page"></Paginator>
                 </td>
             </tr>
-           
-            
         </tfoot>
 
         <tbody>
@@ -76,8 +67,9 @@ export default {
         done: false,
         error: null,
         event_list: [],
-        event_page: 0,
-        event_count: 0
+        event_page: 1,
+        event_count: 0,
+        page_size: 30
     }
   },
   props: ["process_uuid"],
@@ -93,10 +85,10 @@ export default {
     getEventList() {
         var self = this;
         self.done = false;
-        api.get_process_events(self.process_uuid,
+        api.get_process_events(((self.event_page-1) * self.page_size), self.page_size, self.process_uuid,
             function(data) {
-                console.log(data);
-                self.event_list = data;
+                self.event_count = data['total'];
+                self.event_list = data['events'];
                 self.done = true;
             },
             function(status, data) {
@@ -106,44 +98,14 @@ export default {
     },
     updateSelectFilter(filter) {
         var self = this;
-        if (self.file_uuid != null) {
-            if (self.selected_type == "") {
-                self.selected_type = " ";
-            }
-            api.get_file_metadata_list(self.file_uuid, self.selected_type, filter,
-                function(data){
-                    self.error = null;
-                    self.metadata_list = [];
-                    for (var i = 0; i < data.length; i++) {
-                        self.metadata_list.push([data[i]])
-                    }
-                    
-                },
-                function(status, data){
-                    self.error = data;
-                }
-            )
-        } else if (self.process_uuid != null) {
-            if (self.selected_type == "") {
-                self.selected_type = " ";
-            }
-            api.get_process_metadata_list(self.file_uuid, self.selected_type, filter,
-                function(data){
-                    self.error = null;
-                    self.metadata_list = [];
-                    for (var i = 0; i < data.length; i++) {
-                        self.metadata_list.push([data[i]])
-                    }
-                    
-                },
-                function(status, data){
-                    self.error = data;
-                }
-            )
-        }
+
     },
     onFilter: function(column, new_filter) {
         this.updateSelectFilter(new_filter)
+    },
+    onNewPage: function(page_num) {
+        this.event_page = page_num;
+        this.getEventList();
     }
   }
 }

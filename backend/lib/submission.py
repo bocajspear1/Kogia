@@ -39,6 +39,7 @@ class SubmissionFile(VertexObjectWithMetadata):
         self._target_os = ""
         self._hash = ""
         self._parent = ""
+        self._dropped = False
 
         self._handle = None
 
@@ -51,6 +52,7 @@ class SubmissionFile(VertexObjectWithMetadata):
             "uuid": self._uuid,
             "name": self._name,
             "file_id": self._file_id,
+            "dropped": self._dropped,
             "mime_type": self._mime_type,
             "unpacked_archive": self._unpacked_archive,
             "exec_format": self._exec_format,
@@ -150,6 +152,14 @@ class SubmissionFile(VertexObjectWithMetadata):
         if document is not None:
             self.from_dict(document)
             self.reset_modified()
+
+    @property
+    def dropped(self):
+        return self._dropped
+
+    @dropped.setter
+    def dropped(self, new_dropped):
+        self._dropped = new_dropped
 
     @property
     def mime_type(self):
@@ -303,6 +313,9 @@ class Submission(VertexObject):
             if not os.path.exists(self._submission_dir):
                 os.mkdir(self._submission_dir)
         for file in self._files:
+            # # Ignore dropped files
+            # if file.dropped:
+            #     continue
             file_path = os.path.join(self._submission_dir, file.name)
             if not os.path.exists(file_path):
                 self._filestore.copy_file_to(file.file_id, file_path)
@@ -328,13 +341,14 @@ class Submission(VertexObject):
             new_file = SubmissionFile.new(self._filestore, self._uuid, filename)
             return new_file
         else:
-            return None
+            return found
 
-    def add_file(self, new_file):
+    def add_file(self, new_file, dropped=False):
         new_file.update_hash()
         for file in self._files:
             if new_file.hash == file.hash:
-                return
+                return file
+        new_file.dropped = dropped
         self._files.append(new_file)
         
 
@@ -354,12 +368,18 @@ class Submission(VertexObject):
 
     def load_files(self, db, filestore):
         self._files = []
-        items = self.get_connected_to(db, 'files')
+        items = self.get_connected_to(db, 'files', add_edges=True, max=1)
+        
         self._filestore = filestore
 
         for item in items:
+            print(item)
+            dropped = False
+            if '_edge' in item and 'dropped' in item['_edge']:
+                dropped = item['_edge']['dropped']
             load_file = SubmissionFile(id=item['_id'], filestore=filestore)
             load_file.from_dict(item)
+            load_file.dropped = dropped
             self._files.append(load_file)
         
 
@@ -394,5 +414,7 @@ class Submission(VertexObject):
 
         for file in self._files:
             file.save(db)
-            self.insert_edge(db, 'has_file', file.id)
+            self.insert_edge(db, 'has_file', file.id, {
+                "dropped": file.dropped
+            })
         

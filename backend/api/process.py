@@ -1,6 +1,6 @@
 from flask import Blueprint, Flask, g, jsonify, current_app, request, send_file, send_from_directory, abort
 from backend.lib.data import Process
-from backend.api.helpers import get_pagination
+from backend.api.helpers import get_pagination, json_resp_ok, json_resp_invalid, json_resp_not_found
 
 process_endpoints = Blueprint('process_endpoints', __name__)
 
@@ -16,13 +16,21 @@ def get_process_events(uuid):
     if proc.uuid == None:
         current_app._db.unlock()
         return abort(404)
-    proc.load_events(current_app._db, as_dict=True)
+    
+    skip_int = 0
+    limit_int = 20
+    try:
+        limit_int, skip_int  = get_pagination(request)
+    except ValueError:
+        return abort(400)
+    
+    proc.load_events(current_app._db, as_dict=True, skip=skip_int, limit=limit_int)
     
     current_app._db.unlock()
 
-    return jsonify({
-        "ok": True,
-        "result": proc.events
+    return json_resp_ok({
+        "events": proc.events,
+        "total": proc.event_total
     })
 
 @process_endpoints.route('/<uuid>/syscalls', methods=['GET'])
@@ -37,7 +45,7 @@ def get_process_syscalls(uuid):
     skip_int = 0
     limit_int = 20
     try:
-        skip_int, limit_int = get_pagination(request)
+        limit_int, skip_int  = get_pagination(request)
     except ValueError:
         return abort(400)
     

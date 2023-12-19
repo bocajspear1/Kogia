@@ -8,6 +8,7 @@ from enum import Enum
 from .submission import SubmissionFile
 from .db import ArangoConnection
 
+from PIL import Image
 
 from .db import DBNotUniqueError
 from .objects import VertexObject, VertexObjectWithMetadata
@@ -278,15 +279,17 @@ class ExecInstance(VertexObjectWithMetadata):
     COLLECTION_NAME = 'exec_instance'
 
     @classmethod
-    def new(cls, module_name, run_os):
+    def new(cls, submission_uuid, module_name, run_os):
         new_cls = cls(uuid=str(uuid.uuid4()))
         new_cls.exec_module = module_name
         new_cls._run_os = run_os
+        new_cls._submission_uuid = submission_uuid
         return new_cls
 
     def __init__(self, id=None, uuid=None):
         super().__init__(self.COLLECTION_NAME, 'has_instance_metadata', id)
         self._uuid = uuid
+        self._submission_uuid = ""
         self._start_time = 0
         self._end_time = 0
         self.exec_module = ""
@@ -297,15 +300,19 @@ class ExecInstance(VertexObjectWithMetadata):
         self._network_comms = []
         self._network_comms_total = 0
         self._comm_counter = 1
+        self._comm_stats = {}
+        self._screenshots = []
 
     def to_dict(self, full=True):
         ret_dict = {
             "_key": self._uuid,
             "uuid": self._uuid,
+            "submission_uuid": self._submission_uuid,
             "start_time": self._start_time,
             "end_time": self._end_time,
             "exec_module": self.exec_module,
             "run_os": self._run_os,
+            "screenshots": self._screenshots
         }
         if full:
             ret_dict["processes"] = []
@@ -315,10 +322,12 @@ class ExecInstance(VertexObjectWithMetadata):
 
     def from_dict(self, data_obj):
         self._uuid = data_obj.get('_key', '')
+        self._submission_uuid = data_obj.get('submission_uuid', '')
         self._start_time = data_obj.get('start_time', 0)
         self._end_time = data_obj.get('end_time', 0)
         self.exec_module = data_obj.get('exec_module', '')
         self._run_os = data_obj.get('run_os', '')
+        self._screenshots = data_obj.get('screenshots', [])
         if 'signature' in data_obj:
             self._signature = Signature(uuid=data_obj['signature'])
 
@@ -364,10 +373,40 @@ class ExecInstance(VertexObjectWithMetadata):
             load_data.load_events(db, count_only=True)
             self._processes.append(load_data)
         
-    def load_netcomms(self, db, as_dict=False, limit=30, skip=0):
-        self._network_comms_total = self.count_connected_to(db, NetworkComm.COLLECTION_NAME, filter_edges=['has_instance_netcomm'], direction='out', max=1)[0]
+    def load_netcomms(self, db, as_dict=False, limit=30, skip=0, address_filter=None, port_filter=None):
+        full_filter = None
+        if address_filter is not None or port_filter is not None:
+
+            port_filter_obj = None
+            if port_filter is not None:
+                port_filter_obj = (
+                    'OR',
+                    [
+                        ('dest_port', port_filter),
+                        ('src_port', port_filter),
+                    ]
+                )
+
+            addr_filter_obj = None
+            if address_filter is not None:
+                addr_filter_obj = (
+                    'OR',
+                    [
+                        ('dest_addr', address_filter),
+                        ('src_addr', address_filter),
+                    ]
+                )
+            
+            if address_filter is not None and port_filter is not None:
+                full_filter = ("AND", [port_filter_obj, addr_filter_obj])
+            elif address_filter is not None:
+                full_filter = addr_filter_obj
+            elif port_filter is not None:
+                full_filter = port_filter_obj
+
+        self._network_comms_total = self.count_connected_to(db, NetworkComm.COLLECTION_NAME, filter_edges=['has_instance_netcomm'], filter_vertices=full_filter, direction='out', max=1)[0]
         time_key = 'comm_time'
-        items = self.get_connected_to(db, NetworkComm.COLLECTION_NAME, filter_edges=['has_instance_netcomm'], direction='out', max=1, limit=limit, skip=skip, 
+        items = self.get_connected_to(db, NetworkComm.COLLECTION_NAME, filter_edges=['has_instance_netcomm'], filter_vertices=full_filter, direction='out', max=1, limit=limit, skip=skip, 
                                           sort_by=('has_instance_netcomm', time_key, 'ASC'), add_edges=True)
         
         if not as_dict:
@@ -383,6 +422,8 @@ class ExecInstance(VertexObjectWithMetadata):
                     items[i]['time'] = items[i]['_edge'][time_key]
                     del items[i]['_edge']
             self._network_comms = items
+        
+        self._get_network_comm_stats(db)
 
 
     def add_process(self, proc_path, pid, command_line):
@@ -408,7 +449,75 @@ class ExecInstance(VertexObjectWithMetadata):
         
         self._network_comms.append(new_comm)
         return new_comm
-    
+
+    @property
+    def network_comm_statistics(self):
+        return self._comm_stats
+
+    def _get_network_comm_stats(self, db):
+        port_map = {}
+        address_map = {}
+        items = self.get_connected_to(db, NetworkComm.COLLECTION_NAME, filter_edges=['has_instance_netcomm'], direction='out', max=1)
+
+        for item in items:
+            src_port = 0
+            dest_port = 0
+            src_addr = ""
+            dest_addr = ""
+            src_addr = item['src_addr']
+            src_port = int(item['src_port'])
+            dest_addr = item['dest_addr']
+            dest_port = int(item['dest_port'])
+            
+            if src_port != 0:
+                if src_port not in port_map:
+                    port_map[src_port] = 0
+                port_map[src_port] += 1
+
+            if dest_port != 0:
+                if dest_port not in port_map:
+                    port_map[dest_port] = 0
+                port_map[dest_port] += 1
+
+            if src_addr != "":
+                if src_addr not in address_map:
+                    address_map[src_addr] = 0
+                address_map[src_addr] += 1
+
+            if dest_addr != 0:
+                if dest_addr not in address_map:
+                    address_map[dest_addr] = 0
+                address_map[dest_addr] += 1
+
+        self._comm_stats = {
+            "ports": port_map,
+            "addresses": address_map
+        }
+
+    def add_screenshot(self, filestore, in_stream, format='png'):
+        screenshot_name_base = f"screenshot-{len(self._screenshots)+1}-{self._uuid}"
+        screenshot_name = f"{self._submission_uuid}:{screenshot_name_base}"
+        thumb_name = f"{self._submission_uuid}:{screenshot_name_base}-t"
+        image = Image.open(in_stream, formats=[format])
+        image.thumbnail((300, 300))
+
+        # Save thumbnail
+        thumb_file = filestore.create_file(thumb_name)
+        image.save(thumb_file, format=format)
+        filestore.close_file(thumb_name, thumb_file)
+
+        # Save original image
+        screenshot_file = filestore.create_file(screenshot_name)
+        in_stream.seek(0)
+        screenshot_file.write(in_stream.read())
+        filestore.close_file(screenshot_name, screenshot_file)
+
+        self._screenshots.append(screenshot_name)
+
+    @property
+    def screenshots(self):
+        return self._screenshots
+
     @property
     def uuid(self):
         return self._uuid
@@ -559,7 +668,7 @@ class Process(VertexObjectWithMetadata):
         self._end_time = 0
         self._syscalls = []
         self._events = []
-        self._event_count = -1
+        self._event_total = -1
         self._event_total = 0
         self._child_processes = []
         self._event_counter = 1
@@ -698,23 +807,13 @@ class Process(VertexObjectWithMetadata):
                         items[i]['time'] = items[i]['_edge']['event_time']
                         del items[i]['_edge']
                 self._events = items
-
-            count_result = self.count_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1)
-            if len(count_result) > 0:
-                total_count = count_result[0]
-            else:
-                total_count = 0
-
-            self._event_total = total_count
-
-            if limit > 0:
-                self._event_counter = total_count
+        
+        result = self.count_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1)
+        if len(result) > 0:
+            self._event_total = result[0]
         else:
-            result = self.count_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1)
-            if len(result) > 0:
-                self._event_count = result[0]
-            else:
-                self._event_count = 0
+            self._event_total = 0
+        self._event_counter = self._event_total
     
     def load_syscalls(self, db : ArangoConnection, skip=0, limit=20):
         self._syscall_total = self.count_connected_to(db, 'syscalls', filter_edges=['has_syscall'], direction='out', max=1)[0]
@@ -763,6 +862,10 @@ class Process(VertexObjectWithMetadata):
         return self._events
     
     @property
+    def event_total(self):
+        return self._event_total
+    
+    @property
     def syscalls(self):
         return self._syscalls
     
@@ -772,10 +875,10 @@ class Process(VertexObjectWithMetadata):
 
     @property
     def event_count(self):
-        if self._event_count == -1:
+        if self._event_total == -1:
             return len(self._events)
         else:
-            return self._event_count
+            return self._event_total
 
     @property
     def uuid(self):
@@ -826,9 +929,9 @@ class NetworkComm(VertexObject):
 
         self._protocol = data_obj.get('protocol', '')
         self._src_addr = data_obj.get('src_addr', '')
-        self._src_port = data_obj.get('src_port', '')
+        self._src_port = int(data_obj.get('src_port', 0))
         self._dest_addr = data_obj.get('dest_addr', '')
-        self._dest_port = data_obj.get('dest_port', '')
+        self._dest_port = int(data_obj.get('dest_port', 0))
 
         self._data = data_obj.get('data', '')
 

@@ -5,25 +5,31 @@ import FileIcon from '@/components/file/FileIcon.vue'
     <div class="list has-hoverable-list-items has-visible-pointer-controls">
         <div v-for="file in files" class="list-item is-clickable" @click="clickFile(file.uuid)" :ref="file.uuid">
             <div class="list-item-image p-2">
+                <span title="This file was dropped by an execution instance">
+                    <mdicon name="folder-arrow-down" :size="24" v-if="file.dropped"/>
+                </span>
                 <FileIcon :file="file"></FileIcon>
             </div>
             <div class="list-item-content">
                 <div class="list-item-title">{{ file.name }}</div>
                 <div class="list-item-description">
-                    <span class="tag m-1">
+                    <span class="tag m-1" v-if="file.exec_arch != ''">
                         <strong>Architecture:</strong>&nbsp;{{ file.exec_arch }}
                     </span>
-                    <span class="tag m-1">
+                    <span class="tag m-1" v-if="file.exec_bits != ''">
                         <strong>Bits:</strong>&nbsp;{{ file.exec_bits }}
                     </span>
-                    <span class="tag m-1">
+                    <span class="tag m-1" v-if="file.target_os != ''">
                         <strong>OS:</strong>&nbsp;{{ file.target_os }}
                     </span>
-                    <span class="tag m-1">
+                    <span class="tag m-1" v-if="file.exec_format != ''">
                         <strong>Format:</strong>&nbsp;{{ file.exec_format }}
                     </span>
                     <span class="tag m-1" v-if="file.exec_packer != ''">
                         <strong>Packer:</strong>&nbsp;{{ file.exec_packer }}
+                    </span>
+                    <span class="tag m-1" v-if="file.exec_arch == '' && file.target_os == ''">
+                        <strong>MIME:</strong>&nbsp;{{ file.mime_type }}
                     </span>
 
                 </div>
