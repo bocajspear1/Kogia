@@ -5,7 +5,7 @@ import Paginator from "../general/Paginator.vue";
 <template>
     <ExecInstDropdown :job_uuid="job_uuid" @execinst_selected="instanceSelected" @execinst_loaded="instancesLoaded" :selected="selected_instance"></ExecInstDropdown>
      
-    <div class="notification is-info m-2" v-if="current_instance == null">
+    <div class="notification is-info m-2" v-if="current_instance == null && instance_count > 0">
         Select an execution instance
     </div>
     <div class="field is-grouped m-2" v-if="Object.keys(netcomm_stats).length > 0">
@@ -97,6 +97,7 @@ export default {
     return {
         exec_instances: [],
         current_instance: null,
+        instance_count: null,
         netcomms: [],
         netcomm_page: 1,
         page_size: 30,

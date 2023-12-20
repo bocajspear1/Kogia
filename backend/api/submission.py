@@ -40,7 +40,7 @@ def submit_sample():
 
 
     file_uuids = request.form.getlist(files_param)
-    if file_uuids is not None:
+    if file_uuids is not None and len(file_uuids) > 0:
         new_submission = Submission.new(current_app._filestore, g.req_username)
 
         if 'description' in request.form:

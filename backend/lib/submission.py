@@ -310,6 +310,10 @@ class Submission(VertexObject):
 
     @property
     def submission_dir(self):
+        """Temporary directory where the files of the submission are stored. 
+
+        This directory is mounted to Docker containers during plugin operation.
+        """
         if self._submission_dir == "":
             self._submission_dir = os.path.join("/tmp", "kogia-" + str(self._uuid))
             if not os.path.exists(self._submission_dir):
@@ -337,6 +341,8 @@ class Submission(VertexObject):
         return self._files
 
     def generate_file(self, filename):
+        """Creates and initializes a SubmissionFile object.
+        """
         found = self.get_file(filename)
         if found is None:
             self._modified = True
@@ -346,6 +352,10 @@ class Submission(VertexObject):
             return found
 
     def add_file(self, new_file, dropped=False):
+        """Inserts a SubmissionFile object into the Submission's file list.
+
+        Use 'generate_file' to initialize a new SubmissionFile easily.
+        """
         new_file.update_hash()
         for file in self._files:
             if new_file.hash == file.hash:

@@ -9,6 +9,11 @@ from backend.lib.data import Process, Signature, SignatureMatch, Report, ExecIns
 
 
 class Job(VertexObject):
+    """Object representing a Job, which runs a series of plugins on a Submission.
+
+    This object performs a little differently, as it contains its own database object instead
+    of it being passed to it.
+    """
 
     COLLECTION_NAME = 'jobs'
 

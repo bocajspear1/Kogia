@@ -20,6 +20,18 @@
 <template v-else-if="file.mime_type == 'text/plain'">
     <mdicon name="file-document" :size="size" />
 </template>
+<template v-else-if="file.mime_type == 'application/pdf'">
+    <mdicon name="file-pdf-box" :size="size" />
+</template>
+<template v-else-if="file.mime_type.includes('application/vnd.openxmlformats-officedocument.spreadsheetml')">
+    <mdicon name="file-excel" :size="size" />
+</template>
+<template v-else-if="file.mime_type.includes('application/vnd.openxmlformats-officedocument.wordprocessingml')">
+    <mdicon name="file-word" :size="size" />
+</template>
+<template v-else-if="file.mime_type.startsWith('image/')">
+    <mdicon name="file-image" :size="size" />
+</template>
 <template v-else>
     <mdicon name="file-question" :size="size" />
 </template>

@@ -127,6 +127,8 @@ class VertexObject():
 
 
 class Metadata(VertexObject):
+    """Object that contains Key-Value data.
+    """
 
     COLLECTION = 'metadata'
 
