@@ -17,6 +17,9 @@
 <template v-else-if="file.exec_interpreter != '' && file.exec_interpreter != 'native'">
     <mdicon name="script" :size="size" />
 </template>
+<template v-else-if="file.mime_type == 'text/plain'">
+    <mdicon name="file-document" :size="size" />
+</template>
 <template v-else>
     <mdicon name="file-question" :size="size" />
 </template>

@@ -1,9 +1,20 @@
 <template>
-    <a class="button is-outlined" @click="buttonClick">
-        <span class="icon is-small" :title="tooltip">
-            <mdicon :name="iconname" :size="30" />
+    <template v-if="!disabled">
+      <a class="button is-outlined" @click="buttonClick">
+          <span class="icon is-small" :title="tooltip">
+              <mdicon :name="iconname" :size="30" />
+          </span>
+      </a>
+    </template>
+    <template v-else>
+      <span class="button is-outlined" disabled>
+        <span class="icon is-small " :title="tooltip">
+          <mdicon :name="iconname" :size="30" />
         </span>
-    </a>
+      </span>
+      
+    </template>
+      
 </template>
 
 <style scoped>
@@ -18,7 +29,7 @@ export default {
     }
   },
   emits: ['click'],
-  props: ["iconname", "tooltip"],
+  props: ["iconname", "tooltip", "disabled"],
   mounted() {
     
   },

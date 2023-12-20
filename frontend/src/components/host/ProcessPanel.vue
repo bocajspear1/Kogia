@@ -16,9 +16,9 @@ import Image from '@/components/general/Image.vue';
     <div class="m-2" v-if="current_instance != null">
         <TabMenu>
             <template v-slot:main>
+            <TabMenuItem iconname="file-cog" @click="instanceTabSelected('processes')" :active="instance_tab=='processes'">Processes ({{ current_instance.process_count }})</TabMenuItem>
             <TabMenuItem iconname="monitor-screenshot" @click="instanceTabSelected('screenshots')" :active="instance_tab=='screenshots'">Screenshots</TabMenuItem>
             <TabMenuItem iconname="table-multiple" @click="instanceTabSelected('metadata')" :active="instance_tab=='metadata'">Metadata</TabMenuItem>
-            <TabMenuItem iconname="file-cog" @click="instanceTabSelected('processes')" :active="instance_tab=='processes'">Processes</TabMenuItem>
             </template>
         </TabMenu>
         <template v-if="instance_tab=='screenshots'">
@@ -74,7 +74,7 @@ import api from "@/lib/api";
 export default {
   data() {
     return {
-        instance_tab: "screenshots",
+        instance_tab: "processes",
         process_tab: "overview",
         process_list: [],
         current_instance: null,
@@ -115,7 +115,7 @@ export default {
         var self = this;
         self.thumbnails = [];
 
-
+        // TODO: Rapidly clicking before all images are loaded can cause duplicates
         function loadNext(i) {
             if (i >= self.current_instance.screenshots.length) {
                 return;
@@ -145,8 +145,7 @@ export default {
                 console.log(data);
                 self.current_instance = data;
                 self.$emit('instance_selected', self.current_instance);
-                self.updateThumbnails();
-                self.instance_tab = 'screenshots';
+                self.instance_tab = 'processes';
             },
             function(status, data) {
 

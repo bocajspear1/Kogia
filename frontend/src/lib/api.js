@@ -81,7 +81,9 @@ export default  {
                 on_failed(200, resp_data['error']);
             }
         }).catch(function (resp) {
-            on_failed(resp.response.status, resp.message); 
+            var resp_data = resp.response['data'];
+            var error_message = resp_data['error']
+            on_failed(resp.response.status, error_message); 
         });
     },
     api_post_json(path, post_data, on_succeeded, on_failed) {

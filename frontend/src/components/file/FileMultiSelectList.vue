@@ -2,9 +2,13 @@
 import FileIcon from '@/components/file/FileIcon.vue'
 </script>
 <template>
-    <div class="list has-hoverable-list-items has-visible-pointer-controls">
-        <div v-for="file in files" class="list-item is-clickable" @click="clickFile(file.uuid)" :ref="file.uuid">
+    <div class="list">
+        <div v-for="file in files" class="list-item" :ref="file.uuid">
             <div class="list-item-image p-2">
+                <label class="checkbox m-4">
+                    <input type="checkbox" @input="checkClicked(file.uuid, $event.target.checked)" >
+                </label>
+                
                 <FileIcon :file="file"></FileIcon>
             </div>
             <div class="list-item-content">
@@ -12,7 +16,7 @@ import FileIcon from '@/components/file/FileIcon.vue'
                     <span title="This file was dropped by an execution instance">
                         <mdicon name="folder-arrow-down" :size="20" v-if="file.dropped" class="m-1"/>
                     </span>
-                    {{ file.name }}
+                    <a @click="clickFile(file.uuid)">{{ file.name }}</a>
                 </div>
                 <div class="list-item-description">
                     <span class="tag m-1" v-if="file.exec_arch != ''">
@@ -48,10 +52,11 @@ import FileIcon from '@/components/file/FileIcon.vue'
 export default {
   data() {
     return {
-        current: null
+        current: null,
+        checked_files: []
     }
   },
-  emits: ["file_clicked"],
+  emits: ["file_clicked", "file_checked"],
   props: {
     files: Array,
     toggle: Boolean,
@@ -60,30 +65,33 @@ export default {
     
   },
   methods: {
-    clickFile(uuid) {
-        var toggled = false;
-        if (this.toggle) {
-            
-            if (this.current == uuid) {
-                this.$refs[uuid][0].classList.remove('has-background-grey-light');
-                this.current = null;
-                toggled = false;
-            } else {
-                if (this.current != null) {
-                    this.$refs[this.current][0].classList.remove('has-background-grey-light');
-                }
-                this.$refs[uuid][0].classList.add('has-background-grey-light')
-                this.current = uuid;
-                toggled = true;
-            }
-        }
-        var file_data = null;
+    _getFileData(file_uuid) {
         for (var i in this.files) {
-            if (this.files[i].uuid == uuid) {
-                file_data = this.files[i]
+            if (this.files[i].uuid == file_uuid) {
+                return this.files[i]
             }
         }
-        this.$emit('file_clicked', uuid, file_data, toggled);
+    },
+    clickFile(uuid) {
+        var self = this;
+        this.$emit('file_clicked', uuid, self._getFileData(uuid), false);
+    },
+    checkClicked(uuid, value) {
+        var self = this;
+        if (value == true) {
+            self.checked_files.push(uuid);
+        } else {
+            const index = self.checked_files.indexOf(uuid);
+            if (index > -1) {
+                self.checked_files.splice(index, 1); 
+            }
+        }
+
+        var out_list = [];
+        for (var i = 0; i < self.checked_files.length; i++) {
+            out_list.push(self._getFileData(self.checked_files[i]));
+        }
+        this.$emit('file_checked', out_list);
     }
   }
 }

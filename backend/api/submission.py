@@ -1,6 +1,6 @@
 import io
 import zipfile
-import secrets
+import uuid
 
 import pyzipper
 
@@ -8,9 +8,9 @@ from flask import Blueprint, Flask, g, jsonify, current_app, request, send_file,
 from werkzeug.utils import secure_filename
 
 from backend.lib.job import Job
-from backend.lib.submission import Submission
+from backend.lib.submission import Submission, SubmissionFile
 from backend.lib.helpers import generate_download_token
-
+from backend.api.helpers import get_pagination, json_resp_ok, json_resp_invalid, json_resp_not_found
 submission_endpoints = Blueprint('submission_endpoints', __name__)
 
 #
@@ -22,31 +22,15 @@ def submit_sample():
 
     single_param = 'submission'
     multi_param = 'submissions[]'
+    files_param = 'file_uuids[]'
 
-    if single_param not in request.files and multi_param not in request.files:   
-        return jsonify({
-            "ok": False,
-            "error": f"Nothing submitted in '{single_param}' or '{multi_param}' parameters"
-        })
+    print()
+    if single_param not in request.files and multi_param not in request.files and files_param not in request.form:   
+        return json_resp_invalid(
+            f"Nothing submitted in '{single_param}', '{multi_param}', or '{files_param}' parameters"
+        ) 
 
     multiple = False
-
-    file_list = request.files.getlist(multi_param)
-
-    if file_list is not None and len(file_list) > 0:
-        current_app.logger.info("Got multiple files")
-        multiple = True
-    else:
-        current_app.logger.info("Got single file")
-        single_sample = request.files[single_param]
-
-        if single_sample.filename == '':
-            return jsonify({
-                "ok": False,
-                "error": "No sample submitted in '{single_param}' parameter. Name was blank."
-            })
-        file_list = [single_sample]
-
 
     if 'name' not in request.form or request.form['name'].strip() == "":
         return jsonify({
@@ -55,54 +39,109 @@ def submit_sample():
         })
 
 
-    new_submission = Submission.new(current_app._filestore, g.req_username)
+    file_uuids = request.form.getlist(files_param)
+    if file_uuids is not None:
+        new_submission = Submission.new(current_app._filestore, g.req_username)
 
-    if 'description' in request.form:
-        new_submission.description = request.form['description']
+        if 'description' in request.form:
+            new_submission.description = request.form['description']
 
-    new_submission.name = request.form['name']
+        new_submission.name = request.form['name']
 
-    for uploaded_file in file_list:
-        filename = secure_filename(uploaded_file.filename)
-        new_file = new_submission.generate_file(filename)
         
-        # Save file to filestore
-        file_io = new_file.create_file()
-        uploaded_file.save(file_io)
-        new_file.close_file()
+
+        for file_uuid in file_uuids:
+
+            try:
+                uuid.UUID(file_uuid)
+            except ValueError:
+                return json_resp_invalid(f"Invalid UUID")
+
+            current_app._db.lock()
+            resubmit_file = SubmissionFile(uuid=file_uuid, filestore=current_app._filestore)
+            resubmit_file.load(current_app._db)
+            if resubmit_file.uuid is None:
+                current_app._db.unlock()
+                return json_resp_not_found(f"File {file_uuid} not found")
+            else:
+                new_submission.add_file(resubmit_file)
+
+            current_app._db.unlock()
 
         current_app._db.lock()
-        
-        new_submission.add_file(new_file)
-        new_file.save(current_app._db)
-        # Don't need to load_metadata, since a generate_file initialies metadata
-
+        new_submission.save(current_app._db)
         current_app._db.unlock()
 
-    current_app._db.lock()
-    new_submission.save(current_app._db)
-    current_app._db.unlock()
-
-    print("new_submission.files", new_submission.files)
-
-
-    new_job = Job.new(new_submission, None, current_app._db_factory.new(), current_app._filestore)
-    # No primary is set, since we are just identifying
-    identify_plugins = current_app._manager.get_plugin_list('identify')
-    new_job.add_plugin_list(identify_plugins)
-    unarchive_plugins = current_app._manager.get_plugin_list('unarchive')
-    new_job.add_plugin_list(unarchive_plugins)
-    new_job.save()
-
-    current_app._worker_manager.assign_job(new_job.uuid)
-
-    return jsonify({
-        "ok": True,
-        "result": {
+        return json_resp_ok({
             "submission_uuid": str(new_submission.uuid),
-            "job_uuid": str(new_job.uuid)
-        }
-    })
+            "job_uuid": ""
+        })
+
+    else:
+        file_list = request.files.getlist(multi_param)
+
+        if file_list is not None and len(file_list) > 0:
+            current_app.logger.info("Got multiple files")
+            multiple = True
+        else:
+            current_app.logger.info("Got single file")
+            single_sample = request.files[single_param]
+
+            if single_sample.filename == '':
+                return jsonify({
+                    "ok": False,
+                    "error": "No sample submitted in '{single_param}' parameter. Name was blank."
+                })
+            file_list = [single_sample]
+
+        new_submission = Submission.new(current_app._filestore, g.req_username)
+
+        if 'description' in request.form:
+            new_submission.description = request.form['description']
+
+        new_submission.name = request.form['name']
+
+        for uploaded_file in file_list:
+            filename = secure_filename(uploaded_file.filename)
+            new_file = new_submission.generate_file(filename)
+
+            # Save file to filestore
+            file_io = new_file.create_file()
+            uploaded_file.save(file_io)
+            new_file.close_file()
+
+            current_app._db.lock()
+            
+            new_submission.add_file(new_file)
+            new_file.save(current_app._db)
+            # Don't need to load_metadata, since a generate_file initialies metadata
+
+            current_app._db.unlock()
+
+        current_app._db.lock()
+        new_submission.save(current_app._db)
+        current_app._db.unlock()
+
+        print("new_submission.files", new_submission.files)
+
+
+        new_job = Job.new(new_submission, None, current_app._db_factory.new(), current_app._filestore)
+        # No primary is set, since we are just identifying
+        identify_plugins = current_app._manager.get_plugin_list('identify')
+        new_job.add_plugin_list(identify_plugins)
+        unarchive_plugins = current_app._manager.get_plugin_list('unarchive')
+        new_job.add_plugin_list(unarchive_plugins)
+        new_job.save()
+
+        current_app._worker_manager.assign_job(new_job.uuid)
+
+        return jsonify({
+            "ok": True,
+            "result": {
+                "submission_uuid": str(new_submission.uuid),
+                "job_uuid": str(new_job.uuid)
+            }
+        })
 
 @submission_endpoints.route('/<uuid>/info', methods=['GET'])
 def get_submission_info(uuid):

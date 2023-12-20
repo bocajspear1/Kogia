@@ -152,6 +152,8 @@ class SubmissionFile(VertexObjectWithMetadata):
         if document is not None:
             self.from_dict(document)
             self.reset_modified()
+        else:
+            self._uuid = None
 
     @property
     def dropped(self):
@@ -373,7 +375,6 @@ class Submission(VertexObject):
         self._filestore = filestore
 
         for item in items:
-            print(item)
             dropped = False
             if '_edge' in item and 'dropped' in item['_edge']:
                 dropped = item['_edge']['dropped']

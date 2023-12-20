@@ -3,9 +3,8 @@ import SubmissionBlock from '@/components/submission/SubmissionBlock.vue'
 import JobBlock from '@/components/job/JobBlock.vue'
 import MetadataTable from '@/components/metadata/MetadataTable.vue';
 import FileDropdown from '../components/file/FileDropdown.vue';
-import FileList from '../components/file/FileList.vue';
+import JobFilesPanel from '../components/file/JobFilesPanel.vue';
 import SidebarMenuItem from '../components/menu/SidebarMenuItem.vue';
-import MenuBar from '../components/menu/MenuBar.vue';
 import SidebarMenu from '../components/menu/SidebarMenu.vue';
 import DynamicFilterTable from '@/components/dynamic/DynamicFilterTable.vue';
 import ReportDisplay from '@/components/report/ReportDisplay.vue';
@@ -61,7 +60,7 @@ import ProcessDropdown from '@/components/host/ProcessDropdown.vue'
             <NetworkPanel :job_uuid="job_uuid" :selected_instance="selected_instance" @instance_selected="instanceSelected"></NetworkPanel>
         </template>
         <template v-if="done && page == 'files'">
-            <FileList v-if="files != null" :toggle="false" :files="files" @file_clicked="fileClicked"></FileList>
+            <JobFilesPanel :files="files"></JobFilesPanel>
         </template>
         <template v-if="done && page == 'metadata'">
             <TabMenu>
@@ -237,9 +236,6 @@ export default {
     },
     processSelected(process) {
         this.selected_process = process;
-    },
-    fileClicked(uuid, data) {
-      this.$router.push({ name: 'FileSingle', params: { file_uuid: uuid } });
     },
     getSubmission(submission_uuid) {
         var self = this;

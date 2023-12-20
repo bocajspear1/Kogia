@@ -302,6 +302,7 @@ class ExecInstance(VertexObjectWithMetadata):
         self._comm_counter = 1
         self._comm_stats = {}
         self._screenshots = []
+        self._process_count = 0
 
     def to_dict(self, full=True):
         ret_dict = {
@@ -312,7 +313,8 @@ class ExecInstance(VertexObjectWithMetadata):
             "end_time": self._end_time,
             "exec_module": self.exec_module,
             "run_os": self._run_os,
-            "screenshots": self._screenshots
+            "screenshots": self._screenshots,
+            "process_count": self._process_count
         }
         if full:
             ret_dict["processes"] = []
@@ -366,12 +368,16 @@ class ExecInstance(VertexObjectWithMetadata):
 
     def load_processes(self, db):
         items = self.get_connected_to(db, 'processes', filter_edges=['has_process'])
+        process_count = 0
         for item in items:
             load_data = Process(id=item['_id'])
             load_data.from_dict(item)
             load_data.load_child_processes(db, load_event_count=True)
             load_data.load_events(db, count_only=True)
             self._processes.append(load_data)
+            self._process_count += 1
+            self._process_count += load_data.child_process_count
+
         
     def load_netcomms(self, db, as_dict=False, limit=30, skip=0, address_filter=None, port_filter=None):
         full_filter = None
@@ -879,6 +885,14 @@ class Process(VertexObjectWithMetadata):
             return len(self._events)
         else:
             return self._event_total
+        
+    @property
+    def child_process_count(self):
+        count = 0
+        for subproc in self._child_processes:
+            count += 1
+            count += subproc.child_process_count
+        return count
 
     @property
     def uuid(self):

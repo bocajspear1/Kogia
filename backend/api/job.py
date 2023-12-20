@@ -128,7 +128,6 @@ def get_job_details(uuid):
     if job.uuid == None:
         return abort(404)
     plugin_details = job.plugins
-    print(plugin_details)
 
     job_data = {
         "plugins": plugin_details
