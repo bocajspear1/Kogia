@@ -307,6 +307,7 @@ class Submission(VertexObject):
 
         self._files = []
         self._modified = False
+        self._files_loaded = False
 
     @property
     def submission_dir(self):
@@ -328,6 +329,8 @@ class Submission(VertexObject):
         return self._submission_dir
 
     def get_file(self, name=None, uuid=None):
+        if not self._files_loaded:
+            raise ValueError("File not loaded, call load_files first")
         for file in self._files:
             if name is not None and file.name == name:
                 return file
@@ -338,6 +341,8 @@ class Submission(VertexObject):
 
     @property
     def files(self):
+        if not self._files_loaded:
+            raise ValueError("File not loaded, call load_files first")
         return self._files
 
     def generate_file(self, filename):
@@ -392,6 +397,7 @@ class Submission(VertexObject):
             load_file.from_dict(item)
             load_file.dropped = dropped
             self._files.append(load_file)
+        self._files_loaded = True
         
 
     def to_dict(self, files=False):

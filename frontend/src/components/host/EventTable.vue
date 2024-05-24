@@ -11,16 +11,17 @@ import Paginator from "../general/Paginator.vue";
                 <th>Event Type</th>
                 <th>Information</th>
                 <th>Data</th>
+                <th>Success</th>
             </tr>
             <tr>
-                <td colspan="3">
+                <td colspan="4">
                     <Paginator :item_total="event_count" :page_size="page_size" @new_page="onNewPage" :sync_page="event_page"></Paginator>
                 </td>
             </tr>
         </thead>
         <tfoot>
             <tr>
-                <td colspan="3">
+                <td colspan="4">
                     <Paginator :item_total="event_count" :page_size="page_size" @new_page="onNewPage" :sync_page="event_page"></Paginator>
                 </td>
             </tr>
@@ -43,6 +44,9 @@ import Paginator from "../general/Paginator.vue";
                 </td>
                 <td class="allow-newlines" >
                     {{ event.data }}
+                </td>
+                <td>
+                    {{ event.success }}
                 </td>
             </tr>
         </tbody>

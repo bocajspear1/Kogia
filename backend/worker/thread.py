@@ -15,7 +15,7 @@ def number_of_workers():
 
 
 class ThreadWorkerInst(threading.Thread):
-    def __init__(self, id, queue, db, filestore, plugin_manager):
+    def __init__(self, id, config, queue, db, filestore, plugin_manager):
         threading.Thread.__init__(self)
         self._id = id
         self.db = db
@@ -23,6 +23,7 @@ class ThreadWorkerInst(threading.Thread):
         self.queue = queue
         self.pm = plugin_manager
         self.daemon = True
+        self._config = config
 
     def run(self):
         logger.debug("Starting %s instance %d", self.__class__.__name__, self._id)
@@ -33,7 +34,7 @@ class ThreadWorkerInst(threading.Thread):
             new_job = Job(self.db, self.filestore, uuid=job_id)
             new_job.load(self.pm)
 
-            process_job(new_job, self.pm, self.db, self.filestore, logger)
+            process_job(self._config, new_job, self.pm, self.db, self.filestore, logger)
            
 
 class WorkerThread():
@@ -49,7 +50,7 @@ class WorkerThread():
     def start_worker_senders(self):
         thread_count = number_of_workers()
         for i in range(thread_count):
-            new_thread = ThreadWorkerInst(i, self._queue, self._db_factory.new(), self._filestore, self._pm)
+            new_thread = ThreadWorkerInst(i, self._config, self._queue, self._db_factory.new(), self._filestore, self._pm)
             self._threads.append(new_thread)
             new_thread.start()
         

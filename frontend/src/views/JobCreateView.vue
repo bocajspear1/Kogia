@@ -17,7 +17,14 @@ import Notifications from '@/components/general/Notifications.vue';
   </div>
   <h3 class="subtitle is-spaced is-3">Select primary file:</h3>
   <p>
-    Primary file is the file executed during dynamic analysis.
+    The "primary file" is the file executed during dynamic analysis.
+    <div class="control m-2">
+      <label class="checkbox has-text-weight-bold">
+        <input type="checkbox" checked v-model="ignore_dropped">
+        Ignore dropped files
+      </label>
+    </div>
+    
   </p>
   <FileList v-if="submission != null" :toggle="true" :files="submission.files" @file_clicked="fileClicked"></FileList>
   <h3 class="subtitle is-spaced is-3">Select plugins:</h3>
@@ -58,7 +65,8 @@ export default {
       submission: null,
       submission_uuid: "",
       plugins: [],
-      primary_file: null
+      primary_file: null,
+      ignore_dropped: true
     }
   },
   props: [],
@@ -83,7 +91,10 @@ export default {
       
     },
     createJob() {
-      
+      var self = this;
+
+      var ignore_list = [];
+
       console.log(this.primary_file);
       console.log(this.plugins);
       var plugin_list = [];
@@ -102,14 +113,22 @@ export default {
         }
       }
       
-      var self = this;
+      console.log(self.ignore_dropped);
+      if (self.ignore_dropped == true) {
+        console.log(self.submission.files);
+        for (var i  = 0; i < self.submission.files.length; i++) {
+          if (self.submission.files[i].dropped == true) {
+            ignore_list.push(self.submission.files[i].uuid);
+          }
+        }
+      }
+      
 
-      api.do_create_analysis(this.submission_uuid, this.primary_file, plugin_list,
+      api.do_create_analysis(this.submission_uuid, this.primary_file, plugin_list, ignore_list,
       function(result) {
-
+        self.$refs.notifications.addNotification("info", "Job submitted!");
       },
       function(status, error){
-        console.log(resp)
         self.$refs.notifications.addNotification("error", "Analysis Create Error: " + error);
       });
     },
@@ -142,7 +161,7 @@ export default {
         self.plugins = new_list;
 
       }, function(status, error){
-        self.$refs.notifications.addNotification("error", "Error getting plugin kist: " + error);
+        self.$refs.notifications.addNotification("error", "Error getting plugin list: " + error);
       })
       
     }

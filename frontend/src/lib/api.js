@@ -102,11 +102,12 @@ export default  {
             password: password
         }, on_succeeded, on_failed);
     },
-    do_create_analysis: function(submission_uuid, primary_uuid, plugin_list, on_succeeded, on_failed){
+    do_create_analysis: function(submission_uuid, primary_uuid, plugin_list, ignore_list, on_succeeded, on_failed){
         this.api_post_json('/analysis/new', {
             "submission_uuid": submission_uuid,
             "primary_uuid": primary_uuid,
-            "plugins": plugin_list
+            "plugins": plugin_list,
+            "ignore_uuids": ignore_list
         }, on_succeeded, on_failed);
     },
     // do_submission_upload: function

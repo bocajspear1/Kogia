@@ -5,7 +5,7 @@ import copy
 
 from backend.lib.submission import Submission, SubmissionFile
 from backend.lib.objects import VertexObject
-from backend.lib.data import Process, Signature, SignatureMatch, Report, ExecInstance
+from backend.lib.data import Process, Signature, SignatureMatch, Report, ExecInstance, SIGNATURE_SEVERITY
 
 
 class Job(VertexObject):
@@ -86,6 +86,7 @@ class Job(VertexObject):
         self._matches = []
         self._limit_to = []
         self._exec_instances = []
+        self._score = 0
 
     def add_limit_to_file(self, file_uuid):
         self._limit_to.append(file_uuid)
@@ -129,10 +130,19 @@ class Job(VertexObject):
     @property
     def primary(self):
         return self._primary
+    
+    def get_primary_file(self):
+        primary_file = self._submission.get_file(uuid=self._primary)
+        primary_file.load(self._db)
+        return primary_file
 
     @property
     def submission(self):
         return self._submission
+
+    @property
+    def score(self):
+        return self._score
 
     def add_plugin_list(self, plugin_list):
         for item in plugin_list:
@@ -165,7 +175,8 @@ class Job(VertexObject):
             "plugins": plugin_list,
             "submission": self._submission.uuid,
             "plugin_args": self._arg_map,
-            "limit_to": self._limit_to
+            "limit_to": self._limit_to,
+            "score": self._score
         }
 
     def from_dict(self, pm, data_obj):
@@ -178,6 +189,7 @@ class Job(VertexObject):
         self._error = data_obj.get('error', '')
         self._arg_map = data_obj.get('plugin_args', '')
         self._limit_to = data_obj.get('limit_to', [])
+        self._score = data_obj.get('score', 0)
 
         if 'submission' in data_obj:
             load_sub = Submission(uuid=data_obj['submission'])
@@ -188,6 +200,7 @@ class Job(VertexObject):
 
 
         if 'plugins' in data_obj:
+            self._plugins = []
             for item in data_obj['plugins']:
                 self._plugins.append(pm.get_plugin(item))
 
@@ -229,12 +242,24 @@ class Job(VertexObject):
             match.save(self._db)
             self.insert_edge(self._db, 'added_match', match.id)
 
-    def _save_exec_instances(self):
+    def save_exec_instances(self):
         for exec_instance in self._exec_instances:
             exec_instance.save(self._db)
             self.insert_edge(self._db, 'has_exec_instance', exec_instance.id)
 
     def add_signature(self, plugin_name, name, file_obj, description, severity=None, metadata=None, events=None, syscalls=None):
+
+        # Ignore any duplicates
+        for match_item in self._matches:
+            
+            if match_item.signature is None:
+                match_item.load_signature(self._db)
+            print("match_item", match_item.signature.name, match_item.signature.plugin_name)
+            print("looking", name, plugin_name)
+            if match_item.signature.name == name and match_item.signature.plugin_name == plugin_name:
+                print("dup")
+                return match_item
+  
         new_signature = Signature()
         new_signature.name = name
         new_signature.plugin_name = plugin_name
@@ -249,6 +274,7 @@ class Job(VertexObject):
             pass
 
         self._matches.append(new_match)
+        return new_match
 
     def add_report(self, report_name, file_obj, data):
 
@@ -281,6 +307,20 @@ class Job(VertexObject):
             del ret_report['_key']
         return ret_reports
 
+    def get_matches(self, file_uuid=None):
+        return_list = []
+        for match_item in self._matches:
+            if match_item.signature is None:
+                match_item.load_signature(self._db)
+            if match_item.file is None:
+                match_item.load_file(self._db, self._filestore)
+            if file_uuid is not None:
+                if match_item.file_uuid == file_uuid:
+                    return_list.append(match_item)
+            else:
+                return_list.append(match_item)
+        return self._matches
+
     def get_signatures(self, file_uuid=None):
         # Ensure any stored reports are saved
         self._save_matches()
@@ -294,29 +334,81 @@ class Job(VertexObject):
             ret_signatures =  file_obj.get_in_path(self._db, self.id, 1, ['has_match', 'added_match'], return_fields=['_key', 'name'])
 
         for ret_sig in ret_signatures:
-            ret_signatures['uuid'] = ret_sig['_key']
             del ret_sig['_key']
         return ret_signatures
 
-    def get_exec_instances(self):
-        self._save_exec_instances()
-        return self.get_connected_to(self._db, 'exec_instance', filter_edges=['has_exec_instance'])
+    def get_exec_instances(self, as_obj=False):
+        self.save_exec_instances()
+        exec_instances = self.get_connected_to(self._db, 'exec_instance', filter_edges=['has_exec_instance'])
+        if not as_obj:
+            return exec_instances
+        return_objs = []
+        for instance in exec_instances:
+            new_obj = ExecInstance(id=instance['_id'])
+            new_obj.from_dict(instance)
+            new_obj.load_processes(self._db)
+            return_objs.append(new_obj)
+        return return_objs
 
     def add_screenshot(self, exec_instance : ExecInstance, in_stream, format='png'):
-        exec_instance.add_screenshot(self._filestore, in_stream, format='png')
+        exec_instance.add_screenshot(self._filestore, in_stream, format=format)
+
+    def update_score(self):
+
+        total_matches = 0
+        severity_map = {
+            SIGNATURE_SEVERITY.INFO: 0,
+            SIGNATURE_SEVERITY.CAUTION: 0,
+            SIGNATURE_SEVERITY.SUSPICIOUS: 0,
+            SIGNATURE_SEVERITY.MALICIOUS: 0
+        }
+        severity_weights = {
+            SIGNATURE_SEVERITY.INFO: 0.02,
+            SIGNATURE_SEVERITY.CAUTION: 0.13,
+            SIGNATURE_SEVERITY.SUSPICIOUS: 0.25,
+            SIGNATURE_SEVERITY.MALICIOUS: 0.60
+        }
+
+        signatures = self.get_signatures()
+        if len(signatures) == 0:
+            return
+        for signature in signatures:
+            severity_map[SIGNATURE_SEVERITY(int(signature['severity']))] += 1
+            total_matches += 1
+
+        weighted_total = 0
+        for severity in severity_weights:
+            weight = severity_weights[severity]
+            weighted_total += (weight * severity_map[severity])
+
+        self._score = (weighted_total / total_matches) * 100
+        
 
     def save(self):
+        self.update_score()
+
         self.save_doc(self._db, self.to_dict())
         self._submission.save(self._db)
         self._save_reports()
         self._save_matches()
-        self._save_exec_instances()
+        self.save_exec_instances()
 
     def load(self, pm):
         doc = self.load_doc(self._db, '_key', self._uuid)
         self.from_dict(pm, doc)
         self._submission.load(self._db)
         self._submission.load_files(self._db, self._filestore)
+        
+
+    def load_matches(self):
+        # Load matches
+        matches_list = self.get_connected_to(self._db, 'signature_matches', filter_edges=['added_match'])
+        for match in matches_list:
+            load_match = SignatureMatch(id=match['_id'])
+            load_match.from_dict(match)
+            load_match.load_signature(self._db)
+            self._matches.append(load_match)
+        # print(self._matches)
 
     def add_to_error(self, error_message):
         self._error.append(error_message)

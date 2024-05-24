@@ -24,7 +24,6 @@ def submit_sample():
     multi_param = 'submissions[]'
     files_param = 'file_uuids[]'
 
-    print()
     if single_param not in request.files and multi_param not in request.files and files_param not in request.form:   
         return json_resp_invalid(
             f"Nothing submitted in '{single_param}', '{multi_param}', or '{files_param}' parameters"
@@ -121,9 +120,6 @@ def submit_sample():
         current_app._db.lock()
         new_submission.save(current_app._db)
         current_app._db.unlock()
-
-        print("new_submission.files", new_submission.files)
-
 
         new_job = Job.new(new_submission, None, current_app._db_factory.new(), current_app._filestore)
         # No primary is set, since we are just identifying

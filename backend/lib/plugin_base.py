@@ -83,7 +83,7 @@ class PluginBase():
     def get_plugin_dir(self):
         return os.path.dirname(sys.modules[self.__class__.__module__].__file__)
 
-    def operates_on(self, file_obj):
+    def operates_on(self, file_obj, is_primary):
         operates = False
         found = False
         if hasattr(self, 'MIME_TYPES'):
@@ -96,6 +96,10 @@ class PluginBase():
             if file_obj.extension in self.EXTENSIONS:
                 operates = True
 
+        if hasattr(self, 'PRIMARY_ONLY'):
+            found = True
+            operates = self.PRIMARY_ONLY and is_primary
+                
         if found:
             return operates
         else:

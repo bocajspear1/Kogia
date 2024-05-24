@@ -3,7 +3,9 @@ import os
 import stat
 import time
 import hashlib
-from enum import Enum
+import copy
+from enum import IntEnum
+import logging
 
 from .submission import SubmissionFile
 from .db import ArangoConnection
@@ -13,7 +15,9 @@ from PIL import Image
 from .db import DBNotUniqueError
 from .objects import VertexObject, VertexObjectWithMetadata
 
-class SIGNATURE_SEVERITY:
+logger = logging.getLogger(__name__)
+
+class SIGNATURE_SEVERITY(IntEnum):
     INFO = 1 # Just informational
     CAUTION = 2 # Sometimes used for malicious activity
     SUSPICIOUS = 3 # Often used for malicious activies
@@ -36,23 +40,37 @@ class SignatureMatch(VertexObject):
         self._file = None
         self._signature = None
         self._match_time = int(time.time()) 
+        self._extra = []
 
 
     @property
     def file_uuid(self):
         return self._file.uuid
+    
+    @property
+    def extra(self):
+        return copy.deepcopy(self._extra)
+    
+    def add_extra_data(self, extra_dict):
+        self._extra.append(extra_dict)
 
-    def to_dict(self):
+    def to_dict(self, full=False):
         if self._uuid == "":
             self._gen_uuid()
-        return {
+        return_obj =  {
             "_key": self._uuid,
             "match_time": self._match_time,
+            "extra": self._extra
         }
+        if full:
+            return_obj['signature'] = self._signature.to_dict()
+
+        return return_obj
 
     def from_dict(self, data_obj):
         self._uuid = data_obj.get('_key', '')
         self._match_time = data_obj.get('match_time', '')
+        self._match_time = data_obj.get('extra', [])
         if 'signature' in data_obj:
             self._signature = Signature(uuid=data_obj['signature'])
 
@@ -87,17 +105,28 @@ class SignatureMatch(VertexObject):
             self.from_dict(document)
 
     def load_file(self, db, filestore):
-        my_file_list = self.get_connected_to(db, 'has_match')
+        my_file_list = self.get_connected_to(db, 'files')
         if len(my_file_list) > 0:
             self._file = SubmissionFile(id=my_file_list[0]['_id'], filestore=filestore)
             self._file.from_dict(my_file_list[0])
     
 
     def load_signature(self, db):
-        my_sig_list = self.get_connected_to(db, 'matched_signature')
+
+        my_sig_list = self.get_connected_to(db, 'signatures', max=1)
+
         if len(my_sig_list) > 0:
-            self.my_sig_list = Signature(id=my_sig_list[0]['_id'])
+            self._signature = Signature(id=my_sig_list[0]['_id'])
             self._signature.from_dict(my_sig_list[0])
+
+
+    @property
+    def signature(self):
+        return self._signature
+    
+    @property
+    def file(self):
+        return self._file
 
 class Signature(VertexObject):
 
@@ -172,7 +201,7 @@ class Signature(VertexObject):
             "name": self.name,
             "description": self.description,
             "plugin": self.plugin_name,
-            "severity": str(self.severity)
+            "severity": int(self.severity)
         }
 
     def from_dict(self, data_obj):
@@ -180,7 +209,7 @@ class Signature(VertexObject):
         self.name = data_obj.get('name', '')
         self.description = data_obj.get('description', '')
         self.plugin_name = data_obj.get('plugin', '')
-        self.severity = SIGNATURE_SEVERITY[data_obj.get('severity', 'INFO')]
+        self.severity = SIGNATURE_SEVERITY(int(data_obj.get('severity', 1)))
 
     def save(self, db):
         if self.is_modified:
@@ -303,6 +332,7 @@ class ExecInstance(VertexObjectWithMetadata):
         self._comm_stats = {}
         self._screenshots = []
         self._process_count = 0
+        self._loaded_processes = False
 
     def to_dict(self, full=True):
         ret_dict = {
@@ -335,6 +365,7 @@ class ExecInstance(VertexObjectWithMetadata):
 
 
     def save(self, db):
+        logger.debug("Saving exec instance %s", self._uuid)
         try:
             self.save_doc(db, self.to_dict(full=False))
         except DBNotUniqueError:
@@ -377,6 +408,7 @@ class ExecInstance(VertexObjectWithMetadata):
             self._processes.append(load_data)
             self._process_count += 1
             self._process_count += load_data.child_process_count
+        self._loaded_processes = True
 
         
     def load_netcomms(self, db, as_dict=False, limit=30, skip=0, address_filter=None, port_filter=None):
@@ -539,6 +571,24 @@ class ExecInstance(VertexObjectWithMetadata):
     @property
     def end_time(self):
         return self._end_time
+    
+    @property
+    def processes(self):
+        if not self._loaded_processes:
+            raise ValueError("load_processes not called before accessing processes.")
+        # return copy.deepcopy(self._processes)
+        return self._processes
+    
+    @property
+    def process_list(self):
+        if not self._loaded_processes:
+            raise ValueError("load_processes not called before accessing processes.")
+        # return copy.deepcopy(self._processes)
+        proc_list = []
+        for process in self._processes:
+            proc_list.append(process)
+            proc_list += process.child_process_list 
+        return proc_list
 
     @end_time.setter
     def end_time(self, new_time):
@@ -554,14 +604,26 @@ class ExecInstance(VertexObjectWithMetadata):
 
 class Event(VertexObject):
     
+    COLLECTION_NAME = 'events'
+
+    @classmethod
+    def bulk_insert(cls, db, insert_objs):
+        insert_events = []
+        for event in insert_objs:
+            if isinstance(event, Event) and event.id != None:
+                insert_events.append(event.to_dict())
+
+        return db.insert_bulk(Event.COLLECTION_NAME, insert_events, requery=False)
+
     def __init__(self, id=None, uuid=None):
-        super().__init__('events', id)
+        super().__init__(self.COLLECTION_NAME, id)
         self._uuid = uuid
         self._key = ""
         self._src = ""
         self._dest = ""
         self._data = ""
         self._time = 0
+        self._success = True
 
     def _gen_uuid(self):
         my_uuid  = hashlib.sha256(
@@ -581,6 +643,7 @@ class Event(VertexObject):
             "src": self._src,
             "dest": self._dest,
             "data": self._data,
+            "success": self._success
         }
         if full:
             ret_dict['time'] = self._time
@@ -592,6 +655,7 @@ class Event(VertexObject):
         self._src = data_obj.get('src', '')
         self._dest = data_obj.get('dest', '')
         self._data = data_obj.get('data', '')
+        self._data = data_obj.get('success', True)
         if 'signature' in data_obj:
             self._signature = Signature(uuid=data_obj['signature'])
 
@@ -651,6 +715,14 @@ class Event(VertexObject):
     def time(self, new_time):
         self._time = new_time
 
+    @property
+    def success(self):
+        return self._success
+
+    @success.setter
+    def success(self, new_success):
+        self._success = new_success
+
 class Process(VertexObjectWithMetadata):
 
     COLLECTION_NAME = 'processes'
@@ -676,11 +748,13 @@ class Process(VertexObjectWithMetadata):
         self._events = []
         self._event_total = -1
         self._event_total = 0
+        self._events_synced = False
         self._child_processes = []
         self._event_counter = 1
         self._libs = []
         self._syscalls = []
         self._syscall_total = 0
+        self._syscalls_synced = False
 
     @property
     def pid(self):
@@ -732,6 +806,7 @@ class Process(VertexObjectWithMetadata):
                 self._child_processes.append(add_proc)
 
     def save(self, db):
+        logger.debug("Saving process %s, PID=%s", self._uuid, str(self._pid))
         try:
             self.save_doc(db, self.to_dict(get_children=False))
         except DBNotUniqueError:
@@ -743,21 +818,29 @@ class Process(VertexObjectWithMetadata):
                     process.save(db)
                     self.insert_edge(db, 'is_child_of', process.id)
 
-        # Save events
+        self.save_events(db)
+        self.save_metadata(db)
+        self.save_syscalls(db)
+
+    def save_events(self, db):
+        if self._events_synced:
+            return
+        
+        # Save events in bulk, then add edges after
+        Event.bulk_insert(db, self._events)
+
         for event in self._events:
             if isinstance(event, Event):
                 # Yeah, this will be slow, but we want to store the time of the event too
-                event.save(db)
+                # event.save(db)
                 self.insert_edge(db, 'has_event', event.id, data={
                     "event_time": event.time
                 })
 
-        self.save_metadata(db)
-
-        self.save_syscalls(db)
-        
-
     def save_syscalls(self, db):
+        if self._syscalls_synced:
+            return
+        logger.debug("Saving syscalls for process %s, PID=%s", self._uuid, str(self._pid))
         # Insert syscalls
         insert_syscalls = []
         for syscall in self._syscalls:
@@ -769,9 +852,10 @@ class Process(VertexObjectWithMetadata):
         self.insert_edge_bulk(db, 'has_syscall', 'syscalls', new_ids)
 
         # Since we select syscalls to insert based on _id, we need to reload all the syscalls
-        # to ensur ewe don't insert multiple times
+        # to ensure we don't insert multiple times
         self._syscalls = []
         self.load_syscalls(db)
+        self._syscalls_synced = True
 
     def load(self, db):
         document = {}
@@ -807,12 +891,14 @@ class Process(VertexObjectWithMetadata):
                         load_data.time = item['_edge']['event_time']
                     self._events.append(load_data)
                     self._event_counter += 1
+                    self._events_synced = True
             else:
                 for i in range(len(items)):
                     if '_edge' in items[i]:
                         items[i]['time'] = items[i]['_edge']['event_time']
                         del items[i]['_edge']
                 self._events = items
+                self._events_synced = True
         
         result = self.count_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1)
         if len(result) > 0:
@@ -825,14 +911,14 @@ class Process(VertexObjectWithMetadata):
         self._syscall_total = self.count_connected_to(db, 'syscalls', filter_edges=['has_syscall'], direction='out', max=1)[0]
         self._syscalls = self.get_connected_to(db, 'syscalls', filter_edges=['has_syscall'], max=1, 
                                                direction="out", limit=limit, skip=skip, sort_by=('syscalls', 'timestamp', "ASC"))
+        self._syscalls_synced = True
 
     def add_child_process(self, proc_path, pid, command_line):
         child_proc = Process.new(proc_path, pid, command_line)
         self._child_processes.append(child_proc)
         return child_proc
 
-                
-    def add_event(self, event_key, event_src=None, event_dest=None, event_data=None, event_time=None):
+    def add_event(self, event_key, event_src=None, event_dest=None, event_data=None, event_time=None, event_success=True):
         new_event = Event()
         new_event.key = event_key
         if event_src:
@@ -841,6 +927,8 @@ class Process(VertexObjectWithMetadata):
             new_event.dest = event_dest
         if event_data:
             new_event.data = event_data
+
+        new_event.success = event_success
         if event_time is None:
             new_event.time = self._event_counter
             self._event_counter += 1
@@ -848,6 +936,7 @@ class Process(VertexObjectWithMetadata):
             new_event.time = event_time
 
         self._events.append(new_event)
+        self._events_synced = False
         return new_event
         
     def add_shared_lib(self, lib_path):
@@ -862,9 +951,14 @@ class Process(VertexObjectWithMetadata):
             "tid": tid
         }
         self._syscalls.append(new_syscall)
+        self._syscalls_synced = False
 
     @property
     def events(self):
+        """
+        All events from the process.
+        WARNING: Do not expect edits done here to be saved!
+        """
         return self._events
     
     @property
@@ -873,6 +967,10 @@ class Process(VertexObjectWithMetadata):
     
     @property
     def syscalls(self):
+        """
+        All syscalls from the process.
+        WARNING: Do not expect edits done here to be saved!
+        """
         return self._syscalls
     
     @property
@@ -885,7 +983,22 @@ class Process(VertexObjectWithMetadata):
             return len(self._events)
         else:
             return self._event_total
-        
+    
+    @property
+    def child_processes(self):
+        return self._child_processes
+    
+    @property
+    def child_process_list(self):
+        """
+        Creates a flattened list of processes with the process and its child processes
+        """
+        proc_list = []
+        for child_proc in self._child_processes:
+            proc_list.append(child_proc)
+            proc_list += child_proc.child_process_list
+        return proc_list
+    
     @property
     def child_process_count(self):
         count = 0
@@ -897,6 +1010,12 @@ class Process(VertexObjectWithMetadata):
     @property
     def uuid(self):
         return self._uuid
+    
+    def run_on_process_tree(self, func, context):
+        func(self, context)
+        if len(self._child_processes) > 0:
+            for child_proc in self._child_processes:
+                child_proc.run_on_process_tree(func, context)
 
 class NetworkComm(VertexObject):
 

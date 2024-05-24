@@ -9,6 +9,7 @@ from backend.lib.config import load_config
 from backend.auth.db import DBAuth
 from backend.auth import ROLES
 from backend.lib.plugin_manager import PluginManager
+from backend.lib.job import Job
 
 from backend.lib.helpers import prepare_all
 
@@ -80,6 +81,9 @@ def main():
     dev_subparser = dev_parser.add_subparsers(dest="dev_subcmd")
     clean_dev_parser = dev_subparser.add_parser("dbclean")
     clean_dev_parser.add_argument("--force", action="store_true", help="Force clean")
+    clean_dev_parser = dev_subparser.add_parser("plugin")
+    clean_dev_parser.add_argument("--name", help="Plugin name", required=True)
+    clean_dev_parser.add_argument("--job", help="Job UUID to use", required=True)
 
     args = parser.parse_args()
 
@@ -160,6 +164,24 @@ def main():
             
             db.truncate_all_collections()
             print(f"{Fore.YELLOW}All data truncated!{Style.RESET_ALL}")
+
+        elif args.dev_subcmd == 'plugin':
+            plugin_item = pm.get_plugin(args.name)
+            if plugin_item is None:
+                print(f"{Fore.RED}Plugin {args.name} not found{Style.RESET_ALL}")
+                return
+            plugin_obj = pm.initialize_plugin(plugin_item)
+            
+            job_obj = Job(db, filestore, args.job)
+            job_obj.load(pm)
+            job_obj.load_matches()
+            print(job_obj.uuid)
+
+            primary_file = job_obj.get_primary_file()
+            print(primary_file)
+            plugin_obj.run(job_obj, primary_file)
+
+            job_obj.save()
 
 
     elif args.command == "localuser":

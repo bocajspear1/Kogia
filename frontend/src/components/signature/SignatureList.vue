@@ -15,19 +15,22 @@
             </div>
             <div v-if="severity.enabled" class="message-body">
                 <div class="list">
-                    <template v-for="signature in signatures">
-                        <div v-if="signature.severity == severity.num" class="list-item" :ref="signature.uuid">
+                    <template v-for="signature_match in signature_matches">
+                        <div v-if="signature_match.signature.severity == severity.num" class="list-item" :ref="signature_match.signature.uuid">
                         
                             <div class="list-item-image p-2">
-                                <mdicon v-if="signature.severity == '1'" name="information-variant" :size="30" />
-                                <mdicon v-if="signature.severity == '2'" name="help" :size="30" />
-                                <mdicon v-if="signature.severity == '3'" name="alert" :size="30" />
-                                <mdicon v-if="signature.severity == '4'" name="alert-octagon" :size="30" />
+                                <mdicon v-if="signature_match.signature.severity == '1'" name="information-variant" :size="30" />
+                                <mdicon v-if="signature_match.signature.severity == '2'" name="help" :size="30" />
+                                <mdicon v-if="signature_match.signature.severity == '3'" name="alert" :size="30" />
+                                <mdicon v-if="signature_match.signature.severity == '4'" name="alert-octagon" :size="30" />
                             </div>
                             <div class="list-item-content">
-                                <div class="list-item-title">{{ signature.name }} ({{ signature.plugin }})</div>
+                                <div class="list-item-title">{{ signature_match.signature.name }} ({{ signature_match.signature.plugin }})</div>
                                 <div class="list-item-description">
-                                    {{ signature.description }}
+                                    {{ signature_match.signature.description }}
+                                    <template v-for="extra in signature_match.extra">
+                                        {{ extra }}
+                                    </template>
                                 </div>
                             </div>
 
@@ -39,7 +42,7 @@
             
         </div>
     </template>
-    <div class="notification is-info m-2" v-if="signatures.length == 0">
+    <div class="notification is-info m-2" v-if="signature_matches.length == 0">
         No signatures found
     </div>
     
@@ -62,29 +65,33 @@ export default {
     return {
         current: null,
         severities: [
-            { "name": "Malicious", "num": "4", "class": "is-danger", "count": 0, "enabled": false},
-            { "name": "Suspicious", "num": "3", "class": "is-suspicious", "count": 0, "enabled": false },
-            { "name": "Caution", "num": "2", "class": "is-warning", "count": 0, "enabled": false },
-            { "name": "Informational", "num": "1", "class": "is-info", "count": 0, "enabled": false },
+            { "name": "Malicious", "num": 4, "class": "is-danger", "count": 0, "enabled": false},
+            { "name": "Suspicious", "num": 3, "class": "is-suspicious", "count": 0, "enabled": false },
+            { "name": "Caution", "num": 2, "class": "is-warning", "count": 0, "enabled": false },
+            { "name": "Informational", "num": 1, "class": "is-info", "count": 0, "enabled": false },
         ]
     }
   },
   watch: {
-    'signatures' (to, from) {
+    'signature_matches' (to, from) {
         this.updateCount();
     }
   },
   props: {
-    signatures: Array,
+    signature_matches: Array,
   },
   mounted() {
     this.updateCount();
   },
   methods: {
     updateCount() {
-        for (var s in this.signatures) {
+        for (var i = 0; i < this.severities.length; i++) {
+            this.severities[i].count = 0;
+        }
+        for (var s in this.signature_matches) {
+            console.log("hi")
             for (var i = 0; i < this.severities.length; i++) {
-                if (this.severities[i].num == this.signatures[s].severity) {
+                if (this.severities[i].num == this.signature_matches[s].signature.severity) {
                     this.severities[i].count += 1;
                 }
             }

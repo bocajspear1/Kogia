@@ -7,14 +7,22 @@ import logging.config
 from backend.lib.plugin_manager import PluginManager
 from backend.lib.db import ArangoConnectionFactory
 
+
+
 def configure_logging(config, extra=None):
+    
     level = logging.INFO
     logformat = "%(asctime)s %(levelname)s: (%(name)s) %(message)s"
     if 'loglevel' in config:
         loglevel = config['loglevel']
-        if loglevel.lower() == 'debug':
-            logformat = "%(asctime)s %(levelname)s (%(filename)s:%(lineno)d): %(message)s"
+        if 'debug' in loglevel.lower():
+            logformat = "%(asctime)s %(levelname)s (%(name)s:%(filename)s:%(lineno)d): %(message)s"
             level = logging.DEBUG
+            if loglevel.lower() != 'debugall':
+                logging.getLogger("requests").setLevel(logging.WARNING)
+                logging.getLogger("urllib3").setLevel(logging.WARNING)
+                logging.getLogger("PIL").setLevel(logging.WARNING)
+
         elif loglevel.lower() == 'info':
             level = logging.INFO
         elif loglevel.lower() == 'error':
@@ -35,7 +43,7 @@ def configure_logging(config, extra=None):
         handlers=[
             logging.FileHandler(full_log_path),
             logging.StreamHandler()
-        ]
+        ],
     )
 
 def generate_download_token(current_app, g):

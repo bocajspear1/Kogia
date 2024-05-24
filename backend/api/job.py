@@ -47,6 +47,10 @@ def get_job_status(uuid):
     resp = job.to_dict()
     signature_list = job.get_signatures()
     resp['signature_count'] = len(signature_list)
+    reports_list = job.get_reports()
+    resp['report_count'] = len(reports_list)
+    exec_inst_list = job.get_exec_instances()
+    resp['exec_inst_count'] = len(exec_inst_list)
     current_app._db.unlock()
     return jsonify({
         "ok": True,
@@ -91,17 +95,22 @@ def get_job_signatures(uuid):
     current_app._db.lock()
     job = Job(current_app._db, current_app._filestore, uuid=uuid)
     job.load(current_app._manager)
+    job.load_matches()
     if job.uuid == None:
         return abort(404)
 
     file_uuid = request.args.get('file')
-    resp = job.get_signatures(file_uuid=file_uuid)
+    matches = job.get_matches(file_uuid=file_uuid)
+
+    dict_list = []
+    for match_item in matches:
+        dict_list.append(match_item.to_dict(full=True))
 
     current_app._db.unlock()
 
     return jsonify({
         "ok": True,
-        "result": resp
+        "result": dict_list
     })
 
 @job_endpoints.route('/<uuid>/exec_instances', methods=['GET'])

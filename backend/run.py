@@ -57,7 +57,6 @@ def run_gunicorn(config, workers, address, port):
             return util.import_app(self.app_uri)
 
     StandaloneApplication("backend.server:app", options).run()
-    print("done")
 
 def run_waitress(config, workers, address, port):
     from waitress import serve

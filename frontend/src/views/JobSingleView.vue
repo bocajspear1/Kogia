@@ -5,6 +5,7 @@ import MetadataTable from '@/components/metadata/MetadataTable.vue';
 import FileDropdown from '../components/file/FileDropdown.vue';
 import JobFilesPanel from '../components/file/JobFilesPanel.vue';
 import SidebarMenuItem from '../components/menu/SidebarMenuItem.vue';
+import MenuTag from '../components/menu/MenuTag.vue';
 import SidebarMenu from '../components/menu/SidebarMenu.vue';
 import DynamicFilterTable from '@/components/dynamic/DynamicFilterTable.vue';
 import ReportDisplay from '@/components/report/ReportDisplay.vue';
@@ -12,6 +13,7 @@ import SignatureList from '@/components/signature/SignatureList.vue';
 import ProcessPanel from '@/components/host/ProcessPanel.vue';
 import NetworkPanel from '@/components/host/NetworkPanel.vue';
 import JobDetails from '@/components/job/JobDetails.vue';
+import ScoreTag from '@/components/job/ScoreTag.vue';
 import TabMenuItem from '../components/menu/TabMenuItem.vue';
 import TabMenu from '../components/menu/TabMenu.vue';
 import ExecInstDropdown from '@/components/host/ExecInstDropdown.vue'
@@ -22,12 +24,24 @@ import ProcessDropdown from '@/components/host/ProcessDropdown.vue'
     <div class="column is-2">
         <SidebarMenu>
             <template v-slot:main>
-            <SidebarMenuItem iconname="monitor-dashboard" @click="setPage('overview')" :active="page=='overview'">Overview</SidebarMenuItem>
-            <SidebarMenuItem iconname="desktop-tower-monitor" @click="setPage('host')" :active="page=='host'">Host Activity</SidebarMenuItem>
+            <SidebarMenuItem iconname="monitor-dashboard" @click="setPage('overview')" :active="page=='overview'">
+                Overview&nbsp;
+                <ScoreTag v-if="job != null" :score="job.score"></ScoreTag>
+            </SidebarMenuItem>
+            <SidebarMenuItem iconname="desktop-tower-monitor" @click="setPage('host')" :active="page=='host'">
+                Host Activity&nbsp;
+                <MenuTag v-if="job != null" :value="job.exec_inst_count"></MenuTag>
+            </SidebarMenuItem>
             <SidebarMenuItem iconname="server-network" @click="setPage('network')" :active="page=='network'">Network Activity</SidebarMenuItem>
-            <SidebarMenuItem iconname="folder-file" @click="setPage('files')" :active="page=='files'">Files</SidebarMenuItem>
+            <SidebarMenuItem iconname="folder-file" @click="setPage('files')" :active="page=='files'">
+                Files&nbsp;
+                <MenuTag v-if="submission != null" :value="submission.files.length"></MenuTag>
+            </SidebarMenuItem>
             <SidebarMenuItem iconname="table-multiple" @click="setPage('metadata')" :active="page=='metadata'">Metadata</SidebarMenuItem>
-            <SidebarMenuItem iconname="file-chart" @click="setPage('reports')" :active="page=='reports'">Reports</SidebarMenuItem>
+            <SidebarMenuItem iconname="file-chart" @click="setPage('reports')" :active="page=='reports'">
+                Reports&nbsp;
+                <MenuTag v-if="job != null" :value="job.report_count"></MenuTag>
+            </SidebarMenuItem>
             <SidebarMenuItem iconname="script-text" @click="setPage('logs')" :active="page=='logs'">Logs</SidebarMenuItem>
             <SidebarMenuItem iconname="information" @click="setPage('details')" :active="page=='details'">Details</SidebarMenuItem>
             <SidebarMenuItem iconname="database-export" @click="setPage('export')" :active="page=='export'">Export</SidebarMenuItem>
@@ -44,11 +58,11 @@ import ProcessDropdown from '@/components/host/ProcessDropdown.vue'
             
             <div class="columns">
                 <div class="column">
-                    <h1 class="is-size-3">Signatures</h1>
-                    <SignatureList :signatures="all_signatures"></SignatureList>
+                    <h1 class="is-size-3">Signatures</h1><br>
+                    <SignatureList :signature_matches="all_signatures"></SignatureList>
                 </div>
-                <div class="column">
-                    Second column
+                <div class="column is-one-third">
+                    <ScoreTag :score="job.score"></ScoreTag>
                 </div>
             </div>
             

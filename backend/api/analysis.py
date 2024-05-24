@@ -17,10 +17,11 @@ def create_analysis_job():
     plugins_param = 'plugins'
     submission_uuid_param = "submission_uuid"
     primary_uuid_param = "primary_uuid"
+    ignore_uuids_param = "ignore_uuids"
 
     request_data = request.get_json()
 
-    if plugins_param not in request_data:   
+    if plugins_param not in request_data or len(request_data[plugins_param]) == 0:   
         return jsonify({
             "ok": False,
             "error": f"No plugins submitted"
@@ -42,6 +43,7 @@ def create_analysis_job():
 
     submission_uuid = request_data[submission_uuid_param]
     primary_file_uuid = request_data[primary_uuid_param]
+    ignore_uuids = request_data.get(ignore_uuids_param, [])
     submission = Submission(uuid=submission_uuid)
     submission.load(current_app._db)
 
@@ -66,7 +68,13 @@ def create_analysis_job():
             new_job.add_plugin(add_plugin_class, args=options)
         else:
             new_job.add_plugin(add_plugin_class)
-        
+    
+    if len(ignore_uuids) > 0:
+        limit_list = []
+        for submission_file in submission.files:
+            if submission_file.uuid not in ignore_uuids:
+                new_job.add_limit_to_file(submission_file.uuid)
+
         
     new_job.save()
 
