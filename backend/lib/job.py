@@ -254,10 +254,7 @@ class Job(VertexObject):
             
             if match_item.signature is None:
                 match_item.load_signature(self._db)
-            print("match_item", match_item.signature.name, match_item.signature.plugin_name)
-            print("looking", name, plugin_name)
             if match_item.signature.name == name and match_item.signature.plugin_name == plugin_name:
-                print("dup")
                 return match_item
   
         new_signature = Signature()
@@ -355,33 +352,51 @@ class Job(VertexObject):
 
     def update_score(self):
 
-        total_matches = 0
-        severity_map = {
-            SIGNATURE_SEVERITY.INFO: 0,
-            SIGNATURE_SEVERITY.CAUTION: 0,
-            SIGNATURE_SEVERITY.SUSPICIOUS: 0,
-            SIGNATURE_SEVERITY.MALICIOUS: 0
-        }
+        # total_matches = 0
+        # severity_map = {
+        #     SIGNATURE_SEVERITY.INFO: 0,
+        #     SIGNATURE_SEVERITY.CAUTION: 0,
+        #     SIGNATURE_SEVERITY.SUSPICIOUS: 0,
+        #     SIGNATURE_SEVERITY.MALICIOUS: 0
+        # }
+        # severity_weights = {
+        #     SIGNATURE_SEVERITY.INFO: 0.02,
+        #     SIGNATURE_SEVERITY.CAUTION: 0.13,
+        #     SIGNATURE_SEVERITY.SUSPICIOUS: 0.25,
+        #     SIGNATURE_SEVERITY.MALICIOUS: 0.60
+        # }
+
+        # signatures = self.get_signatures()
+        # if len(signatures) == 0:
+        #     return
+        # for signature in signatures:
+        #     severity_map[SIGNATURE_SEVERITY(int(signature['severity']))] += 1
+        #     total_matches += 1
+
+        # weighted_total = 0
+        # for severity in severity_weights:
+        #     weight = severity_weights[severity]
+        #     weighted_total += (weight * severity_map[severity])
+
+        # self._score = (weighted_total / total_matches) * 100
+
         severity_weights = {
-            SIGNATURE_SEVERITY.INFO: 0.02,
-            SIGNATURE_SEVERITY.CAUTION: 0.13,
-            SIGNATURE_SEVERITY.SUSPICIOUS: 0.25,
-            SIGNATURE_SEVERITY.MALICIOUS: 0.60
+            SIGNATURE_SEVERITY.INFO: 0.5,
+            SIGNATURE_SEVERITY.CAUTION: 3,
+            SIGNATURE_SEVERITY.SUSPICIOUS: 6,
+            SIGNATURE_SEVERITY.MALICIOUS: 10
         }
 
         signatures = self.get_signatures()
         if len(signatures) == 0:
             return
         for signature in signatures:
-            severity_map[SIGNATURE_SEVERITY(int(signature['severity']))] += 1
-            total_matches += 1
+            self._score += severity_weights[SIGNATURE_SEVERITY(int(signature['severity']))]
 
-        weighted_total = 0
-        for severity in severity_weights:
-            weight = severity_weights[severity]
-            weighted_total += (weight * severity_map[severity])
 
-        self._score = (weighted_total / total_matches) * 100
+        if self._score > 100.0:
+            self._score = 100.0
+
         
 
     def save(self):
@@ -431,7 +446,8 @@ class Job(VertexObject):
     def warning_log(self, log_name, message):
         self._log('warning', log_name, message)
 
-    def get_logs(self):
-        return self._db.get_list_by_match("logs", "job_uuid", self._uuid)
+    def get_logs(self, skip=0, limit=30):
+        count = len(self._db.get_list_by_match("logs", "job_uuid", self._uuid))
+        return count, self._db.get_list_by_match("logs", "job_uuid", self._uuid, skip=skip, limit=limit)
 
 

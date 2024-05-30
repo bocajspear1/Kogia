@@ -59,17 +59,27 @@ def get_job_status(uuid):
 
 @job_endpoints.route('/<uuid>/logs', methods=['GET'])
 def get_job_logs(uuid):
+    skip_int = 0
+    limit_int = 30
+    try:
+        limit_int, skip_int = get_pagination(request)
+    except ValueError:
+        return abort(400)
+    
     current_app._db.lock()
     job = Job(current_app._db, current_app._filestore, uuid=uuid)
     job.load(current_app._manager)
     if job.uuid == None:
         return abort(404)
-    resp = job.get_logs()
+    log_count, log_list = job.get_logs(skip=skip_int, limit=limit_int)
     current_app._db.unlock()
 
     return jsonify({
         "ok": True,
-        "result": resp
+        "result": {
+            "logs": log_list,
+            "total": log_count
+        }
     })
 
 @job_endpoints.route('/<uuid>/reports', methods=['GET'])

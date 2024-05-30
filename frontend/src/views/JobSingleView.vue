@@ -7,7 +7,7 @@ import JobFilesPanel from '../components/file/JobFilesPanel.vue';
 import SidebarMenuItem from '../components/menu/SidebarMenuItem.vue';
 import MenuTag from '../components/menu/MenuTag.vue';
 import SidebarMenu from '../components/menu/SidebarMenu.vue';
-import DynamicFilterTable from '@/components/dynamic/DynamicFilterTable.vue';
+import JobLogViewer from '@/components/job/JobLogViewer.vue';
 import ReportDisplay from '@/components/report/ReportDisplay.vue';
 import SignatureList from '@/components/signature/SignatureList.vue';
 import ProcessPanel from '@/components/host/ProcessPanel.vue';
@@ -61,9 +61,9 @@ import ProcessDropdown from '@/components/host/ProcessDropdown.vue'
                     <h1 class="is-size-3">Signatures</h1><br>
                     <SignatureList :signature_matches="all_signatures"></SignatureList>
                 </div>
-                <div class="column is-one-third">
+                <!-- <div class="column is-one-third">
                     <ScoreTag :score="job.score"></ScoreTag>
-                </div>
+                </div> -->
             </div>
             
         </template>
@@ -106,11 +106,7 @@ import ProcessDropdown from '@/components/host/ProcessDropdown.vue'
             <ReportDisplay :file_uuid="getFileUUID()" :job_uuid="job_uuid"></ReportDisplay>
         </template>
         <template v-if="done && page == 'logs'">
-            <DynamicFilterTable :columns="['Severity', 'Name', 'Message']" 
-                                :data="logs" 
-                                :noFilter="['Message']"
-                                :limitFilter="{'Severity':['error', 'warning', 'debug', 'info']}"
-                                @onFilter="onLogFilter"></DynamicFilterTable>
+            <JobLogViewer :job_uuid="job_uuid"></JobLogViewer>
         </template>
         <template v-if="done && page == 'details'">
             <JobDetails :job="job"></JobDetails>
@@ -181,18 +177,7 @@ export default {
                 }
             )
         } else if (self.page == "logs") {
-            self.logs = [];
-            api.get_job_logs(self.job_uuid, "", 
-                function(data) {
-                    for (var i = 0; i < data.length; i++) {
-                        var message = data[i]['message']
-                        self.logs.push([data[i]['severity'], data[i]['log_name'], message]);
-                    }
-                },
-                function(status, data) {
-
-                }
-            )
+            
         }
     },
     getFileUUID() {
@@ -223,9 +208,6 @@ export default {
         self.$router.push({ name: 'JobSingle', params: { job_uuid: self.$route.params.job_uuid, page: page_name } });
         self.page = page_name;
     },  
-    onLogFilter(column, new_filter) {
-        console.log(column, new_filter);
-    },
     metadataSelected(metadata_type) {
         this.metadata_selected = metadata_type;
         if (metadata_type == "processes") {

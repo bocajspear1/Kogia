@@ -28,9 +28,30 @@
                                 <div class="list-item-title">{{ signature_match.signature.name }} ({{ signature_match.signature.plugin }})</div>
                                 <div class="list-item-description">
                                     {{ signature_match.signature.description }}
-                                    <template v-for="extra in signature_match.extra">
-                                        {{ extra }}
-                                    </template>
+                                    <table class="table m-2 is-fullwidth">
+                                        <thead>
+                                            <tr>
+                                                <th>Key</th>
+                                                <th>Value</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <template v-for="extra in signature_match.extra">
+                                                <template v-for="(value, key) in extra">
+                                                <tr v-if="value != null">
+                                                    <td>
+                                                        {{ key }}
+                                                    </td>
+                                                    <td>
+                                                        {{ value }}
+                                                    </td>
+                                                </tr>
+                                                
+                                                </template>
+                                                <tr><td colspan="2" class="table-sep"></td></tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
 
@@ -49,6 +70,10 @@
 </template>
 
 <style scoped>
+    .table-sep {
+        padding: 0.5px;
+    }
+
     .is-suspicious {
         background-color: rgb(255, 233, 193);
     }
@@ -89,7 +114,6 @@ export default {
             this.severities[i].count = 0;
         }
         for (var s in this.signature_matches) {
-            console.log("hi")
             for (var i = 0; i < this.severities.length; i++) {
                 if (this.severities[i].num == this.signature_matches[s].signature.severity) {
                     this.severities[i].count += 1;

@@ -155,18 +155,18 @@ export default  {
     get_file_metadata_types: function(file_uuid, on_succeeded, on_failed) {
         this.api_call("/file/" + file_uuid + "/metadata/list", on_succeeded, on_failed);
     },
-    get_file_metadata_list: function(file_uuid, metadata, filter, on_succeeded, on_failed) {
+    get_file_metadata_list: function(file_uuid, metadata, filter, skip, limit, on_succeeded, on_failed) {
         if (!filter) {   
-            this.api_call("/file/" + file_uuid + "/metadata/" + metadata + "/list", on_succeeded, on_failed);
+            this.api_call("/file/" + file_uuid + "/metadata/" + metadata + "/list?skip=" + skip + "&limit=" + limit, on_succeeded, on_failed);
         } else {
-            this.api_call("/file/" + file_uuid + "/metadata/" + metadata + "/list?filter=" + filter, on_succeeded, on_failed);
+            this.api_call("/file/" + file_uuid + "/metadata/" + metadata + "/list?filter=" + filter + "&skip=" + skip + "&limit=" + limit, on_succeeded, on_failed);
         }
     },
-    get_job_logs: function(job_uuid, filter, on_succeeded, on_failed) {
+    get_job_logs: function(job_uuid, skip, limit, filter, on_succeeded, on_failed) {
         if (!filter) {   
-            this.api_call("/job/" + job_uuid + "/logs", on_succeeded, on_failed);
+            this.api_call("/job/" + job_uuid + "/logs?skip=" + skip + "&limit=" + limit, on_succeeded, on_failed);
         } else {
-            this.api_call("/job/" + job_uuid + "/logs?filter=" + filter, on_succeeded, on_failed);
+            this.api_call("/job/" + job_uuid + "/logs?filter=" + filter + "&skip=" + skip + "&limit=" + limit, on_succeeded, on_failed);
         }
     },
     get_job_reports: function(job_uuid, file_uuid, on_succeeded, on_failed) {
@@ -201,11 +201,11 @@ export default  {
     get_instance_metadata_types: function(instance_uuid, on_succeeded, on_failed) {
         this.api_call("/exec_instance/" + instance_uuid  + "/metadata/list", on_succeeded, on_failed);
     },
-    get_instance_metadata_list: function(instance_uuid, metadata, filter, on_succeeded, on_failed) {
+    get_instance_metadata_list: function(instance_uuid, metadata, filter, skip, limit, on_succeeded, on_failed) {
         if (!filter) {   
-            this.api_call("/exec_instance/" + instance_uuid + "/metadata/" + metadata + "/list", on_succeeded, on_failed);
+            this.api_call("/exec_instance/" + instance_uuid + "/metadata/" + metadata + "/list?skip=" + skip + "&limit=" + limit, on_succeeded, on_failed);
         } else {
-            this.api_call("/exec_instance/" + instance_uuid + "/metadata/" + metadata + "/list?filter=" + filter, on_succeeded, on_failed);
+            this.api_call("/exec_instance/" + instance_uuid + "/metadata/" + metadata + "/list?filter=" + filter + "&skip=" + skip + "&limit=" + limit, on_succeeded, on_failed);
         }
     },
     get_instance_netcomms: function(skip, limit, instance_uuid, address_filter, port_filter, on_succeeded, on_failed) {
@@ -230,11 +230,11 @@ export default  {
     get_process_metadata_types: function(process_uuid, on_succeeded, on_failed) {
         this.api_call("/process/" + process_uuid + "/metadata/list", on_succeeded, on_failed);
     },
-    get_process_metadata_list: function(process_uuid, metadata, filter, on_succeeded, on_failed) {
+    get_process_metadata_list: function(process_uuid, metadata, filter, skip, limit, on_succeeded, on_failed) {
         if (!filter) {   
-            this.api_call("/process/" + process_uuid + "/metadata/" + metadata + "/list", on_succeeded, on_failed);
+            this.api_call("/process/" + process_uuid + "/metadata/" + metadata + "/list?skip=" + skip + "&limit=" + limit, on_succeeded, on_failed);
         } else {
-            this.api_call("/process/" + process_uuid + "/metadata/" + metadata + "/list?filter=" + filter, on_succeeded, on_failed);
+            this.api_call("/process/" + process_uuid + "/metadata/" + metadata + "/list?filter=" + filter + "&skip=" + skip + "&limit=" + limit, on_succeeded, on_failed);
         }
     },
     get_process_syscalls: function(process_uuid, skip, limit, on_succeeded, on_failed) {

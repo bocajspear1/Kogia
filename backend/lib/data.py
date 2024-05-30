@@ -52,6 +52,11 @@ class SignatureMatch(VertexObject):
         return copy.deepcopy(self._extra)
     
     def add_extra_data(self, extra_dict):
+        # extra data is expected to to a dict
+        
+        for current_item in self._extra:
+            if current_item == extra_dict:
+                return
         self._extra.append(extra_dict)
 
     def to_dict(self, full=False):
@@ -70,7 +75,7 @@ class SignatureMatch(VertexObject):
     def from_dict(self, data_obj):
         self._uuid = data_obj.get('_key', '')
         self._match_time = data_obj.get('match_time', '')
-        self._match_time = data_obj.get('extra', [])
+        self._extra = data_obj.get('extra', [])
         if 'signature' in data_obj:
             self._signature = Signature(uuid=data_obj['signature'])
 
@@ -740,6 +745,7 @@ class Process(VertexObjectWithMetadata):
         super().__init__(self.COLLECTION_NAME, 'has_process_metadata', id)
         self._uuid = uuid
         self._pid = 0
+        self._parent_pid = 0
         self._path = ""
         self._command_line = ""
         self._start_time = 0
@@ -761,6 +767,14 @@ class Process(VertexObjectWithMetadata):
         return self._pid
     
     @property
+    def parent_pid(self):
+        return self._parent_pid
+
+    @parent_pid.setter
+    def parent_pid(self, new_parent_pid):
+        self._parent_pid = int(new_parent_pid)
+    
+    @property
     def path(self):
         return self._path
     
@@ -773,12 +787,13 @@ class Process(VertexObjectWithMetadata):
             "_key": self._uuid,
             "uuid": self._uuid,
             "pid": self._pid,
+            "parent_pid": self._parent_pid,
             "path": self._path,
             "command_line": self._command_line,
             "start_time": self._start_time,
             "end_time": self._end_time,
             "libraries": self._libs,
-            "event_count": self.event_count
+            "event_count": self.event_count,
         }
         if get_children:
             ret_dict["child_processes"] = []
@@ -793,6 +808,7 @@ class Process(VertexObjectWithMetadata):
         self._command_line = data_obj.get('command_line', '')
         self._start_time = data_obj.get('start_time', 0)
         self._end_time = data_obj.get('end_time', 0)
+        self._parent_pid = data_obj.get('parent_pid', 0)
         
         
         if 'libraries' in data_obj:
@@ -803,6 +819,7 @@ class Process(VertexObjectWithMetadata):
             for item in data_obj['child_processes']:
                 add_proc = Process(uuid=item['_key'])
                 add_proc.from_dict(item)
+                add_proc.parent_pid = self._pid
                 self._child_processes.append(add_proc)
 
     def save(self, db):
@@ -868,10 +885,12 @@ class Process(VertexObjectWithMetadata):
             self.from_dict(document)
 
     def load_child_processes(self, db, get_children=True, load_event_count=False):
+        self._child_processes = []
         items = self.get_connected_to(db, 'processes', filter_edges=['is_child_of'], direction='out', max=1)
         for item in items:
             load_data = Process(id=item['_id'])
             load_data.from_dict(item)
+            load_data.parent_pid = self._pid
             if get_children:
                 load_data.load_child_processes(db, get_children=get_children, load_event_count=load_event_count)
             if load_event_count:
@@ -879,6 +898,7 @@ class Process(VertexObjectWithMetadata):
             self._child_processes.append(load_data)
 
     def load_events(self, db, as_dict=False, limit=0, skip=0, count_only=False):
+        self._events = []
         if not count_only:
             items = self.get_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1, limit=limit, skip=skip, 
                                           sort_by=('has_event', 'event_time', 'ASC'), add_edges=True)
@@ -915,6 +935,7 @@ class Process(VertexObjectWithMetadata):
 
     def add_child_process(self, proc_path, pid, command_line):
         child_proc = Process.new(proc_path, pid, command_line)
+        child_proc.parent_pid = self._pid
         self._child_processes.append(child_proc)
         return child_proc
 

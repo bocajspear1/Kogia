@@ -154,9 +154,12 @@ class ArangoConnection():
             else:
                 final_key = final_key + "_item"
             
-            filter_query += " " + final_key + "." + filter_field + " " + compare + " @" + val_name + ""
+            if compare == "IREGEX":
+                filter_query += f" REGEX_TEST({final_key}.{filter_field}, @{val_name}, true)"
+            else:
+                filter_query += " " + final_key + "." + filter_field + " " + compare + " @" + val_name + ""
 
-        # print(filter_query)
+        print(filter_query)
         return filter_query, new_bind_vars
 
     # {"test": ()}
@@ -408,9 +411,16 @@ FOR start IN @@startCollection FILTER start._id == @fromId
     def _parse_filter(self, collection, filter_item):
         """Coverts a nest set of tuples into a string filter for AQL with binding parameters.
 
-           Note: Tuple columns should not be user provided!
+            Format is ('AND|OR', [
+                (key, value),
+                (OP, key, value),
+                (OP, COL, key, value)
+            ])
+
+           Note: OP, key, or COL should not be user provided!
         
         """
+        
         if filter_item[0] in ("OR", "AND"):
             filter_str = ""
             variable_map = {}
@@ -427,6 +437,35 @@ FOR start IN @@startCollection FILTER start._id == @fromId
                 return {
                     var_name: filter_item[1]
                 }, f"v.{filter_item[0]} == @{var_name}"
+            elif len(filter_item) == 3 or len(filter_item) == 4:
+                collection = "v"
+                operator = filter_item[0]
+                key_name = filter_item[1]
+                var_name = f"{key_name}_val"
+                var_data = filter_item[2]
+                if len(filter_item) == 4:
+                    collection = filter_item[1]
+                    var_name = f"{filter_item[2]}_val"
+                    var_data = filter_item[3]
+                    
+                if operator == "IREGEX":
+                    return {
+                        var_name: var_data
+                    }, f"REGEX_TEST({collection}.{key_name}, @{var_name}, true)"
+                elif operator == "REGEX":
+                    return {
+                        var_name: var_data
+                    }, f"REGEX_TEST({collection}.{key_name}, @{var_name}, false)"
+                elif operator == "ILIKE":
+                    return {
+                        var_name: str(var_data).lower()
+                    }, f"LOWER({collection}.{key_name}) LIKE @{var_name}"
+                elif operator in ('==', '=', '!=', '<=', '>=', '<', '>'):
+                    return {
+                        var_name: var_data
+                    }, f"{collection}.{filter_item[0]} {operator} @{var_name}"
+
+                
                 
 
     def get_connected_to(self, graph_name, from_item, end_collection, filter_edges=None, filter_vertices=None, sort_by=None, max=2, direction='both', limit=0, 
@@ -464,7 +503,7 @@ FOR start IN @@startCollection FILTER start._id == @fromId
         if filter_vertices is not None:
             new_bind_vars, filter_query = self._parse_filter(end_collection, filter_vertices)
             bind_vars.update(new_bind_vars)
-            query += " AND " + filter_query
+            query += " AND " + filter_query + " "
         
         if sort_by is not None:
             sort_item = sort_by[0] + "_item"

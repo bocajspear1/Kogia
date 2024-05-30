@@ -19,7 +19,12 @@ import DynamicFilterTable from '@/components/dynamic/DynamicFilterTable.vue'
         <div class="notification is-warning" v-else-if="types_done">
             No metadata found
         </div>
-        <DynamicFilterTable v-if="selected_type != ''" :columns="['Values']" :data="metadata_list" :pageCount="2" @onFilter="onFilter"></DynamicFilterTable>
+        <DynamicFilterTable v-if="selected_type != ''" 
+                    :columns="['Values']" 
+                    :data="metadata_list" 
+                    :pageSize="limit"
+                    :totalItems="metadata_count"
+                    @onFilter="onFilter" @onNewPage="onNewPage"></DynamicFilterTable>
     </template>
     <div class="notification is-info" v-else>
         No item is selected
@@ -39,28 +44,32 @@ export default {
     return {
         types_done: false,
         list_done: false,
+        limit: 50,
         error: null,
         metadata_types: {},
+        metadata_count: 0,
         metadata_list: [],
-        selected_type: ""
+        selected_type: "",
+        current_page: 1,
+        filter: ""
     }
   },
   props: ["file_uuid", "process_uuid", "instance_uuid"],
   mounted() {
-    this.getMetadataList();
+    this.getMetadataTypeList();
   },
   watch: {
     'file_uuid' (to, from) {
         this._reset();
-        this.getMetadataList();
+        this.getMetadataTypeList();
     },
     'instance_uuid' (to, from) {
         this._reset();
-        this.getMetadataList();
+        this.getMetadataTypeList();
     },
     'process_uuid' (to, from) {
         this._reset();
-        this.getMetadataList();
+        this.getMetadataTypeList();
     }
   },
   methods: {
@@ -70,6 +79,7 @@ export default {
         }
         this.metadata_list = [];
         this.selected_type = "";
+        this.current_page = 1;
     },
     _updateMetadataTypes(data) {
         var self = this;
@@ -82,7 +92,7 @@ export default {
         var self = this;
         self.error = data;
     },
-    getMetadataList() {
+    getMetadataTypeList() {
         var self = this;
         self.types_done = false;
         if (self.file_uuid != null) {
@@ -96,32 +106,45 @@ export default {
     onSelect(event) {
         if (event.target.value != "") {
             this.selected_type = event.target.value;
-            this.updateSelectFilter("");
+            this.updateSelectFilter();
         }
     },
-    _updateMetadataList(data) {
+    _updateMetadataList(resp_data) {
         var self = this;
         self.error = null;
         self.metadata_list = [];
-        for (var i = 0; i < data.length; i++) {
-            self.metadata_list.push([data[i]])
+        self.metadata_count = resp_data['total'];
+
+        for (var i = 0; i < resp_data['metadata'].length; i++) {
+            self.metadata_list.push([resp_data['metadata'][i]['value']])
         }
         self.list_done = true;
     },
-    updateSelectFilter(filter) {
+    updateSelectFilter() {
         var self = this;
         self.list_done = false;
+        
         if (self.file_uuid != null) {
-            api.get_file_metadata_list(self.file_uuid, self.selected_type, filter, self._updateMetadataList, self._metadataError);
+            api.get_file_metadata_list(self.file_uuid, self.selected_type, self.filter, (self.current_page-1)*self.limit, self.limit, self._updateMetadataList, self._metadataError);
         } else if (self.instance_uuid != null) {
-            api.get_instance_metadata_list(self.instance_uuid, self.selected_type, filter, self._updateMetadataList, self._metadataError);
+            api.get_instance_metadata_list(self.instance_uuid, self.selected_type, self.filter, (self.current_page-1)*self.limit, self.limit, self._updateMetadataList, self._metadataError);
         } else if (self.process_uuid != null) {
-            api.get_process_metadata_list(self.process_uuid, self.selected_type, filter, self._updateMetadataList, self._metadataError);
+            api.get_process_metadata_list(self.process_uuid, self.selected_type, self.filter, (self.current_page-1)*self.limit, self.limit, self._updateMetadataList, self._metadataError);
         }
     },
     onFilter: function(column, new_filter) {
-        this.updateSelectFilter(new_filter)
-    }
+        this.filter = new_filter;
+        this.updateSelectFilter();
+        this.current_page = 1;
+    },
+    onNewPage(new_page) {
+        if (this.current_page != new_page) {
+            console.log("updated page to ", new_page)
+            this.current_page = new_page;
+            this.updateSelectFilter();
+            
+        }
+    },
   }
 }
 </script>

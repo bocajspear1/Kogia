@@ -7,6 +7,7 @@ import pyzipper
 from flask import Blueprint, Flask, g, jsonify, current_app, request, send_file, send_from_directory, abort
 from backend.lib.submission import SubmissionFile
 from backend.lib.helpers import generate_download_token
+from backend.api.helpers import get_pagination
 
 file_endpoints = Blueprint('file_endpoints', __name__)
 
@@ -132,31 +133,28 @@ def get_file_metadata_types(uuid):
 
 @file_endpoints.route('/<uuid>/metadata/<metatype>/list', methods=['GET'])
 def get_file_metadata_list(uuid, metatype):
+    skip_int = 0
+    limit_int = 50
+    try:
+        limit_int, skip_int = get_pagination(request)
+    except ValueError:
+        return abort(400)
+    
+    filter = request.args.get('filter')
+    
     file_obj = SubmissionFile(uuid=uuid, filestore=current_app._filestore)
     current_app._db.lock()
     file_obj.load(current_app._db)
-    file_obj.load_metadata(current_app._db)
+    file_obj.load_metadata(current_app._db, mtype=metatype.strip(), skip=skip_int, limit=limit_int, filter=filter, as_dict=True)
     current_app._db.unlock()
 
-    return_list = []
-
-    filter = request.args.get('filter')
-    metatype = metatype.strip()
-
-    # Will probably want to make more efficient method later
-
-    metadata = file_obj.metadata 
-    for item in metadata:
-        if item.key == metatype:
-            if filter is not None:
-                if filter.lower() not in item.value.lower():
-                    continue
-
-            return_list.append(item.value)
-
+            
     return jsonify({
         "ok": True,
-        "result": return_list
+        "result": {
+            "metadata": file_obj.metadata ,
+            "total": file_obj.metadata_total
+        }
     })
 
 @file_endpoints.route('/<uuid>/resubmit', methods=['POST'])

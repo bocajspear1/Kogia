@@ -223,22 +223,44 @@ class VertexObjectWithMetadata(VertexObject):
     def __init__(self, collection, metadata_edge_col, id):
         super().__init__(collection, id)
         self._metadata = []
+        self._metadata_total = 0 # Stores total metadata for current filter and mtype set
         self._edge_col = metadata_edge_col
 
     @property
     def metadata(self):
         return self._metadata
 
+    @property
+    def metadata_total(self):
+        return self._metadata_total
+
     # We load metadata seperately so we don't grab everything every time.
     # Saves lots of time
-    def load_metadata(self, db):
+    def load_metadata(self, db, as_dict=False, mtype=None, skip=0, limit=None, filter=None):
         self._metadata = []
+        items = []
 
-        items = self.get_connected_to(db, 'metadata', filter_edges=[self._edge_col])
-        for item in items:
-            load_data = Metadata(id=item['_id'])
-            load_data.from_dict(item)
-            self._metadata.append(load_data)
+        if limit is not None:
+            filter_list = ('key', mtype)
+            if filter is not None:
+                filter_list = ('AND', [filter_list, ('ILIKE', 'value', "%" + filter + "%")])
+            items = self.get_connected_to(db, 'metadata', filter_edges=[self._edge_col], filter_vertices=filter_list, skip=skip, limit=limit)
+            self._metadata_total = self.count_connected_to(db, 'metadata', filter_edges=[self._edge_col], filter_vertices=filter_list)[0]
+        elif filter is not None:
+            filter_list = ('ILIKE', 'value', "%" + filter + "%")
+            items = self.get_connected_to(db, 'metadata', filter_edges=[self._edge_col], filter_vertices=filter_list)
+            self._metadata_total = self.count_connected_to(db, 'metadata', filter_edges=[self._edge_col], filter_vertices=filter_list)[0]
+        else:
+            items = self.get_connected_to(db, 'metadata', filter_edges=[self._edge_col])
+            self._metadata_total = self.count_connected_to(db, 'metadata', filter_edges=[self._edge_col])[0]
+        
+        if not as_dict:
+            for item in items:
+                load_data = Metadata(id=item['_id'])
+                load_data.from_dict(item)
+                self._metadata.append(load_data)
+        else:
+            self._metadata = items
     
     def save_metadata(self, db):
         # Check if metadata has been loaded our added

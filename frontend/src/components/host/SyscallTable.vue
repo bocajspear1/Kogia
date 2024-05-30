@@ -102,47 +102,6 @@ export default {
             }
         )
     },
-    updateSelectFilter(filter) {
-        var self = this;
-        if (self.file_uuid != null) {
-            if (self.selected_type == "") {
-                self.selected_type = " ";
-            }
-            api.get_file_metadata_list(self.file_uuid, self.selected_type, filter,
-                function(data){
-                    self.error = null;
-                    self.metadata_list = [];
-                    for (var i = 0; i < data.length; i++) {
-                        self.metadata_list.push([data[i]])
-                    }
-                    
-                },
-                function(status, data){
-                    self.error = data;
-                }
-            )
-        } else if (self.process_uuid != null) {
-            if (self.selected_type == "") {
-                self.selected_type = " ";
-            }
-            api.get_process_metadata_list(self.file_uuid, self.selected_type, filter,
-                function(data){
-                    self.error = null;
-                    self.metadata_list = [];
-                    for (var i = 0; i < data.length; i++) {
-                        self.metadata_list.push([data[i]])
-                    }
-                    
-                },
-                function(status, data){
-                    self.error = data;
-                }
-            )
-        }
-    },
-    onFilter: function(column, new_filter) {
-        this.updateSelectFilter(new_filter)
-    },
     onNewPage: function(page_num) {
         console.log(page_num)
         this.syscall_page = page_num;

@@ -63,34 +63,32 @@ def get_process_syscalls(uuid):
 
 @process_endpoints.route('/<uuid>/metadata/<metatype>/list', methods=['GET'])
 def get_process_metadata_list(uuid, metatype):
+    skip_int = 0
+    limit_int = 50
+    try:
+        limit_int, skip_int = get_pagination(request)
+    except ValueError:
+        return abort(400)
+    
     proc = Process(uuid=uuid)
     current_app._db.lock()
     proc.load(current_app._db)
     if proc.uuid == None:
         current_app._db.unlock()
         return abort(404)
-    proc.load_metadata(current_app._db)
+    
+    filter = request.args.get('filter')
+
+    proc.load_metadata(current_app._db, mtype=metatype.strip(), skip=skip_int, limit=limit_int, filter=filter, as_dict=True)
     current_app._db.unlock()
 
-    return_list = []
-
-    filter = request.args.get('filter')
-    metatype = metatype.strip()
-
-    # Will probably want to make more efficient method later
-
-    metadata = proc.metadata 
-    for item in metadata:
-        if item.key == metatype:
-            if filter is not None:
-                if filter.lower() not in item.value.lower():
-                    continue
-
-            return_list.append(item.value)
-
+            
     return jsonify({
         "ok": True,
-        "result": return_list
+        "result": {
+            "metadata": proc.metadata ,
+            "total": proc.metadata_total
+        }
     })
 
 @process_endpoints.route('/<uuid>/metadata/list', methods=['GET'])
