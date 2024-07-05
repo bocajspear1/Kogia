@@ -4,9 +4,9 @@ import uuid
 import copy
 
 from backend.lib.submission import Submission, SubmissionFile
-from backend.lib.objects import VertexObject
-from backend.lib.data import Process, Signature, SignatureMatch, Report, ExecInstance, SIGNATURE_SEVERITY
-
+from backend.lib.objects import VertexObject, CollectionObject, FilestoreObject
+from backend.lib.data import Process, Signature, SignatureMatch, Report, ExecInstance, SIGNATURE_SEVERITY, Event
+from .helpers import safe_uuid
 
 class Job(VertexObject):
     """Object representing a Job, which runs a series of plugins on a Submission.
@@ -78,7 +78,7 @@ class Job(VertexObject):
         self._complete = False
         self._error = []
         self._plugins = []
-        self._uuid = uuid
+        self._uuid = safe_uuid(uuid)
         self._db = db
         self._filestore = filestore
         self._arg_map = {}
@@ -131,7 +131,7 @@ class Job(VertexObject):
     def primary(self):
         return self._primary
     
-    def get_primary_file(self):
+    def get_primary_file(self) -> SubmissionFile:
         primary_file = self._submission.get_file(uuid=self._primary)
         primary_file.load(self._db)
         return primary_file
@@ -318,7 +318,7 @@ class Job(VertexObject):
                 return_list.append(match_item)
         return self._matches
 
-    def get_signatures(self, file_uuid=None):
+    def get_signatures(self, file_uuid=None, as_obj=False):
         # Ensure any stored reports are saved
         self._save_matches()
 
@@ -332,7 +332,15 @@ class Job(VertexObject):
 
         for ret_sig in ret_signatures:
             del ret_sig['_key']
-        return ret_signatures
+        if not as_obj:
+            return ret_signatures
+        else:
+            return_objs = []
+            for signature in ret_signatures:
+                new_obj = Signature(id=signature['_id'])
+                new_obj.from_dict(signature)
+                return_objs.append(new_obj)
+            return return_objs
 
     def get_exec_instances(self, as_obj=False):
         self.save_exec_instances()
@@ -349,6 +357,12 @@ class Job(VertexObject):
 
     def add_screenshot(self, exec_instance : ExecInstance, in_stream, format='png'):
         exec_instance.add_screenshot(self._filestore, in_stream, format=format)
+
+    def generate_export_file(self, filename, export_plugin, export_type, creator):
+        # We don't care about duplicates
+        new_export = ExportFile.new(self._filestore, self._db, self, filename, export_plugin, creator)
+        new_export.file_type = export_type
+        return new_export
 
     def update_score(self):
 
@@ -451,3 +465,215 @@ class Job(VertexObject):
         return count, self._db.get_list_by_match("logs", "job_uuid", self._uuid, skip=skip, limit=limit)
 
 
+
+class ExportFile(CollectionObject, FilestoreObject):
+
+    COLLECTION_NAME = 'export_file'
+
+    @classmethod
+    def new(cls, filestore, db, job, filename, export_plugin, creator):
+        new_cls = cls(uuid=str(uuid.uuid4()))
+        new_cls._export_plugin = export_plugin
+        new_cls._creator = creator
+        new_cls._job = job
+        new_cls._db = db
+
+        # Private in FilestoreObject
+        new_cls._name = filename
+        new_cls._filestore = filestore
+        new_cls._file_id = f"EXPORTS:{filename}-{new_cls.uuid}"
+        return new_cls
+    
+    def __init__(self, uuid=None, id=None, pm=None, filestore=None, job_uuid=None, db=None):
+        CollectionObject.__init__(self, self.COLLECTION_NAME, id)
+        FilestoreObject.__init__(self, filestore, "", "")
+        # super().__init__(self.COLLECTION_NAME, id=id)
+
+        self._name = ""
+        self._uuid = safe_uuid(uuid)
+
+        self._db = db
+        self._filestore = filestore
+
+        if job_uuid is not None:
+            self._job = Job(self._db, self._filestore, uuid=safe_uuid(job_uuid))
+            self._job.load(pm)
+        
+        self._export_plugin = None
+        self._creator = None
+        self._file_id = ""
+        self._hash = ""
+
+        self._handle = None
+
+        self.file_type = ""
+
+        self._signatures = []
+        self._file_filters = []
+        self._event_filters = {}
+        self._syscall_filters = {}
+        self._network_filters = {}
+
+    # def __del__(self):
+    #     self.close_file()
+
+    def to_dict(self):
+        return {
+            "_key": self._uuid,
+            "uuid": self._uuid,
+            "job_uuid": self._job.uuid,
+            "name": self._name,
+            "file_id": self._file_id,
+            "export_plugin": self._export_plugin,
+            "creator": self._creator,
+            "hash": self._hash,
+            "filetype": str(self.file_type)
+        }
+
+    def from_dict(self, data_obj, pm):
+        self._uuid = data_obj.get('_key', '')
+        job_uuid = data_obj.get('job_uuid', '')
+        if job_uuid != '':
+            self._job = Job(self._db, self._filestore, uuid=safe_uuid(job_uuid))
+            self._job.load(pm)
+        self._name = data_obj.get('name', '')
+        self._file_id = data_obj.get('file_id', '')
+        self._export_plugin = data_obj.get('export_plugin', None)
+        self._creator = data_obj.get('creator', None)
+        self._hash = data_obj.get('hash', '')
+        self.file_type = data_obj.get('filetype', '')
+
+    def save(self):
+        self.save_doc(self._db, self.to_dict())
+
+    def load(self, pm):
+        document = {}
+        if self.id is None:
+            document = self.load_doc(self._db, field='_key', value=self._uuid)
+        else:
+            document = self.load_doc(self._db)
+
+        if document is not None:
+            self.from_dict(document, pm)
+        else:
+            self._uuid = None
+
+    def set_event_filter(self, new_filter):
+        if not isinstance(new_filter, dict):
+            raise ValueError("Filter must be a dict")
+        self._event_filters = new_filter
+
+    def set_network_filter(self, new_filter):
+        if not isinstance(new_filter, dict):
+            raise ValueError("Filter must be a dict")
+        self._network_filters = new_filter
+
+    def set_file_filter(self, new_filter):
+        if not isinstance(new_filter, list):
+            raise ValueError("Filter must be a list")
+        self._file_filters = new_filter
+
+    def has_files(self):
+        return len(self._file_filters) > 0
+    
+    def has_network(self):
+        return len(self._network_filters) > 0
+
+    @property
+    def uuid(self):
+        return self._uuid
+
+    @property
+    def name(self):
+        return self._name
+    
+    def signatures(self):
+        signature_list = self._job.get_signatures(as_obj=True)
+
+        signature_list.sort(key=lambda x: x.severity, reverse=True)
+
+        for signature in signature_list:
+            yield signature
+
+    def files(self):
+
+        # We need to load files from the submission
+        # otherwise we miss the "dropped" connection from the edges
+
+        for file_obj in self._job.submission.files:
+            if file_obj.uuid in self._file_filters:
+                yield file_obj
+
+    def events(self):
+        for instance_uuid in self._event_filters:
+            exec_instance = ExecInstance(uuid=instance_uuid)
+            exec_instance.load(self._db)
+            # Skip if we couldn't load execution instance
+            if exec_instance.uuid is None:
+                continue
+            
+
+            exec_inst_dict = self._event_filters[instance_uuid]
+
+            # Yield once with just the execution instance if told not to produce
+            # any processes
+            if len(exec_inst_dict.keys()) == 0:
+                yield exec_instance, None, None
+                return
+
+            process_list = []
+            all_processes = False
+            all_events = False
+
+                     
+            if len(exec_inst_dict.keys()) == 1 and "*" in exec_inst_dict:
+                exec_instance.load_processes(self._db)
+                process_list = exec_instance.process_list
+                all_processes = True
+            else:
+                for proc_uuid in self._event_filters[instance_uuid].keys():
+                    process = Process(uuid=proc_uuid)
+                    process.load(self._db)
+                    process.load_child_processes(self._db)
+                    if process.uuid is None:
+                        continue
+                    process_list.append(process)
+                
+                
+
+            for process in process_list:     
+                process_dict_list = []
+                
+                if not all_processes:
+                    process_dict_list = self._event_filters[instance_uuid][process.uuid]
+                else:
+                    process_dict_list = self._event_filters[instance_uuid]["*"]
+
+                if len(process_dict_list) == 0:
+                    yield exec_instance, process, None
+                    return
+
+                event_list = []
+                if len(process_dict_list) == 1 and process_dict_list[0] == "*":
+                    process.load_events(self._db)
+                    event_list = process.events
+                else:
+                    for event_uuid in process_dict_list:
+                        event = Event(uuid=event_uuid)
+                        event.load(self._db)
+                        event_list.append(event)
+
+                for event in event_list:
+                    yield exec_instance, process, event
+    
+    def network_comms(self):
+        exec_instances = self._job.get_exec_instances(as_obj=True)
+
+        for exec_inst in exec_instances:
+            if not exec_inst.uuid in self._network_filters:
+                continue
+            exec_inst.load_netcomms(self._db)
+            for network_comm in exec_inst.network_comms:
+                if self._network_filters[exec_inst.uuid] == "*" or network_comm.uuid in self._network_filters[exec_inst.uuid]:
+                    yield exec_inst, network_comm
+            

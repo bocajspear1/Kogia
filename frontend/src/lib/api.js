@@ -189,8 +189,16 @@ export default  {
     get_job_exec_instances: function(job_uuid, on_succeeded, on_failed) {
         this.api_call("/job/" + job_uuid + "/exec_instances", on_succeeded, on_failed);
     },
+    do_job_export: function(job_uuid, plugin_name, export_items, on_succeeded, on_failed){
+        this.api_post_json("/job/" + job_uuid + "/export/" + plugin_name, {
+            "export_items": export_items
+        }, on_succeeded, on_failed);
+    },
     get_plugin_list: function(on_succeeded, on_failed) {
         this.api_call("/plugin/list", on_succeeded, on_failed);
+    },
+    get_plugin_list_type: function(plugin_type, on_succeeded, on_failed) {
+        this.api_call("/plugin/list?type=" + plugin_type, on_succeeded, on_failed);
     },
     get_plugin_data: function(plugin_name, on_succeeded, on_failed) {
         this.api_call("/plugin/" + plugin_name + "/info", on_succeeded, on_failed);

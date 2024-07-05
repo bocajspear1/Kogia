@@ -1,8 +1,9 @@
-import argparse
+import json
 import getpass
 import shutil
 
 from colorama import Fore, Back, Style
+import click
 
 from backend.lib.db import ArangoConnection, ArangoConnectionFactory
 from backend.lib.config import load_config
@@ -10,6 +11,7 @@ from backend.auth.db import DBAuth
 from backend.auth import ROLES
 from backend.lib.plugin_manager import PluginManager
 from backend.lib.job import Job
+from backend.lib.data import ExecInstance
 
 from backend.lib.helpers import prepare_all
 
@@ -28,180 +30,199 @@ def get_all_plugin_objs(pm, container_only=False):
     else:
         return inited_plugins
 
-def main():
-    config = load_config("./config.json")
+class ContextObj():
 
-    dbf, pm, filestore, workers = prepare_all(config, check=False)
+    def __init__(self):
+        self.config = load_config("./config.json")
 
-    db = dbf.new()
+        dbf, pm, filestore, workers = prepare_all(self.config, check=False)
+        self.db = dbf.new()
+        self.pm = pm
+        self.filestore = filestore
+        self.workers = workers
 
-    parser = argparse.ArgumentParser('Kogia maintenance commands')
-    subparsers = parser.add_subparsers(dest="command")
-
-    # run
-    run_parser = subparsers.add_parser("run")
-    run_subparser = run_parser.add_subparsers(dest="run_subcmd")
-
-    # run web
-    web_parser = run_subparser.add_parser("web")
-    web_parser.add_argument('--port', "-p", help="Port to bind to", default=4000)
-    web_parser.add_argument('--addr', "-a", help="Set address to bind to", default="0.0.0.0")
-    web_parser.add_argument("--debug", action="store_true", help="Run in debug mode")
-    web_parser.add_argument("--noworkers", action="store_true", help="Don't run workers too")
-    web_parser.add_argument("--waitress", action="store_true", help="Run with Waitress instead of the default gunicorn")
-
-    # run workers
-    workers_parser = run_subparser.add_parser("workers")
-    workers_parser.add_argument("--debug", action="store_true", help="Run in debug mode")
-
-    # localuser
-    localuser_parser = subparsers.add_parser("localuser")
-
-    localuser_subparser = localuser_parser.add_subparsers(dest="localuser_subcmd")
-    add_user_parser = localuser_subparser.add_parser("add")
+@click.group()
+@click.pass_context
+def main_cli(ctx):
+    ctx.obj = ContextObj()
 
 
-    add_user_parser.add_argument('--username', "-u", help="Set username")
-    add_user_parser.add_argument('--password', "-p", help="Set password")
-    add_user_parser.add_argument('--role', action='append', choices=ROLES, required=True)
+#
+# run subcommand
+#
 
-    # container
-    container_parser = subparsers.add_parser("container")
+@main_cli.group('run')
+def run_group():
+    pass
 
-    container_subparser = container_parser.add_subparsers(dest="container_subcmd")
-    build_container_parser = container_subparser.add_parser("build")
-    check_container_parser = container_subparser.add_parser("check")
-    rebuild_container_parser = container_subparser.add_parser("rebuild")
+@run_group.command('web')
+@click.option('--port', "-p", help="Port to bind to", default=4000)
+@click.option('--addr', "-a", help="Set address to bind to", default="0.0.0.0")
+@click.option("--debug", is_flag=True, help="Run in debug mode")
+@click.option("--noworkers", is_flag=True, help="Don't run workers too")
+@click.option("--waitress", is_flag=True, help="Run with Waitress instead of the default gunicorn")
+@click.pass_obj
+def web_Cmd(ctx, port, addr, debug, noworkers, waitress):
+    if debug is True:
+        ctx.config['loglevel'] = 'debug'
+    try:
+        if not waitress:
+            from backend.run import run_gunicorn
+            run_gunicorn(ctx.config, ctx.workers, addr, int(port))
+        else:
+            from backend.run import run_waitress
+            run_waitress(ctx.config, ctx.workers, addr, int(port))
+    except KeyboardInterrupt:
+        print("Stopping...")
 
-    rebuild_container_parser.add_argument('plugin')
+@run_group.command('workers')
+@click.pass_obj
+def workers_cmd(ctx):
+    try:
+        from backend.run import run_workers_only
+        run_workers_only(ctx.config, ctx.workers)
+    except KeyboardInterrupt:
+        print("Stopping...")
 
-    # container
-    dev_parser = subparsers.add_parser("dev")
+#
+# dbauth subcommand
+#
 
-    dev_subparser = dev_parser.add_subparsers(dest="dev_subcmd")
-    clean_dev_parser = dev_subparser.add_parser("dbclean")
-    clean_dev_parser.add_argument("--force", action="store_true", help="Force clean")
-    clean_dev_parser = dev_subparser.add_parser("plugin")
-    clean_dev_parser.add_argument("--name", help="Plugin name", required=True)
-    clean_dev_parser.add_argument("--job", help="Job UUID to use", required=True)
+@main_cli.group('dbauth')
+def dbauth_group():
+    pass
 
-    args = parser.parse_args()
+@dbauth_group.command('adduser')
+@click.argument('username')
+@click.option('--role', '-r', multiple=True, type=click.Choice(ROLES, case_sensitive=False))
+@click.option("--password", help="User password's, be careful using this option")
+@click.pass_obj
+def adduser_cmd(ctx, username, role, password):
+    username = username
+    password = password
+    if password is None:
+        password = getpass.getpass("Password> ")
+    auth = DBAuth(ctx.db)
 
-    if args.command is None:
-        print(parser.format_help())
-    elif args.command == "run":
-        if args.run_subcmd is None:
-            print(run_parser.format_help())
-        elif args.run_subcmd == 'web':
-            if args.debug is True:
-                config['loglevel'] = 'debug'
-            try:
-                if not args.waitress:
-                    from backend.run import run_gunicorn
-                    run_gunicorn(config, workers, args.addr, int(args.port))
-                else:
-                    from backend.run import run_waitress
-                    run_waitress(config, workers, args.addr, int(args.port))
-            except KeyboardInterrupt:
-                print("Stopping...")
+    if role is None or len(role) <= 0: 
+        print(f"ERROR: Add at least one from from: {ROLES}")
+        return 1
+    auth.insert_user(username, password, role)
+    print(f"{Fore.GREEN}User {username} added{Style.RESET_ALL}")
 
-        elif args.run_subcmd == 'workers':
-            try:
-                from backend.run import run_workers_only
-                run_workers_only(config, workers)
-            except KeyboardInterrupt:
-                print("Stopping...")
+#
+# container subcommand
+#
 
+@main_cli.group('container')
+def container_group():
+    pass
 
-    elif args.command == "container":
-        if args.container_subcmd is None:
-            print(container_parser.format_help())
-        elif args.container_subcmd == 'build':
-            plugin_objs = get_all_plugin_objs(pm, container_only=True)
-            c = 1
-            for plugin_obj in plugin_objs:
-                print(f"{Fore.BLUE}{c}/{len(plugin_objs)}{Style.RESET_ALL} Building {plugin_obj.name} container")
-                plugin_obj.docker_build()
-                c += 1
-        elif args.container_subcmd == 'check':
-            plugin_objs = get_all_plugin_objs(pm, container_only=True)
-            for plugin_obj in plugin_objs:
-                
-                if plugin_obj.docker_image_exists():
-                    print(f"{plugin_obj.name}: {Fore.GREEN}EXISTS{Style.RESET_ALL}")
-                else:
-                    print(f"{plugin_obj.name}: {Fore.RED}MISSING{Style.RESET_ALL}")
-        elif args.container_subcmd == 'rebuild':
-            plugin_cls = pm.get_plugin(args.plugin)
-            if plugin_cls is None:
-                print(f"{Fore.RED}Could not find plugin '{args.plugin}'{Style.RESET_ALL}")
-                return 1
-            plugin_obj = pm.initialize_plugin(plugin_cls)
+@container_group.command('build')
+@click.pass_obj
+def build_cmd(ctx):
+    plugin_objs = get_all_plugin_objs(ctx.pm, container_only=True)
+    c = 1
+    for plugin_obj in plugin_objs:
+        print(f"{Fore.BLUE}{c}/{len(plugin_objs)}{Style.RESET_ALL} Building {plugin_obj.name} container")
+        plugin_obj.docker_build()
+        c += 1
 
-            print(f"{Fore.YELLOW}Rebuilding {args.plugin}...{Style.RESET_ALL}")
-            plugin_obj.docker_rebuild()
-            print(f"{Fore.GREEN}Rebuild complete!{Style.RESET_ALL}")
-
-
-            # plugin_objs = get_all_plugin_objs(pm, container_only=True)
-            # for plugin_obj in plugin_objs:
-                
-            #     if plugin_obj.docker_image_exists():
-            #         print(f"{plugin_obj.name}: {Fore.GREEN}EXISTS{Style.RESET_ALL}")
-            #     else:
-            #         print(f"{plugin_obj.name}: {Fore.RED}MISSING{Style.RESET_ALL}")
-
-    elif args.command == "dev":
-        if args.dev_subcmd is None:
-            print(dev_parser.format_help())
-        elif args.dev_subcmd == 'dbclean':
-            if args.force is False:
-                print(f"{Fore.RED}WARNING! This removes all data in Kogia! Are you sure?{Style.RESET_ALL}")
-                in_val = input("type 'yes'> ")
-                if in_val != 'yes':
-                    print(f"{Fore.BLUE}Not doing anything, did not get 'yes'.{Style.RESET_ALL}")
-                    return
-            
-            db.truncate_all_collections()
-            print(f"{Fore.YELLOW}All data truncated!{Style.RESET_ALL}")
-
-        elif args.dev_subcmd == 'plugin':
-            plugin_item = pm.get_plugin(args.name)
-            if plugin_item is None:
-                print(f"{Fore.RED}Plugin {args.name} not found{Style.RESET_ALL}")
-                return
-            plugin_obj = pm.initialize_plugin(plugin_item)
-            
-            job_obj = Job(db, filestore, args.job)
-            job_obj.load(pm)
-            job_obj.load_matches()
-            print(job_obj.uuid)
-
-            primary_file = job_obj.get_primary_file()
-            print(primary_file)
-            plugin_obj.run(job_obj, primary_file)
-
-            job_obj.save()
-
-
-    elif args.command == "localuser":
-        if args.localuser_subcmd is None:
-            print(localuser_parser.format_help())
-        elif args.localuser_subcmd == "add":
-            username = args.username
-            if username is None:
-                username = input("Username> ")
-            password = args.password
-            if password is None:
-                password = getpass.getpass("Password> ")
-            auth = DBAuth(db)
-
-            if args.role is None or len(args.role) <= 0: 
-                print(f"ERROR: Add at least one from from: {ROLES}")
-                return 1
-            auth.insert_user(username, password, args.role)
-            print(f"{Fore.GREEN}User {username} added{Style.RESET_ALL}")
+@container_group.command('check')
+@click.pass_obj
+def check_container_cmd(ctx):
+    plugin_objs = get_all_plugin_objs(ctx.pm, container_only=True)
+    for plugin_obj in plugin_objs:
         
+        if plugin_obj.docker_image_exists():
+            print(f"{plugin_obj.name}: {Fore.GREEN}EXISTS{Style.RESET_ALL}")
+        else:
+            print(f"{plugin_obj.name}: {Fore.RED}MISSING{Style.RESET_ALL}")
+
+@container_group.command('rebuild')
+@click.argument('plugin')
+@click.pass_obj
+def rebuild_container_cmd(ctx, plugin):
+    plugin_cls = ctx.pm.get_plugin(plugin)
+    if plugin_cls is None:
+        print(f"{Fore.RED}Could not find plugin '{plugin}'{Style.RESET_ALL}")
+        return 1
+    plugin_obj = ctx.pm.initialize_plugin(plugin_cls)
+
+    print(f"{Fore.YELLOW}Rebuilding {plugin}...{Style.RESET_ALL}")
+    plugin_obj.docker_rebuild()
+    print(f"{Fore.GREEN}Rebuild complete!{Style.RESET_ALL}")
+
+
+#
+# dev subcommand
+#
+
+@main_cli.group('dev')
+def dev_group():
+    pass
+
+@dev_group.command('dbclean')
+@click.option("--force", is_flag=True, help="Force clean")
+@click.pass_obj
+def dbclean_command(ctx, force):
+    if force is False:
+        print(f"{Fore.RED}WARNING! This removes all data in Kogia! Are you sure?{Style.RESET_ALL}")
+        in_val = input("type 'yes'> ")
+        if in_val != 'yes':
+            print(f"{Fore.BLUE}Not doing anything, did not get 'yes'.{Style.RESET_ALL}")
+            return
+    
+    ctx.db.truncate_all_collections()
+    print(f"{Fore.YELLOW}All data truncated!{Style.RESET_ALL}")
+
+@dev_group.command('plugin')
+@click.argument('plugin_name')
+@click.argument('job_uuid')
+@click.pass_obj
+def plugin_run_command(ctx, plugin_name, job_uuid):
+    plugin_item = ctx.pm.get_plugin(plugin_name)
+    if plugin_item is None:
+        print(f"{Fore.RED}Plugin {plugin_name} not found{Style.RESET_ALL}")
+        return
+    plugin_obj = ctx.pm.initialize_plugin(plugin_item)
+    
+    job_obj = Job(ctx.db, ctx.filestore, job_uuid)
+    job_obj.load(ctx.pm)
+    job_obj.load_matches()
+    print(job_obj.uuid)
+
+    primary_file = job_obj.get_primary_file()
+    print(primary_file)
+    plugin_obj.run(job_obj, primary_file)
+
+    job_obj.save()
+
+@dev_group.command('insertdata')
+@click.argument('parent_uuid')
+@click.argument('filename', type=click.Path(exists=True))
+@click.option('--dtype',type=click.Choice(['metadata', 'netcomm', 'syscall'], case_sensitive=False))
+@click.pass_obj
+def plugin_insert_command(ctx, parent_uuid, filename, dtype):
+
+
+    if dtype in ('metadata', 'netcomm', 'syscall'):
+        inst_obj = ExecInstance(uuid=parent_uuid)
+        inst_obj.load(ctx.db)
+        print(inst_obj)
+        with open(filename, "r") as data_file:
+            data_dict = json.load(data_file)
+            for item in data_dict:
+                if dtype == 'netcomm':
+                    print("Loading networking comm...")
+                    inst_obj.add_network_comm(**item)
+            inst_obj.save(ctx.db)
+    elif dtype in ('report',):
+        job_obj = Job(ctx.db, ctx.filestore, parent_uuid)
+        job_obj.load(ctx.pm)
+
+        job_obj.add_report()
+
 
 if __name__ == '__main__':
-    main()
+    main_cli()

@@ -8,11 +8,12 @@ import Paginator from "../general/Paginator.vue";
         <table class="table is-striped is-fullwidth">
         <thead>
             <tr>
-                <td colspan="4">
+                <td colspan="5">
                     <Paginator :item_total="syscall_count" :page_size="page_size" @new_page="onNewPage" :sync_page="syscall_page"></Paginator>
                 </td>
             </tr>
             <tr>
+                <th v-if="selectable">Select</th>
                 <th>API Name</th>
                 <th>Args</th>
                 <th>Return Code</th>
@@ -22,7 +23,7 @@ import Paginator from "../general/Paginator.vue";
         </thead>
         <tfoot>
             <tr>
-                <td colspan="4">
+                <td colspan="5">
                     <Paginator :item_total="syscall_count" :page_size="page_size" @new_page="onNewPage" :sync_page="syscall_page"></Paginator>
                 </td>
             </tr>
@@ -32,6 +33,11 @@ import Paginator from "../general/Paginator.vue";
 
         <tbody>
             <tr v-for="syscall in syscall_list">
+                <td v-if="selectable">
+                    <label class="checkbox m-4">
+                        <input type="checkbox" @input="syscallChecked(syscall, $event.target.checked)" v-model="syscall_map[syscall._id]">
+                    </label>
+                </td>
                 <td>
                     ({{ syscall.timestamp }}) {{ syscall.name }}
                 </td>
@@ -74,10 +80,12 @@ export default {
         syscall_list: [],
         syscall_page: 1,
         page_size: 30,
-        syscall_count: 0
+        syscall_count: 0,
+        syscall_map: {}
     }
   },
-  props: ["process_uuid"],
+  emits: ["syscallChecked"],
+  props: ["process_uuid", "selectable"],
   mounted() {
     this.getSyscallList();
   },
@@ -106,6 +114,9 @@ export default {
         console.log(page_num)
         this.syscall_page = page_num;
         this.getSyscallList();
+    },
+    syscallChecked: function(syscall, value) {
+        this.$emit('syscallChecked', syscall, value);
     }
   }
 }

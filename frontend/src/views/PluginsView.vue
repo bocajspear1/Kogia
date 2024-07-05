@@ -10,6 +10,9 @@
             <template v-else-if="plugin.type == 'unarchive'">
                 <mdicon name="archive-arrow-up-outline" :size="40" />
             </template>
+            <template v-else-if="plugin.type == 'export'">
+                <mdicon name="export" :size="40" />
+            </template>
             <template v-else-if="plugin.type == 'identify'">
                 <mdicon name="card-search-outline" :size="40" />
             </template>

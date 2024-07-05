@@ -24,7 +24,8 @@ import DynamicFilterTable from '@/components/dynamic/DynamicFilterTable.vue'
                     :data="metadata_list" 
                     :pageSize="limit"
                     :totalItems="metadata_count"
-                    @onFilter="onFilter" @onNewPage="onNewPage"></DynamicFilterTable>
+                    @onFilter="onFilter" 
+                    @onNewPage="onNewPage" :selectable="selectable" :select_column="0" @onItemSelect="onItemSelect"></DynamicFilterTable>
     </template>
     <div class="notification is-info" v-else>
         No item is selected
@@ -54,7 +55,8 @@ export default {
         filter: ""
     }
   },
-  props: ["file_uuid", "process_uuid", "instance_uuid"],
+  props: ["file_uuid", "process_uuid", "instance_uuid", "selectable"],
+  emits: ["metadataSelected"],
   mounted() {
     this.getMetadataTypeList();
   },
@@ -145,6 +147,12 @@ export default {
             
         }
     },
+    onItemSelect(row_item, value) {
+        if (!this.selectable) {
+            return;
+        }
+        this.$emit("metadataSelected", this.selected_type, row_item, value);
+    }
   }
 }
 </script>

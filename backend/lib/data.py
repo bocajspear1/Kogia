@@ -14,6 +14,7 @@ from PIL import Image
 
 from .db import DBNotUniqueError
 from .objects import VertexObject, VertexObjectWithMetadata
+from .helpers import safe_uuid
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ class SignatureMatch(VertexObject):
 
     def __init__(self, uuid=None, id=None):
         super().__init__(self.COLLECTION_NAME, id)
-        self._uuid = uuid
+        self._uuid = safe_uuid(uuid)
         self._file = None
         self._signature = None
         self._match_time = int(time.time()) 
@@ -139,7 +140,7 @@ class Signature(VertexObject):
 
     def __init__(self, uuid=None, id=None):
         super().__init__(self.COLLECTION_NAME, id)
-        self._uuid = uuid
+        self._uuid = safe_uuid(uuid)
         self._name = ""
         self._description = ""
         self._plugin_name = ""
@@ -241,7 +242,7 @@ class Report(VertexObject):
 
     def __init__(self, id=None, uuid=None):
         super().__init__('reports', id)
-        self._uuid = uuid
+        self._uuid = safe_uuid(uuid)
         self._value = ""
         self._file_uuid = ""
         self.name = ""
@@ -322,7 +323,7 @@ class ExecInstance(VertexObjectWithMetadata):
 
     def __init__(self, id=None, uuid=None):
         super().__init__(self.COLLECTION_NAME, 'has_instance_metadata', id)
-        self._uuid = uuid
+        self._uuid = safe_uuid(uuid)
         self._submission_uuid = ""
         self._start_time = 0
         self._end_time = 0
@@ -586,6 +587,10 @@ class ExecInstance(VertexObjectWithMetadata):
     
     @property
     def process_list(self):
+        """
+        Flattened process list
+        """
+
         if not self._loaded_processes:
             raise ValueError("load_processes not called before accessing processes.")
         # return copy.deepcopy(self._processes)
@@ -622,7 +627,7 @@ class Event(VertexObject):
 
     def __init__(self, id=None, uuid=None):
         super().__init__(self.COLLECTION_NAME, id)
-        self._uuid = uuid
+        self._uuid = safe_uuid(uuid)
         self._key = ""
         self._src = ""
         self._dest = ""
@@ -743,7 +748,7 @@ class Process(VertexObjectWithMetadata):
 
     def __init__(self, id=None, uuid=None):
         super().__init__(self.COLLECTION_NAME, 'has_process_metadata', id)
-        self._uuid = uuid
+        self._uuid = safe_uuid(uuid)
         self._pid = 0
         self._parent_pid = 0
         self._path = ""
@@ -1044,7 +1049,7 @@ class NetworkComm(VertexObject):
 
     def __init__(self, id=None, uuid=None):
         super().__init__(self.COLLECTION_NAME, id)
-        self._uuid = uuid
+        self._uuid = safe_uuid(uuid)
         self._protocol = ""
         self._src_addr = ""
         self._src_port = ""
@@ -1172,3 +1177,4 @@ class NetworkComm(VertexObject):
     @time.setter
     def time(self, new_time):
         self._time = new_time
+

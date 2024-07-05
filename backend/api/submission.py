@@ -100,6 +100,10 @@ def submit_sample():
 
         new_submission.name = request.form['name']
 
+        current_app._db.lock()
+        new_submission.load_files(current_app._db, current_app._filestore)
+        current_app._db.unlock()
+
         for uploaded_file in file_list:
             filename = secure_filename(uploaded_file.filename)
             new_file = new_submission.generate_file(filename)
@@ -113,7 +117,7 @@ def submit_sample():
             
             new_submission.add_file(new_file)
             new_file.save(current_app._db)
-            # Don't need to load_metadata, since a generate_file initialies metadata
+            # Don't need to load_metadata, since a generate_file initializes metadata
 
             current_app._db.unlock()
 

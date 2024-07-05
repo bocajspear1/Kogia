@@ -16,7 +16,7 @@ class UnipackerPlugin(DockerPluginBase):
         self.run_image(submission.submission_dir, job, file_obj)
         self.wait_and_stop()
         
-        tmp_dir = self.extract(submission, file_obj, "/tmp/out")
+        tmp_dir = self.extract("/tmp/out")
         out_dir = os.path.join(tmp_dir, "out")
         items = os.listdir(out_dir)
 

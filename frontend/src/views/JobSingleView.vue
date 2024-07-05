@@ -1,23 +1,20 @@
 <script setup>
 import SubmissionBlock from '@/components/submission/SubmissionBlock.vue'
 import JobBlock from '@/components/job/JobBlock.vue'
-import MetadataTable from '@/components/metadata/MetadataTable.vue';
+import MetadataViewer from '@/components/metadata/MetadataViewer.vue';
 import FileDropdown from '../components/file/FileDropdown.vue';
 import JobFilesPanel from '../components/file/JobFilesPanel.vue';
 import SidebarMenuItem from '../components/menu/SidebarMenuItem.vue';
 import MenuTag from '../components/menu/MenuTag.vue';
 import SidebarMenu from '../components/menu/SidebarMenu.vue';
 import JobLogViewer from '@/components/job/JobLogViewer.vue';
+import JobExport from '@/components/job/JobExport.vue';
 import ReportDisplay from '@/components/report/ReportDisplay.vue';
 import SignatureList from '@/components/signature/SignatureList.vue';
 import ProcessPanel from '@/components/host/ProcessPanel.vue';
 import NetworkPanel from '@/components/host/NetworkPanel.vue';
 import JobDetails from '@/components/job/JobDetails.vue';
 import ScoreTag from '@/components/job/ScoreTag.vue';
-import TabMenuItem from '../components/menu/TabMenuItem.vue';
-import TabMenu from '../components/menu/TabMenu.vue';
-import ExecInstDropdown from '@/components/host/ExecInstDropdown.vue'
-import ProcessDropdown from '@/components/host/ProcessDropdown.vue'
 </script>
 
 <template>
@@ -77,29 +74,7 @@ import ProcessDropdown from '@/components/host/ProcessDropdown.vue'
             <JobFilesPanel :files="files"></JobFilesPanel>
         </template>
         <template v-if="done && page == 'metadata'">
-            <TabMenu>
-                <template v-slot:main>
-                <TabMenuItem iconname="folder-file" @click="metadataSelected('files')" :active="metadata_selected=='files'">Files</TabMenuItem>
-                <TabMenuItem iconname="application-braces" @click="metadataSelected('execinst')" :active="metadata_selected=='execinst'">Execution Instances</TabMenuItem>
-                <TabMenuItem iconname="file-cog" @click="metadataSelected('processes')" :active="metadata_selected=='processes'">Processes</TabMenuItem>
-                </template>
-            </TabMenu>
-            <template v-if="metadata_selected=='files'">
-                <FileDropdown :files="files" :selected="selected_file" @file_selected="fileSelected"></FileDropdown>
-                <MetadataTable :file_uuid="getFileUUID()"></MetadataTable>
-            </template>
-            <template v-if="metadata_selected=='execinst'">
-                <ExecInstDropdown :job_uuid="job_uuid" @execinst_selected="instanceSelected" :selected="selected_instance"></ExecInstDropdown>
-                <MetadataTable v-if="selected_instance != null" :instance_uuid="getInstanceUUID()"></MetadataTable>
-            </template>
-            <template v-if="metadata_selected=='processes'">
-                <ExecInstDropdown :job_uuid="job_uuid" @execinst_selected="instanceSelected" :selected="selected_instance"></ExecInstDropdown>
-                <span v-if="selected_instance != null" class="m-2 is-vcentered" >
-                    <ProcessDropdown ref="procDropdown" :processes="selected_instance.processes" @process_selected="processSelected"></ProcessDropdown>
-                </span>
-                <MetadataTable v-if="selected_process != null" :process_uuid="getProcessUUID()"></MetadataTable>
-            </template>
-            
+            <MetadataViewer :job="job" :selected_file="selected_file" :selected_instance="selected_instance"></MetadataViewer>
         </template>
         <template v-if="done && page == 'reports'">
             <FileDropdown :files="files" :selected="selected_file" @file_selected="fileSelected"></FileDropdown>
@@ -110,6 +85,9 @@ import ProcessDropdown from '@/components/host/ProcessDropdown.vue'
         </template>
         <template v-if="done && page == 'details'">
             <JobDetails :job="job"></JobDetails>
+        </template>
+        <template v-if="done && page == 'export'">
+            <JobExport :job="job" :files="files"></JobExport>
         </template>
         
         
@@ -208,12 +186,7 @@ export default {
         self.$router.push({ name: 'JobSingle', params: { job_uuid: self.$route.params.job_uuid, page: page_name } });
         self.page = page_name;
     },  
-    metadataSelected(metadata_type) {
-        this.metadata_selected = metadata_type;
-        if (metadata_type == "processes") {
-            this.selected_process = null;
-        }
-    },
+    
     fileSelected(file) {
         this.selected_file = file;
     },
@@ -251,9 +224,6 @@ export default {
         api.get_job_info(this.job_uuid, 
             function(data) {
                 self.job = data;
-                
-                
-                console.log(self.job);
                 self.getSubmission(self.job.submission);
             },
             function(status, data){

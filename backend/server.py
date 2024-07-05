@@ -33,6 +33,7 @@ from backend.api.plugin import plugin_endpoints
 from backend.api.report import report_endpoints
 from backend.api.execinstance import execinstance_endpoints
 from backend.api.system import system_endpoints
+from backend.api.export import export_endpoints
 
 from backend.lib.config import load_config
 from backend.auth import ROLES
@@ -62,6 +63,7 @@ app.secret_key = flask_key
 AUTH_PATH = '/api/v1/authenticate'
 FILE_PATH = "/api/v1/file/"
 SUBMISSION_PATH = "/api/v1/submission/"
+EXPORT_PATH = "/api/v1/export/"
 
 @app.before_request
 def check_req():
@@ -70,9 +72,14 @@ def check_req():
     download_token = request.args.get('download_token')
     if request.path != AUTH_PATH or download_token is not None:
         if download_token is not None:
-            if request.path.startswith(FILE_PATH) or request.path.startswith(SUBMISSION_PATH):
+
+            if request.path.startswith(FILE_PATH) or request.path.startswith(SUBMISSION_PATH) or request.path.startswith(EXPORT_PATH) \
+                and request.path.endswith("/download"):
+
                 app._download_tokens_lock.acquire()
                 if download_token in app._download_tokens:
+                    # Pass to API endpoint the file UUID to ensure we aren't downloading a different file
+                    g.file_uuid = download_token.split(":")[1]
                     app._download_tokens.remove(download_token)
                     app._download_tokens_lock.release()
                 else:
@@ -134,6 +141,7 @@ app.register_blueprint(plugin_endpoints, url_prefix='/api/v1/plugin')
 app.register_blueprint(report_endpoints, url_prefix='/api/v1/report')
 app.register_blueprint(execinstance_endpoints, url_prefix='/api/v1/exec_instance')
 app.register_blueprint(system_endpoints, url_prefix='/api/v1/system')
+app.register_blueprint(export_endpoints, url_prefix='/api/v1/export')
 
 with app.app_context():
 

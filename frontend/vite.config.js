@@ -11,7 +11,8 @@ export default defineConfig({
         'target':  'https://localhost:4000',
         'secure': false
       }
-    }
+    },
+    port: 3000
   },
   plugins: [vue({
     

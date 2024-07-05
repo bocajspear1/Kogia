@@ -1,6 +1,6 @@
 <script setup>
 import ExecInstDropdown from '@/components/host/ExecInstDropdown.vue'
-import Paginator from "../general/Paginator.vue";
+import NetworkCommTable from "@/components/host/NetworkCommTable.vue";
 </script>
 <template>
     <ExecInstDropdown :job_uuid="job_uuid" @execinst_selected="instanceSelected" @execinst_loaded="instancesLoaded" :selected="selected_instance"></ExecInstDropdown>
@@ -8,78 +8,8 @@ import Paginator from "../general/Paginator.vue";
     <div class="notification is-info m-2" v-if="current_instance == null && instance_count > 0">
         Select an execution instance
     </div>
-    <div class="field is-grouped m-2" v-if="Object.keys(netcomm_stats).length > 0">
-        <p class="control">
-            <div class="select" v-if="Object.keys(netcomm_stats.addresses).length > 0" >
-                <select ref="addressSelect" @change="onAddressSelect">
-                    <option selected value="">No address filter</option>
-                    <template v-for="(value, address) in netcomm_stats.addresses">    
-                    <option :value="address">{{ address }} ({{value}})</option>
-                    </template>
-                </select>
-            </div>
-        </p>
-        <p class="control">
-            <div class="select" v-if="Object.keys(netcomm_stats.ports).length > 0" >
-                <select ref="portSelect" @change="onPortSelect">
-                    <option selected value="">No port filter</option>
-                    <template v-for="(value, port) in netcomm_stats.ports">    
-                    <option :value="port">{{ port }} ({{value}})</option>
-                    </template>
-                </select>
-            </div>
-        </p>
-    </div>
     
-    <template v-if="done">
-        <table class="table is-striped is-fullwidth">
-        <thead>
-            <tr>
-                <td colspan="4">
-                    <Paginator :item_total="netcomm_count" :page_size="page_size" @new_page="onNewPage" :sync_page="netcomm_page"></Paginator>
-                </td>
-            </tr>
-            <tr>
-                <th>Protocol</th>
-                <th>Source</th>
-                <th>Destination</th>
-                <th>Data</th>
-            </tr>
-        </thead>
-        <tfoot>
-            <tr>
-                <td colspan="4">
-                    <Paginator :item_total="netcomm_count" :page_size="page_size" @new_page="onNewPage" :sync_page="netcomm_page"></Paginator>
-                </td>
-            </tr>
-        </tfoot>
-        <tbody>
-            <tr v-for="netcomm in netcomms">
-                <td>
-                    {{ netcomm.protocol }}
-                </td>
-                <td>
-                    {{ netcomm.src_addr }}:{{ netcomm.src_port }}
-                </td>
-                <td class="content m-0">
-                    {{ netcomm.dest_addr }}:{{ netcomm.dest_port }}
-                </td>
-                <td class="allow-newlines" >
-                    <pre>
-{{ netcomm.data }}
-                    </pre>
-                </td>
-            </tr>
-            <tr v-if="netcomms.length == 0">
-                <td colspan="4">
-                    <div class="notification is-warning m-2">
-                        No communications matching the filters were found
-                    </div>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-    </template>
+    <NetworkCommTable v-if="current_instance != null" :instance_uuid="current_instance.uuid"></NetworkCommTable>
     
 </template>
 
@@ -105,7 +35,8 @@ export default {
         netcomm_stats: {},
         address_filter: "",
         port_filter: "",
-        done: false
+        done: false,
+        netcomm_map: {}
     }
   },
   props: ["job_uuid", "selected_instance"],

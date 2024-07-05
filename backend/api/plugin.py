@@ -9,9 +9,13 @@ plugin_endpoints = Blueprint('plugin_endpoints', __name__)
 
 @plugin_endpoints.route('/list', methods=['GET'])
 def get_plugin_list():
+
+    plugin_type = "*"
+    if request.args.get('type') is not None:
+        plugin_type = request.args.get('type')
     
     current_app._db.lock()
-    plugins = current_app._manager.get_plugin_list("*")
+    plugins = current_app._manager.get_plugin_list(plugin_type)
     init_plugins = current_app._manager.initialize_plugins(plugins)
     ret_list = []
     for plugin in init_plugins:

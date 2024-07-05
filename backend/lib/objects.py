@@ -1,6 +1,71 @@
 import hashlib
+import os
 
 from .db import ArangoConnection, DBNotUniqueError
+
+
+class FilestoreObject():
+    """Object for a single file in the filestore.
+    """
+    
+    
+    def __init__(self, filestore, file_id, filename):
+        self._file_id = file_id
+        self._filestore = filestore
+        self._name = filename
+        self._modified = False
+        self._hash = None
+
+        self._handle = None
+
+    def update_hash(self):
+        sha256 = hashlib.sha256()
+
+        handle = self.open_file()
+        while True:
+            data = handle.read(65536)
+            if not data:
+                break
+            sha256.update(data)
+        self.close_file()
+
+        self._hash = sha256.hexdigest()
+
+    def create_file(self):
+        self._handle = self._filestore.create_file(self._file_id)
+        return self._handle
+
+    def open_file(self):
+        self._handle = self._filestore.open_file(self._file_id)
+        return self._handle
+    
+    def copy_file_from(self, src_path):
+        self._filestore.copy_file_from(src_path, self._file_id)
+    
+    def close_file(self):
+        if self._handle is not None:
+            return self._filestore.close_file(self._file_id, self._handle)
+        
+    @property
+    def extension(self):
+        if self._name is not None:
+            _, ext = os.path.splitext(self._name)
+            return ext
+        else:
+            return None
+        
+    @property
+    def file_id(self):
+        return self._file_id
+
+    @property
+    def name(self):
+        return self._name
+    
+    @property
+    def hash(self):
+        return self._hash
+
 
 class CollectionObject():
     """Object stored as a regular document in the database.
@@ -49,6 +114,9 @@ class CollectionObject():
         
         if '_id' in doc:
             self._id = doc['_id']
+
+        if doc is None:
+            return None
         
         return doc
 

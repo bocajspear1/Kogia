@@ -40,3 +40,9 @@ def json_resp_invalid(message):
         "ok": False,
         "error": message
     }), 400
+
+def json_resp_failed(message):
+    return jsonify({
+        "ok": False,
+        "error": message
+    }), 500

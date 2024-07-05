@@ -1,5 +1,5 @@
 <script setup>
-
+import DynamicOptions from '@/components/dynamic/DynamicOptions.vue';
 </script>
 
 <template>
@@ -25,21 +25,7 @@
         </div>
         <div class="content" v-if="plugin.enabled == true && plugin.options.length > 0">
             <div class="box">
-            <template v-for="option in plugin.options">
-                <div v-if="option.type == 'number' || option.type == 'int'" class="field">
-                    <label class="label">{{ option.description }}</label>
-                    <div class="control">
-                        <input class="input short-textbox" type="text" :name="option.name" v-model="option.value" ref="pluginoptions" size="10">
-                    </div>
-                </div>
-                <div v-if="option.type == 'string'" class="field">
-                    <label class="label">{{ option.description }}</label>
-                    <div class="control">
-                        <input class="input" type="text" :name="option.name" v-model="option.value" ref="pluginoptions">
-                    </div>
-                </div>
-              
-            </template>
+                <DynamicOptions :options="plugin.options" @onOptionChange="onOptionChange"></DynamicOptions>
             </div>
         
         </div>
@@ -66,14 +52,16 @@ export default {
   props: ["plugin"],
   mounted() {
     console.log(this.plugin)
-    for (var i = 0; i < this.plugin.options.length; i++) {
-        this.plugin.options[i].value = this.plugin.options[i].default;
-    }
   },
   methods: {
     togglePlugin() {
         this.plugin['enabled'] = !this.plugin['enabled'];
 
+    },
+    onOptionChange(new_options) {
+        for (var i in this.plugin.options) {
+            this.plugin.options[i].value = new_options[this.plugin.options[i].name];
+        }
     }
   }
 }

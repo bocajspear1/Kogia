@@ -7,7 +7,7 @@ import pyzipper
 from flask import Blueprint, Flask, g, jsonify, current_app, request, send_file, send_from_directory, abort
 from backend.lib.submission import SubmissionFile
 from backend.lib.helpers import generate_download_token
-from backend.api.helpers import get_pagination
+from backend.api.helpers import get_pagination, json_resp_invalid
 
 file_endpoints = Blueprint('file_endpoints', __name__)
 
@@ -42,7 +42,7 @@ def get_file_token(uuid):
     
     current_app._db.lock()
     
-    new_token = generate_download_token(current_app, g)
+    new_token = generate_download_token(current_app, g, file_info.uuid)
     return jsonify({
         "ok": True,
         "result": {
@@ -52,6 +52,10 @@ def get_file_token(uuid):
 
 @file_endpoints.route('/<uuid>/download', methods=['GET'])
 def download_file(uuid):
+
+    if hasattr(g, "file_uuid") and uuid != g.file_uuid:
+        return json_resp_invalid("Token UUID does not match requested file")
+
     file_info = SubmissionFile(uuid=uuid, filestore=current_app._filestore)
     current_app._db.lock()
     file_info.load(current_app._db)

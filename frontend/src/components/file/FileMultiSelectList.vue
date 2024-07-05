@@ -6,7 +6,7 @@ import FileIcon from '@/components/file/FileIcon.vue'
         <div v-for="file in files" class="list-item" :ref="file.uuid">
             <div class="list-item-image p-2">
                 <label class="checkbox m-4">
-                    <input type="checkbox" @input="checkClicked(file.uuid, $event.target.checked)" >
+                    <input type="checkbox" @input="checkClicked(file.uuid, $event.target.checked)" :checked="all_checked">
                 </label>
                 
                 <FileIcon :file="file"></FileIcon>
@@ -60,9 +60,16 @@ export default {
   props: {
     files: Array,
     toggle: Boolean,
+    all_checked: Boolean
   },
   mounted() {
-    
+    var self = this;
+    if (this.all_checked) {
+        for (var i in this.files) {
+            self.checked_files.push(this.files[i].uuid);
+        }
+        self._sendCheckedUpdate();
+    }
   },
   methods: {
     _getFileData(file_uuid) {
@@ -71,6 +78,14 @@ export default {
                 return this.files[i]
             }
         }
+    },
+    _sendCheckedUpdate() {
+        var self = this;
+        var out_list = [];
+        for (var i = 0; i < self.checked_files.length; i++) {
+            out_list.push(self._getFileData(self.checked_files[i]));
+        }
+        this.$emit('file_checked', out_list);
     },
     clickFile(uuid) {
         var self = this;
@@ -87,11 +102,7 @@ export default {
             }
         }
 
-        var out_list = [];
-        for (var i = 0; i < self.checked_files.length; i++) {
-            out_list.push(self._getFileData(self.checked_files[i]));
-        }
-        this.$emit('file_checked', out_list);
+        self._sendCheckedUpdate();
     }
   }
 }

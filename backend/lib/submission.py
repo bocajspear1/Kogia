@@ -6,15 +6,18 @@ import time
 import hashlib
 import shutil
 
-from .objects import VertexObject, VertexObjectWithMetadata
+from .objects import VertexObject, VertexObjectWithMetadata, FilestoreObject
+from .helpers import safe_uuid
 
-class SubmissionFile(VertexObjectWithMetadata):
+class SubmissionFile(VertexObjectWithMetadata, FilestoreObject):
     """Object for a single file submitted as part of a submission.
     """
 
     @classmethod
     def new(cls, filestore, store_prefix, filename):
         new_cls = cls(uuid=str(uuid.uuid4()))
+        
+        # Private in FilestoreObject
         new_cls._modified = True
         new_cls._name = filename
         new_cls._filestore = filestore
@@ -22,12 +25,12 @@ class SubmissionFile(VertexObjectWithMetadata):
         return new_cls
     
     def __init__(self, uuid=None, id=None, filestore=None):
-        super().__init__('files', 'has_metadata', id)
+        VertexObjectWithMetadata.__init__(self, 'files', 'has_metadata', id)
+        FilestoreObject.__init__(self, filestore, "", "")
+        # super().__init__('files', 'has_metadata', id)
 
-        self._name = ""
-        self._uuid = uuid
-        self._filestore = filestore
-        self._file_id = ""
+        self._uuid = safe_uuid(uuid)
+        
         self._mime_type = ""
         self._unpacked_archive = False
         self._exec_format = "" # e.g. elf or pe
@@ -79,55 +82,9 @@ class SubmissionFile(VertexObjectWithMetadata):
         self._target_os = data_obj.get('target_os', '')
         self._hash = data_obj.get('hash', '')
 
-    def update_hash(self):
-        sha256 = hashlib.sha256()
-
-        handle = self.open_file()
-        while True:
-            data = handle.read(65536)
-            if not data:
-                break
-            sha256.update(data)
-        self.close_file()
-
-        self._hash = sha256.hexdigest()
-    
-
-    @property
-    def hash(self):
-        return self._hash
-
-    @property
-    def extension(self):
-        _, ext = os.path.splitext(self._name)
-        return ext
-
     @property
     def uuid(self):
         return self._uuid
-    
-    @property
-    def file_id(self):
-        return self._file_id
-
-    @property
-    def name(self):
-        return self._name
-
-    def create_file(self):
-        self._handle = self._filestore.create_file(self._file_id)
-        return self._handle
-
-    def open_file(self):
-        self._handle = self._filestore.open_file(self._file_id)
-        return self._handle
-    
-    def copy_file_from(self, src_path):
-        self._filestore.copy_file_from(src_path, self._file_id)
-    
-    def close_file(self):
-        if self._handle is not None:
-            return self._filestore.close_file(self._file_id, self._handle)
 
     def set_parent(self, parent_file):
         self._parent = parent_file.id
@@ -297,7 +254,7 @@ class Submission(VertexObject):
         if uuid == None and self.id == None:
             raise ValueError("Either id or uuid must be set")
 
-        self._uuid = uuid
+        self._uuid = safe_uuid(uuid)
         self._submit_time = int(time.time())
         self._owner = ""
         self._filestore = None

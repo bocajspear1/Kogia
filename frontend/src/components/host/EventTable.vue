@@ -3,25 +3,26 @@ import Paginator from "../general/Paginator.vue";
 </script>
 
 <template>
-<div class="container p-2">
+<div class="p-2">
     <template v-if="error == null && event_list.length > 0">
         <table class="table is-striped is-fullwidth">
         <thead>
             <tr>
+                <th v-if="selectable">Select</th>
                 <th>Event Type</th>
                 <th>Information</th>
                 <th>Data</th>
                 <th>Success</th>
             </tr>
             <tr>
-                <td colspan="4">
+                <td colspan="5">
                     <Paginator :item_total="event_count" :page_size="page_size" @new_page="onNewPage" :sync_page="event_page"></Paginator>
                 </td>
             </tr>
         </thead>
         <tfoot>
             <tr>
-                <td colspan="4">
+                <td colspan="5">
                     <Paginator :item_total="event_count" :page_size="page_size" @new_page="onNewPage" :sync_page="event_page"></Paginator>
                 </td>
             </tr>
@@ -29,11 +30,16 @@ import Paginator from "../general/Paginator.vue";
 
         <tbody>
             <tr v-for="event in event_list">
+                <td v-if="selectable">
+                    <label class="checkbox m-4">
+                        <input type="checkbox" @input="eventChecked(event, $event.target.checked)" v-model="event_map[event.uuid]">
+                    </label>
+                </td>
                 <td>
                     {{ event.key }}
                 </td>
-                <td class="content m-0">
-                    <ul class="m-0">
+                <td class="allow-newlines m-0 limit-data">
+                    <ul class="m-0 limit-data">
                         <li v-if="event.src != null && event.src != ''">
                             <strong>Source:</strong> {{ event.src }}
                         </li>
@@ -42,7 +48,7 @@ import Paginator from "../general/Paginator.vue";
                         </li>
                     </ul>
                 </td>
-                <td class="allow-newlines" >
+                <td class="allow-newlines limit-data" >
                     {{ event.data }}
                 </td>
                 <td>
@@ -59,7 +65,10 @@ import Paginator from "../general/Paginator.vue";
 </template>
 
 <style scoped>
-
+.limit-data {
+    font-size: .9em;
+    overflow-wrap: anywhere;
+}
 </style>
 
 <script>
@@ -73,17 +82,23 @@ export default {
         event_list: [],
         event_page: 1,
         event_count: 0,
-        page_size: 30
+        page_size: 30,
+        event_map: {}
     }
   },
-  props: ["process_uuid"],
+  emits: ["event_checked"],
+  props: ["process_uuid", "selectable"],
   mounted() {
     this.getEventList();
   },
   watch: {
     'process_uuid' (to, from) {
         this.getEventList();
+        this.event_map = {};
     }
+  },
+  computed: {
+    
   },
   methods: {
     getEventList() {
@@ -110,6 +125,9 @@ export default {
     onNewPage: function(page_num) {
         this.event_page = page_num;
         this.getEventList();
+    },
+    eventChecked: function(event, value) {
+        this.$emit('event_checked', event, value);
     }
   }
 }

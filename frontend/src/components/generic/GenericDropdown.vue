@@ -98,10 +98,9 @@ export default {
             this._open();
         }
     },
-    onSelect(file) {
-        console.log(file);
-        this.selected = file;
-        this.$emit('item_selected', file);
+    onSelect(item) {
+        this.selected = item;
+        this.$emit('item_selected', item);
         this._close();
     },
     clear() {

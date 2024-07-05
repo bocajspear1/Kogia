@@ -6,6 +6,7 @@ import Paginator from '@/components/general/Paginator.vue'
     <table class="table is-striped is-fullwidth">
         <thead>
             <tr>
+                <th v-if="selectable" class="select-column">Select</th>
                 <th v-for="column in columns">
                     {{ column }}
                     <span v-if="!limitFilter.hasOwnProperty(column) && (column.toLowerCase() != 'id' || column.toLowerCase() != 'uuid') && !noFilter.includes(column)">
@@ -22,14 +23,14 @@ import Paginator from '@/components/general/Paginator.vue'
                 </th>
             </tr>
             <tr>
-                <td :colspan="columns.length">
+                <td :colspan="getColCount">
                     <Paginator :item_total="totalItems" :page_size="pageSize" @new_page="onNewPage" :sync_page="current_page"></Paginator>
                 </td>
             </tr>
         </thead>
         <tfoot>
             <tr>
-                <td :colspan="columns.length">
+                <td :colspan="getColCount">
                     <Paginator :item_total="totalItems" :page_size="pageSize" @new_page="onNewPage" :sync_page="current_page"></Paginator>
                 </td>
             </tr>
@@ -37,7 +38,11 @@ import Paginator from '@/components/general/Paginator.vue'
 
         <tbody>
             <template v-if="data.length > 0" >
+                
                 <tr v-for="row in data">
+                    <td v-if="selectable" class="select-column">
+                        <input type="checkbox" v-model="item_map[row[select_column]]" @input="checkClicked(row[select_column], $event.target.checked)" >
+                    </td>
                     <td class="allow-newlines" v-for="(column, index) in columns">
                         {{ row[index] }}
                     </td>
@@ -45,7 +50,7 @@ import Paginator from '@/components/general/Paginator.vue'
             </template>
             <template v-else-if="data.length == 0" >
                 <tr>
-                    <td :colspan="columns.length" >
+                    <td :colspan="getColCount" >
                         <div class="notification is-warning">
                             No results found
                         </div>
@@ -62,6 +67,10 @@ import Paginator from '@/components/general/Paginator.vue'
     .allow-newlines {
         white-space: pre-wrap; 
     }
+    .select-column {
+        width: 20px;
+        text-align: center;
+    }
 </style>
 
 <script>
@@ -70,7 +79,8 @@ export default {
   data() {
     return {
         page: 0,
-        current_page: 1
+        current_page: 1,
+        item_map: {}
     }
   },
   props: {
@@ -86,10 +96,21 @@ export default {
         type: Object,
         default: {}
     },
+    selectable: Boolean,
+    select_column: Number
   },
-  emits: ["onFilter", "onNewPage"],
+  emits: ["onFilter", "onNewPage", "onItemSelect"],
   mounted() {
     
+  },
+  computed: {
+    getColCount(){
+        if (!this.selectable) {
+            return this.columns.length;
+        } else {
+            return this.columns.length+1;
+        }
+    },
   },
   methods: {
     newFilter: function(column, new_filter) {
@@ -100,6 +121,9 @@ export default {
     onNewPage: function(new_page) {
         this.current_page = new_page;
         this.$emit("onNewPage", new_page);
+    },
+    checkClicked(row_item, value) {
+        this.$emit("onItemSelect", row_item, value);
     }
   }
 }

@@ -1,3 +1,6 @@
+"""
+Plugins are the core of the Kogia framework.
+"""
 import os
 import sys
 import docker
@@ -9,6 +12,9 @@ import tempfile
 import shutil
 import json
 import shlex
+import uuid
+
+from typing import Union
 
 import requests
 
@@ -104,6 +110,18 @@ class PluginBase():
             return operates
         else:
             return True
+        
+    def export(self, job_obj, export_file):
+        """
+        Any plugin with type 'export' must implement the export function. 
+
+        Two objects are passed:
+          * job_obj: Job object for the corresponding job
+          * export_file: ExportFile for the new export
+
+        export_file simplifies data access to data needed for export.
+        """
+        raise NotImplementedError
 
 class HTTPPluginBase(PluginBase):
 
@@ -207,7 +225,7 @@ class DockerPluginBase(PluginBase):
         args = shlex.join(cmd_split[1:])
         return self.pm.docker.containers.run(self._name, args, entrypoint=entrypoint, remove=True, network_mode="none")
     
-    def run_image(self, share_dir, job_obj: Job, file_obj: SubmissionFile, env_vars=None):
+    def run_image(self, share_dir, job_obj: Job, file_obj: Union[SubmissionFile, str], env_vars=None):
         share_dir = os.path.abspath(share_dir)
 
         environment = {}
@@ -222,15 +240,23 @@ class DockerPluginBase(PluginBase):
         }
 
         environment['TMPDIR'] = tmp_dir
-        environment['SUBMITFILE'] = file_obj.name
+        if isinstance(file_obj, SubmissionFile):
+            environment['SUBMITFILE'] = file_obj.name
+        else:
+            environment['SUBMITFILE'] = os.path.basename(file_obj)
 
 
         self.docker_vars = environment
 
-        self._running_name = self._name + "-" + file_obj.uuid
+        if isinstance(file_obj, SubmissionFile):
+            self._running_name = self._name + "-" + file_obj.uuid
+        else:
+            self._running_name = self._name + "-" + str(uuid.uuid4())
+
+        
 
         container = None
-        if self._network is not None:
+        if self._network:
             job_obj.info_log(str(self.__class__.__name__), "Creating networked container " + self._name)
             container = self.pm.docker.containers.create(self._name, volumes=vols, environment=environment, detach=True, name=self._running_name, network_mode="none")
         else:
@@ -241,8 +267,12 @@ class DockerPluginBase(PluginBase):
         container.start()
         # self._logger.info(f"Started container {self._running_name}")
         print(f"Started container {self._running_name}")
-
-        return os.path.join(tmp_dir, file_obj.name)
+        
+        if isinstance(file_obj, SubmissionFile):
+            return os.path.join(tmp_dir, file_obj.name)
+        else:
+            return os.path.join(tmp_dir, os.path.basename(file_obj))
+        
 
     def wait_and_stop(self, timeout=180):
         i = 0
@@ -281,7 +311,7 @@ class DockerPluginBase(PluginBase):
         for tmp_dir in self._tmp_dirs:
             shutil.rmtree(tmp_dir)
 
-    def extract(self, submission, file_obj, cont_path, out_path=None):
+    def extract(self, cont_path, out_path=None):
         container = self.pm.docker.containers.get(self._running_name)
         strm, stat = container.get_archive(cont_path)
         tar_path = f"/tmp/{self._running_name}-extract-data.tar"
@@ -302,17 +332,20 @@ class DockerPluginBase(PluginBase):
         return out_path
 
     def extract_single_file(self, submission, file_obj, cont_path, bin=False):
-        filename = os.path.basename(cont_path)
-
         dir_path = os.path.join(submission.submission_dir, file_obj.uuid)
 
         if not os.path.exists(dir_path):
             os.mkdir(dir_path)
 
+        return self.extract_single_file_to(dir_path, cont_path, bin=bin)
+
+    def extract_single_file_to(self, write_to_dir, cont_path, bin=False):
+        filename = os.path.basename(cont_path)
+
         tmp_dir = tempfile.mkdtemp()
 
-        self.extract(submission, file_obj, cont_path, out_path=tmp_dir)
-        out_file_path = os.path.join(dir_path, f"{self._name}-{filename}")
+        self.extract(cont_path, out_path=tmp_dir)
+        out_file_path = os.path.join(write_to_dir, f"{self._name}-{filename}")
         file_contents = None
         if not bin:
             file_out = open(os.path.join(tmp_dir, filename), 'r')

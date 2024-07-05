@@ -3,11 +3,17 @@ import importlib
 import os
 import logging
 import logging.config
+import re
 
 from backend.lib.plugin_manager import PluginManager
 from backend.lib.db import ArangoConnectionFactory
 
-
+def safe_uuid(raw_uuid):
+    if raw_uuid is None:
+        return raw_uuid
+    raw_uuid = str(raw_uuid)
+    raw_uuid = re.sub(r'[^-_\w]', '', raw_uuid)
+    return raw_uuid
 
 def configure_logging(config, extra=None):
     
@@ -46,12 +52,12 @@ def configure_logging(config, extra=None):
         ],
     )
 
-def generate_download_token(current_app, g):
+def generate_download_token(current_app, g, file_uuid):
     # Get file token lock
     current_app._download_tokens_lock.acquire()
 
     # Generate new token
-    new_token = g.req_username + ":" + secrets.token_hex(48)
+    new_token = g.req_username + ":" + file_uuid + ":" + secrets.token_hex(48)
 
     found = False
     # Replace any other token from this user

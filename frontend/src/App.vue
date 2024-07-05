@@ -8,8 +8,8 @@ let session = useUserSession();
   <header>
     <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
       <div class="navbar-brand">
-        <div class="navbar-item">
-          <router-link to="/"><img rel="icon" src="/images/kogia-navbar.png" /></router-link>
+        <div class="navbar-item icon-item">
+          <router-link to="/"><img rel="icon" :src="getNavImage()" /></router-link>
           
         </div>
 
@@ -74,7 +74,9 @@ let session = useUserSession();
 </template>
 
 <style>
-
+.icon-item a img {
+  vertical-align: middle;
+}
 
 </style>
 
@@ -86,7 +88,7 @@ export default {
     }
   },
   mounted() {
-    
+    console.log(import.meta.env.VITE_IMAGE_PREFIX)
   },
   methods: {
     logout: function() {
@@ -94,7 +96,10 @@ export default {
       let session = useUserSession();
       session.clearSession();
       router.push({ name: 'LoginPage'});
-    }
+    },
+    getNavImage() {
+        return "/images/" + import.meta.env.VITE_IMAGE_PREFIX + "-navbar.png"
+    },
   }
 }
 </script>

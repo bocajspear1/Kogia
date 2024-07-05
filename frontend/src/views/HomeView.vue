@@ -5,7 +5,7 @@
 <template>
 <div class="container column is-10">
     <div class="content">
-        <img class="logo-img" src="/images/kogia.png"/>
+        <img class="logo-img" :src="getHomeImage()"/>
     </div>
     <div class="level">
     <div class="level-item has-text-centered">
@@ -57,7 +57,7 @@ export default {
         version: "?",
         submission_count: 0,
         file_count: 0,
-        job_count: 0
+        job_count: 0,
     }
   },
   mounted() {
@@ -87,6 +87,9 @@ export default {
             self.done = true;
             console.log('FAILURE!!', status, data);
         })
+    },
+    getHomeImage() {
+        return "/images/" + import.meta.env.VITE_IMAGE_PREFIX + ".png"
     },
   }
 }
