@@ -448,7 +448,7 @@ class ExecInstance(VertexObjectWithMetadata):
             elif port_filter is not None:
                 full_filter = port_filter_obj
 
-        self._network_comms_total = self.count_connected_to(db, NetworkComm.COLLECTION_NAME, filter_edges=['has_instance_netcomm'], filter_vertices=full_filter, direction='out', max=1)[0]
+        self._network_comms_total = self.count_connected_to(db, NetworkComm.COLLECTION_NAME, filter_edges=['has_instance_netcomm'], filter_vertices=full_filter, direction='out', max=1)
         time_key = 'comm_time'
         items = self.get_connected_to(db, NetworkComm.COLLECTION_NAME, filter_edges=['has_instance_netcomm'], filter_vertices=full_filter, direction='out', max=1, limit=limit, skip=skip, 
                                           sort_by=('has_instance_netcomm', time_key, 'ASC'), add_edges=True)
@@ -925,15 +925,13 @@ class Process(VertexObjectWithMetadata):
                 self._events = items
                 self._events_synced = True
         
-        result = self.count_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1)
-        if len(result) > 0:
-            self._event_total = result[0]
-        else:
-            self._event_total = 0
+        
+        self._event_total = self.count_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1)
+        
         self._event_counter = self._event_total
     
     def load_syscalls(self, db : ArangoConnection, skip=0, limit=20):
-        self._syscall_total = self.count_connected_to(db, 'syscalls', filter_edges=['has_syscall'], direction='out', max=1)[0]
+        self._syscall_total = self.count_connected_to(db, 'syscalls', filter_edges=['has_syscall'], direction='out', max=1)
         self._syscalls = self.get_connected_to(db, 'syscalls', filter_edges=['has_syscall'], max=1, 
                                                direction="out", limit=limit, skip=skip, sort_by=('syscalls', 'timestamp', "ASC"))
         self._syscalls_synced = True

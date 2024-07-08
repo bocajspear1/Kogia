@@ -88,7 +88,7 @@ export default {
     }
   },
   mounted() {
-    console.log(import.meta.env.VITE_IMAGE_PREFIX)
+    
   },
   methods: {
     logout: function() {

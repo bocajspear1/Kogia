@@ -190,8 +190,12 @@ class VertexObject():
                                    direction=direction, limit=limit, skip=skip, sort_by=sort_by, add_edges=add_edges)
     
     def count_connected_to(self, db : ArangoConnection, end_collection, filter_edges=None, filter_vertices=None, max=2, direction='both'):
-        return db.get_connected_to(self.GRAPH_NAME, self._id, end_collection, filter_edges=filter_edges, 
+        results = db.get_connected_to(self.GRAPH_NAME, self._id, end_collection, filter_edges=filter_edges, 
                                    filter_vertices=filter_vertices, max=max, direction=direction, length_only=True)
+        if len(results) > 0:
+            return results[0]
+        else:
+            return 0
     
     def get_in_path(self, db : ArangoConnection, end_item, path_pos, edges, max=2, return_fields=None):
         return db.get_in_path(self.GRAPH_NAME, self._id, end_item, path_pos, edges, max=max, return_fields=return_fields)
@@ -313,14 +317,14 @@ class VertexObjectWithMetadata(VertexObject):
             if filter is not None:
                 filter_list = ('AND', [filter_list, ('ILIKE', 'value', "%" + filter + "%")])
             items = self.get_connected_to(db, 'metadata', filter_edges=[self._edge_col], filter_vertices=filter_list, skip=skip, limit=limit)
-            self._metadata_total = self.count_connected_to(db, 'metadata', filter_edges=[self._edge_col], filter_vertices=filter_list)[0]
+            self._metadata_total = self.count_connected_to(db, 'metadata', filter_edges=[self._edge_col], filter_vertices=filter_list)
         elif filter is not None:
             filter_list = ('ILIKE', 'value', "%" + filter + "%")
             items = self.get_connected_to(db, 'metadata', filter_edges=[self._edge_col], filter_vertices=filter_list)
-            self._metadata_total = self.count_connected_to(db, 'metadata', filter_edges=[self._edge_col], filter_vertices=filter_list)[0]
+            self._metadata_total = self.count_connected_to(db, 'metadata', filter_edges=[self._edge_col], filter_vertices=filter_list)
         else:
             items = self.get_connected_to(db, 'metadata', filter_edges=[self._edge_col])
-            self._metadata_total = self.count_connected_to(db, 'metadata', filter_edges=[self._edge_col])[0]
+            self._metadata_total = self.count_connected_to(db, 'metadata', filter_edges=[self._edge_col])
         
         if not as_dict:
             for item in items:

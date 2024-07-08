@@ -10,7 +10,7 @@ import router from '../router'
         <div class="modal-content">
             <div class="card">
                 <div class="card-image has-text-centered">
-                    <img class="image is-128x128 is-inline-block" src="/images/kogia.png"/>
+                    <img class="image is-128x128 is-inline-block m-2" :src="getNavImage()"/>
                 </div>
                 <div class="card-content">
                     <div class="content">
@@ -90,6 +90,9 @@ export default {
                 }   
             }
         )
+    },
+    getNavImage() {
+        return "/images/" + import.meta.env.VITE_IMAGE_PREFIX + ".png"
     },
   }
 }
