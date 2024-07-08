@@ -35,8 +35,8 @@ def run_gunicorn(config, workers, address, port):
         'bind': '%s:%s' % (address, port),
         'workers': number_of_workers(),
         "accesslog": "./logs/kogia-web.log",
-        "certfile": "cert.pem",
-        "keyfile": "key.pem",
+        "certfile": config['certfile'],
+        "keyfile": config['keyfile'],
         # "loglevel": "debug"
     }
 

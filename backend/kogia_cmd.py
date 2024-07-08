@@ -62,7 +62,7 @@ def run_group():
 @click.option("--noworkers", is_flag=True, help="Don't run workers too")
 @click.option("--waitress", is_flag=True, help="Run with Waitress instead of the default gunicorn")
 @click.pass_obj
-def web_Cmd(ctx, port, addr, debug, noworkers, waitress):
+def web_cmd(ctx, port, addr, debug, noworkers, waitress):
     if debug is True:
         ctx.config['loglevel'] = 'debug'
     try:
