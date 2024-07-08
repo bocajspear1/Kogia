@@ -46,7 +46,11 @@ from backend.version import VERSION
 
 from flask.logging import default_handler
 
-app = Flask(__name__)
+from flask import send_from_directory
+
+STATIC_DIR = '../frontend/dist'
+
+app = Flask(__name__, static_url_path='/', static_folder=STATIC_DIR)
 flask_key = None
 if os.path.exists(".flask_key"):
     flask_key_file = open(".flask_key", "r")
@@ -68,8 +72,13 @@ EXPORT_PATH = "/api/v1/export/"
 @app.before_request
 def check_req():
     # request is available
-    # print(request.path)
+   
     download_token = request.args.get('download_token')
+    first_item = request.path.split("/")[1]
+    if first_item == "":
+        return send_from_directory(STATIC_DIR, "index.html")
+    if first_item in ("index.html", "css", "assets", "images", "icons"):
+        return
     if request.path != AUTH_PATH or download_token is not None:
         if download_token is not None:
 
