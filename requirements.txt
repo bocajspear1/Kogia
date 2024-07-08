@@ -7,10 +7,9 @@ idna==3.3
 itsdangerous==2.2.0
 Jinja2==3.1.4
 MarkupSafe==2.1.5
-requests==2.32.0
+requests==2.31.0
 urllib3==1.26.8
 websocket-client==1.2.3
-Werkzeug==2.0.3
 Pillow==10.1.0
 pyzipper==0.3.6
 python-arango==7.8.1
