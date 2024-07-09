@@ -110,6 +110,21 @@ def adduser_cmd(ctx, username, role, password):
     auth.insert_user(username, password, role)
     print(f"{Fore.GREEN}User {username} added{Style.RESET_ALL}")
 
+@dbauth_group.command('changepw')
+@click.argument('username')
+@click.option("--password", help="User password's, be careful using this option")
+@click.pass_obj
+def adduser_cmd(ctx, username, password):
+    username = username
+    password = password
+    if password is None:
+        password = getpass.getpass("Password> ")
+    auth = DBAuth(ctx.db)
+
+
+    auth.update_user_password(username, password)
+    print(f"{Fore.GREEN}User {username} password updated{Style.RESET_ALL}")
+
 #
 # container subcommand
 #

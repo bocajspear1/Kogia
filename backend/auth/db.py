@@ -63,3 +63,14 @@ class DBAuth():
             "password": hashed_pass,
             "roles": roles
         })
+
+    def update_user_password(self, username, password):
+        user_data = self._db.get_by_match('users', '_key', username)
+        if user_data is None:
+            return False
+
+        salt = os.urandom(32)
+        hashed_pass = self._hash_password(password, salt)
+        self._db.update('users', user_data['_id'], {
+            "password": hashed_pass
+        })

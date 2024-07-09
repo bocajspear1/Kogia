@@ -10,7 +10,7 @@ MarkupSafe==2.1.5
 requests==2.31.0
 urllib3==1.26.8
 websocket-client==1.2.3
-Pillow==10.1.0
+Pillow==10.4.0
 pyzipper==0.3.6
 python-arango==7.8.1
 colorama==0.4.6
