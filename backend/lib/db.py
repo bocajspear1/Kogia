@@ -567,18 +567,18 @@ FOR start IN @@startCollection FILTER start._id == @fromId
     def insert_bulk(self, collection, doc_array, requery=True):
         col = self._get_collection(collection)
         
-        db_data = col.insert_many(doc_array, overwrite=True, overwrite_mode="replace")  
+        db_data = col.insert_many(doc_array, overwrite=True, overwrite_mode="replace", return_new=True)  
         if requery:
             db_data = col.get_many(doc_array)
 
-        id_list = []
+        item_list = []
         for item in db_data:
             if isinstance(item, DocumentInsertError):
                 # print(item.response.body)
-                continue
-            id_list.append(item['_id'])
+                item_list.append(None)
+            item_list.append(item)
         
-        return id_list 
+        return item_list 
 
     def update(self, collection, id, document):
         col = self._get_collection(collection) 

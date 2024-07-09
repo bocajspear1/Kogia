@@ -338,8 +338,12 @@ class VertexObjectWithMetadata(VertexObject):
         # Check if metadata has been loaded our added
         # None indicates not loaded and no additions
         if len(self._metadata) > 0:
-            new_ids = Metadata.bulk_insert(db, self._metadata)
-            self.insert_edge_bulk(db, self._edge_col, Metadata.COLLECTION, new_ids)
+            new_items = Metadata.bulk_insert(db, self._metadata)
+            id_list = []
+            for item in new_items:
+                if item is not None:
+                    id_list.append(item['_id'])
+            self.insert_edge_bulk(db, self._edge_col, Metadata.COLLECTION, id_list)
     
     def add_metadata(self, key, value):
         # if self._metadata is None:

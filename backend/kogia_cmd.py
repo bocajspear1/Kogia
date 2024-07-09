@@ -134,11 +134,16 @@ def container_group():
     pass
 
 @container_group.command('build')
+@click.option("--force", is_flag=True, help="Force build all")
 @click.pass_obj
-def build_cmd(ctx):
+def build_cmd(ctx, force):
     plugin_objs = get_all_plugin_objs(ctx.pm, container_only=True)
     c = 1
     for plugin_obj in plugin_objs:
+        if not force and plugin_obj.docker_image_exists():
+            print(f"{Fore.BLUE}{c}/{len(plugin_objs)}{Style.RESET_ALL} {plugin_obj.name} container already built")
+            c += 1
+            continue
         print(f"{Fore.BLUE}{c}/{len(plugin_objs)}{Style.RESET_ALL} Building {plugin_obj.name} container")
         plugin_obj.docker_build()
         c += 1

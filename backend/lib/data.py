@@ -620,7 +620,7 @@ class Event(VertexObject):
     def bulk_insert(cls, db, insert_objs):
         insert_events = []
         for event in insert_objs:
-            if isinstance(event, Event) and event.id != None:
+            if isinstance(event, Event) and event.id is None:
                 insert_events.append(event.to_dict())
 
         return db.insert_bulk(Event.COLLECTION_NAME, insert_events, requery=False)
@@ -847,17 +847,20 @@ class Process(VertexObjectWithMetadata):
     def save_events(self, db):
         if self._events_synced:
             return
+        if len(self._events) == 0:
+            return
+        print("Syncing events")
         
         # Save events in bulk, then add edges after
-        Event.bulk_insert(db, self._events)
+        new_items = Event.bulk_insert(db, self._events)
 
-        for event in self._events:
-            if isinstance(event, Event):
-                # Yeah, this will be slow, but we want to store the time of the event too
-                # event.save(db)
-                self.insert_edge(db, 'has_event', event.id, data={
-                    "event_time": event.time
-                })
+        for event_data in new_items:
+            event = Event(event_data['_id'])
+            event.from_dict(event_data)
+            self.insert_edge(db, 'has_event', event.id, data={
+                "event_time": event.time
+            })
+                
 
     def save_syscalls(self, db):
         if self._syscalls_synced:
@@ -870,8 +873,13 @@ class Process(VertexObjectWithMetadata):
                 insert_syscalls.append(syscall)
 
         # Syscalls will not have _key, so we need to get the ids from the insert
-        new_ids = db.insert_bulk('syscalls', insert_syscalls, requery=False)
-        self.insert_edge_bulk(db, 'has_syscall', 'syscalls', new_ids)
+        new_items = db.insert_bulk('syscalls', insert_syscalls, requery=False)
+
+        id_list = []
+        for item in new_items:
+            if item is not None:
+                id_list.append(item['_id'])
+        self.insert_edge_bulk(db, 'has_syscall', 'syscalls', id_list)
 
         # Since we select syscalls to insert based on _id, we need to reload all the syscalls
         # to ensure we don't insert multiple times
@@ -903,6 +911,9 @@ class Process(VertexObjectWithMetadata):
             self._child_processes.append(load_data)
 
     def load_events(self, db, as_dict=False, limit=0, skip=0, count_only=False):
+        if not self._events_synced:
+            self.save_events(db)
+        
         self._events = []
         if not count_only:
             items = self.get_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1, limit=limit, skip=skip, 
