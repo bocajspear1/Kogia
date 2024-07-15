@@ -828,7 +828,7 @@ class Process(VertexObjectWithMetadata):
                 self._child_processes.append(add_proc)
 
     def save(self, db):
-        logger.debug("Saving process %s, PID=%s", self._uuid, str(self._pid))
+        logger.debug("Saving process %s, PID=%s", self._path, str(self._pid))
         try:
             self.save_doc(db, self.to_dict(get_children=False))
         except DBNotUniqueError:
@@ -849,7 +849,7 @@ class Process(VertexObjectWithMetadata):
             return
         if len(self._events) == 0:
             return
-        print("Syncing events")
+        logger.debug("Saving events for %s, PID=%s", self._path, str(self._pid))
         
         # Save events in bulk, then add edges after
         new_items = Event.bulk_insert(db, self._events)
@@ -860,12 +860,14 @@ class Process(VertexObjectWithMetadata):
             self.insert_edge(db, 'has_event', event.id, data={
                 "event_time": event.time
             })
+
+        self.load_events(db)
                 
 
     def save_syscalls(self, db):
         if self._syscalls_synced:
             return
-        logger.debug("Saving syscalls for process %s, PID=%s", self._uuid, str(self._pid))
+        logger.debug("Saving syscalls for process %s, PID=%s", self._path, str(self._pid))
         # Insert syscalls
         insert_syscalls = []
         for syscall in self._syscalls:
@@ -888,6 +890,7 @@ class Process(VertexObjectWithMetadata):
         self._syscalls_synced = True
 
     def load(self, db):
+        logger.debug("Loading process %s, PID=%s", self._path, str(self._pid))
         document = {}
         if self.id is None:
             document = self.load_doc(db, field='_key', value=self._uuid)
@@ -898,6 +901,7 @@ class Process(VertexObjectWithMetadata):
             self.from_dict(document)
 
     def load_child_processes(self, db, get_children=True, load_event_count=False):
+        logger.debug("Loading child processes of %s, PID=%s", self._path, str(self._pid))
         self._child_processes = []
         items = self.get_connected_to(db, 'processes', filter_edges=['is_child_of'], direction='out', max=1)
         for item in items:
@@ -911,8 +915,9 @@ class Process(VertexObjectWithMetadata):
             self._child_processes.append(load_data)
 
     def load_events(self, db, as_dict=False, limit=0, skip=0, count_only=False):
-        if not self._events_synced:
-            self.save_events(db)
+        logger.debug("Loading events for process %s, PID=%s", self._path, str(self._pid))
+        # if not self._events_synced:
+        #     self.save_events(db)
         
         self._events = []
         if not count_only:
@@ -927,7 +932,7 @@ class Process(VertexObjectWithMetadata):
                         load_data.time = item['_edge']['event_time']
                     self._events.append(load_data)
                     self._event_counter += 1
-                    self._events_synced = True
+                self._events_synced = True
             else:
                 for i in range(len(items)):
                     if '_edge' in items[i]:
@@ -942,6 +947,7 @@ class Process(VertexObjectWithMetadata):
         self._event_counter = self._event_total
     
     def load_syscalls(self, db : ArangoConnection, skip=0, limit=20):
+        logger.debug("Loading syscalls for process %s, PID=%s", self._path, str(self._pid))
         self._syscall_total = self.count_connected_to(db, 'syscalls', filter_edges=['has_syscall'], direction='out', max=1)
         self._syscalls = self.get_connected_to(db, 'syscalls', filter_edges=['has_syscall'], max=1, 
                                                direction="out", limit=limit, skip=skip, sort_by=('syscalls', 'timestamp', "ASC"))

@@ -34,6 +34,7 @@ from backend.api.report import report_endpoints
 from backend.api.execinstance import execinstance_endpoints
 from backend.api.system import system_endpoints
 from backend.api.export import export_endpoints
+from backend.api.docs import docs_endpoints
 
 from backend.lib.config import load_config
 from backend.auth import ROLES
@@ -79,6 +80,8 @@ def check_req():
         return send_from_directory(STATIC_DIR, "index.html")
     if first_item in ("index.html", "css", "assets", "images", "icons"):
         return
+    elif not first_item == "api":
+        return send_from_directory(STATIC_DIR, "index.html")
     if request.path != AUTH_PATH or download_token is not None:
         if download_token is not None:
 
@@ -151,6 +154,7 @@ app.register_blueprint(report_endpoints, url_prefix='/api/v1/report')
 app.register_blueprint(execinstance_endpoints, url_prefix='/api/v1/exec_instance')
 app.register_blueprint(system_endpoints, url_prefix='/api/v1/system')
 app.register_blueprint(export_endpoints, url_prefix='/api/v1/export')
+app.register_blueprint(docs_endpoints, url_prefix='/api/v1/docs')
 
 with app.app_context():
 
@@ -174,6 +178,10 @@ with app.app_context():
     app._db = app._db_factory.new()
     app._filestore = filestore
 
+    # Set docs directory
+    app._docs_dir = os.path.abspath(app._config['docs_dir'])
+    app.logger.info("Setting documentation directory to %s", app._docs_dir)
+
     app.logger.info("Loaded filestore %s", filestore.__class__.__name__)
 
     app._worker_manager = WorkerManager()
@@ -185,7 +193,7 @@ with app.app_context():
 
     # Load authentication
     app._auth = None
-    if app._config['auth_type'] == "db":
+    if 'DBAuth' in app._config['auth']:
         app.logger.info("Enabling local DB authentication")
         app._auth = DBAuth(app._db_factory.new())
     else:

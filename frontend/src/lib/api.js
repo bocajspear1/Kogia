@@ -248,4 +248,7 @@ export default  {
     get_process_syscalls: function(process_uuid, skip, limit, on_succeeded, on_failed) {
         this.api_call("/process/" + process_uuid + "/syscalls?skip=" + skip.toString() + "&limit=" + limit.toString(), on_succeeded, on_failed);
     },
+    get_docs_page: function(page, on_succeeded, on_failed) {
+        this.api_call("/docs/" + page, on_succeeded, on_failed);
+    },
 }

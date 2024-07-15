@@ -75,7 +75,7 @@ const routes = [
     component: LoginView,
   },
   {
-    path: "/userguide",
+    path: "/userguide/:page*",
     name: "UserGuide",
     component: UserGuideView,
   },
