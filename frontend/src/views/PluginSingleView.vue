@@ -1,6 +1,8 @@
 <script setup>
 import DynamicPanel from '@/components/DynamicPanel.vue'
 import Notifications from '@/components/general/Notifications.vue'
+import TabMenuItem from '@/components/menu/TabMenuItem.vue';
+import TabMenu from '@/components/menu/TabMenu.vue';
 </script>
 
 <template>
@@ -14,21 +16,39 @@ import Notifications from '@/components/general/Notifications.vue'
         </header>
         <div class="card-content">
             <div class="content">
-                <div v-if="has_display">
-                    <div class="tabs">
-                        <ul>
-                            <template v-for="display_tab in plugin.display">
-                                <li v-if="current_tab == display_tab.title" class="is-active"><a>{{ display_tab.title }}</a></li>
-                                <li v-else><a @click="setTab(display_tab.title)">{{ display_tab.title }}</a></li>
-                            </template>
-                        </ul>
-                    </div>
+                <TabMenu>
+                    <template v-slot:main>
+                    <TabMenuItem iconname="information" @click="setTab('Info')" :active="current_tab=='Info'">Info</TabMenuItem>
                     <template v-for="display_tab in plugin.display">
+                        <TabMenuItem iconname="card" @click="setTab(display_tab.title)" :active="current_tab==display_tab.title">{{ display_tab.title }}</TabMenuItem>
+                    </template>
+                    </template>
+                </TabMenu>
+                <div class="card">
+                    <div class="card-content">
+                        <div v-if="current_tab=='Info'">
+                            <p>{{ plugin.docs }}</p>
+                            <h2>Options</h2>
+                            <ul>
+                                <li v-for="option in plugin.options">
+                                    <strong>{{ option.name }}</strong>: {{ option.description }}
+                                    <template v-if="option.type == 'select'">
+                                        , one of {{ option.selections }}
+                                    </template>
+                                </li>
+                                <li v-if="plugin.options.length == 0">
+                                    No options
+                                </li>
+                            </ul>
+                        </div>
+                        <template v-for="display_tab in plugin.display">
                         <div v-if="current_tab == display_tab.title">
                             <DynamicPanel :panel_data="display_tab" :plugin_name="plugin_name"></DynamicPanel>
                         </div>
-                    </template>
+                        </template>
+                    </div>
                 </div>
+                
             </div>
         </div>
         <footer class="card-footer">
@@ -57,7 +77,7 @@ export default {
   data() {
     return {
       plugin: {},
-      current_tab: "",
+      current_tab: "Info",
       has_display: false,
       plugin_name: "",
       done: false,
@@ -81,7 +101,7 @@ export default {
             
         if (self.plugin.display.length > 0) {
             self.has_display = true;
-            self.current_tab = self.plugin.display[0].title;
+            // self.current_tab = self.plugin.display[0].title;
         }
         self.done = true;
       },

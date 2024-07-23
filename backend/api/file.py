@@ -67,8 +67,6 @@ def download_file(uuid):
 
     ret_format = request.args.get('format')
 
-    
-
     if ret_format is None or ret_format not in ('raw', 'zip', 'enczip', 'hex'):
         return jsonify({
             "ok": False,
@@ -156,7 +154,7 @@ def get_file_metadata_list(uuid, metatype):
     return jsonify({
         "ok": True,
         "result": {
-            "metadata": file_obj.metadata ,
+            "metadata": file_obj.metadata,
             "total": file_obj.metadata_total
         }
     })

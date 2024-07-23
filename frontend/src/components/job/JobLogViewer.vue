@@ -3,9 +3,9 @@ import DynamicFilterTable from '@/components/dynamic/DynamicFilterTable.vue';
 </script>
 
 <template>
-    <DynamicFilterTable v-if="loaded" :columns="['Severity', 'Name', 'Message']" 
+    <DynamicFilterTable v-if="loaded" :columns="['Severity', 'Time', 'Name', 'Message']" 
                                 :data="logs" 
-                                :noFilter="['Message']"
+                                :noFilter="['Time', 'Message']"
                                 :limitFilter="{'Severity':['error', 'warning', 'debug', 'info']}"
                                 :pageSize="limit"
                                 :totalItems="log_count"
@@ -19,6 +19,7 @@ import DynamicFilterTable from '@/components/dynamic/DynamicFilterTable.vue';
 
 <script>
 import api from '@/lib/api';
+import time from '@/lib/time';
 
 export default {
     data() {
@@ -46,8 +47,9 @@ export default {
                     self.log_count = data['total'];
                     console.log(data)
                     for (var i = 0; i < log_list.length; i++) {
-                        var message = log_list[i]['message']
-                        self.logs.push([log_list[i]['severity'], log_list[i]['log_name'], message]);
+                        var message = log_list[i]['message'];
+                        var time_str = time.seconds_display(log_list[i]['log_time']);
+                        self.logs.push([log_list[i]['severity'], time_str, log_list[i]['log_name'], message]);
                     }
                     self.loaded = true;
                 },

@@ -54,7 +54,14 @@ import ScoreTag from '@/components/job/ScoreTag.vue';
             <SubmissionBlock v-if="submission != null" :submission="submission"></SubmissionBlock>
             
             <div class="columns">
+                
                 <div class="column">
+                    <div v-if="job.error.length > 0" class="notification  is-warning">
+                        <h1 class="is-size-4">Errors</h1>
+                        <p v-for="error in job.error">
+                            {{  error }}
+                        </p>
+                    </div>
                     <h1 class="is-size-3">Signatures</h1><br>
                     <SignatureList :signature_matches="all_signatures"></SignatureList>
                 </div>

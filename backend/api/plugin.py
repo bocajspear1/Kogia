@@ -39,9 +39,12 @@ def get_plugin(plugin_name):
     plugin = init_plugins[0]
 
     current_app._db.unlock()
+
+    plugin_data = plugin.to_dict()
+    del plugin_data['config']
     return jsonify({
         "ok": True,
-        "result": plugin.to_dict()
+        "result": plugin_data
     })
 
 @plugin_endpoints.route('/<plugin_name>/action/<action>', methods=['GET'])

@@ -182,24 +182,21 @@ class VertexObject():
     def insert_edge_bulk(self, db : ArangoConnection, collection, to_collection, to_items):
         db.insert_edge_bulk(self.GRAPH_NAME, collection, self._id, to_collection, to_items)
 
-    def get_connected_to(self, db : ArangoConnection, end_collection, filter_edges=None, filter_vertices=None, max=2, direction='both', limit=0, skip=0, sort_by=None, add_edges=False):
+    def get_connected_to(self, db : ArangoConnection, end_item, filter_edges=None, filter_vertices=None, 
+                         max=2, direction='both', limit=0, skip=0, sort_by=None, add_edges=False, return_path=False):
         # We can't have anything connected to if we don't know our ID. We're probably a new object with nothing in the DB yet.
         if self._id is None:
             return []
-        return db.get_connected_to(self.GRAPH_NAME, self._id, end_collection, filter_edges=filter_edges, filter_vertices=filter_vertices, max=max, 
-                                   direction=direction, limit=limit, skip=skip, sort_by=sort_by, add_edges=add_edges)
+        return db.get_connected_to(self.GRAPH_NAME, self._id, end_item, filter_edges=filter_edges, filter_vertices=filter_vertices, max=max, 
+                                   direction=direction, limit=limit, skip=skip, sort_by=sort_by, add_edges=add_edges, return_path=return_path)
     
-    def count_connected_to(self, db : ArangoConnection, end_collection, filter_edges=None, filter_vertices=None, max=2, direction='both'):
-        results = db.get_connected_to(self.GRAPH_NAME, self._id, end_collection, filter_edges=filter_edges, 
+    def count_connected_to(self, db : ArangoConnection, end_item, filter_edges=None, filter_vertices=None, max=2, direction='both'):
+        results = db.get_connected_to(self.GRAPH_NAME, self._id, end_item, filter_edges=filter_edges, 
                                    filter_vertices=filter_vertices, max=max, direction=direction, length_only=True)
         if len(results) > 0:
             return results[0]
         else:
             return 0
-    
-    def get_in_path(self, db : ArangoConnection, end_item, path_pos, edges, max=2, return_fields=None):
-        return db.get_in_path(self.GRAPH_NAME, self._id, end_item, path_pos, edges, max=max, return_fields=return_fields)
-
 
 class Metadata(VertexObject):
     """Object that contains Key-Value data.

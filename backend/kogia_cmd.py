@@ -12,6 +12,7 @@ from backend.auth import ROLES
 from backend.lib.plugin_manager import PluginManager
 from backend.lib.job import Job
 from backend.lib.data import ExecInstance
+from backend.lib.submission import SubmissionFile
 
 from backend.lib.helpers import prepare_all
 
@@ -221,10 +222,10 @@ def plugin_run_command(ctx, plugin_name, job_uuid):
 @dev_group.command('insertdata')
 @click.argument('parent_uuid')
 @click.argument('filename', type=click.Path(exists=True))
-@click.option('--dtype',type=click.Choice(['metadata', 'netcomm', 'syscall'], case_sensitive=False))
+@click.option('--dtype',type=click.Choice(['metadata', 'netcomm', 'syscall', 'report'], case_sensitive=False))
+@click.option('--file')
 @click.pass_obj
-def plugin_insert_command(ctx, parent_uuid, filename, dtype):
-
+def plugin_insert_command(ctx, parent_uuid, filename, dtype, file):
 
     if dtype in ('metadata', 'netcomm', 'syscall'):
         inst_obj = ExecInstance(uuid=parent_uuid)
@@ -238,11 +239,18 @@ def plugin_insert_command(ctx, parent_uuid, filename, dtype):
                     inst_obj.add_network_comm(**item)
             inst_obj.save(ctx.db)
     elif dtype in ('report',):
-        job_obj = Job(ctx.db, ctx.filestore, parent_uuid)
-        job_obj.load(ctx.pm)
+         with open(filename, "r") as data_file:
+            data_dict = json.load(data_file)
+            for item in data_dict:
+                job_obj = Job(ctx.db, ctx.filestore, parent_uuid)
+                job_obj.load(ctx.pm)
 
-        job_obj.add_report()
+                file_obj = SubmissionFile(uuid=file)
+                file_obj.load(ctx.db)
 
+
+                job_obj.add_report(item['report_name'], file_obj, item['data'])
+            job_obj.save()
 
 if __name__ == '__main__':
     main_cli()

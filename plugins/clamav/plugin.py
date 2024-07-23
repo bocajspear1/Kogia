@@ -2,6 +2,9 @@ from backend.lib.plugin_base import DockerPluginBase
 from backend.lib.data import SIGNATURE_SEVERITY
 
 class ClamAVPlugin(DockerPluginBase):
+    """
+    Runs ClamAV on provided sample in a container.
+    """
     PLUGIN_TYPE = 'signature'
     INGESTS = []
     DOCKER_IMAGE = 'clamav'

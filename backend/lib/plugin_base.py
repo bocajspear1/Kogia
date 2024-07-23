@@ -32,7 +32,7 @@ class PluginBase():
         self._container = False
         self.config = {}
         self._display = {}
-        self._options = {}
+        self._options = []
 
         config_path = os.path.join(self.get_plugin_dir(), "plugin.json")
         if os.path.exists(config_path):
@@ -79,7 +79,8 @@ class PluginBase():
             "type": self.PLUGIN_TYPE,
             "author": self.AUTHOR,
             "display": self._display,
-            "options": self._options
+            "options": self._options,
+            "docs": self.__doc__
         }
 
     @property

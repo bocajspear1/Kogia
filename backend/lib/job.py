@@ -2,11 +2,14 @@ from multiprocessing.sharedctypes import Value
 import time
 import uuid
 import copy
+import logging
 
 from backend.lib.submission import Submission, SubmissionFile
 from backend.lib.objects import VertexObject, CollectionObject, FilestoreObject
 from backend.lib.data import Process, Signature, SignatureMatch, Report, ExecInstance, SIGNATURE_SEVERITY, Event
 from .helpers import safe_uuid
+
+logger = logging.getLogger(__name__)
 
 class Job(VertexObject):
     """Object representing a Job, which runs a series of plugins on a Submission.
@@ -297,20 +300,27 @@ class Job(VertexObject):
         else:
             file_obj = SubmissionFile(uuid=file_uuid)
             file_obj.load(self._db)
-            ret_reports =  file_obj.get_in_path(self._db, self.id, 1, ['has_report', 'added_report'], return_fields=['_key', 'name'])
+            ret_reports_paths = file_obj.get_connected_to(self._db, self.id, filter_edges=['has_report', 'added_report'], return_path=True)
 
-        for ret_report in ret_reports:
-            ret_report['uuid'] = ret_report['_key']
-            del ret_report['_key']
+        
+            for ret_report_paths in ret_reports_paths:
+                ret_report = ret_report_paths['vertices'][1]
+                
+                ret_report['uuid'] = ret_report['_key']
+                del ret_report['_key']
+                ret_reports.append(ret_report)
+                
         return ret_reports
 
     def get_matches(self, file_uuid=None):
         return_list = []
         for match_item in self._matches:
+            
             if match_item.signature is None:
                 match_item.load_signature(self._db)
-            if match_item.file is None:
-                match_item.load_file(self._db, self._filestore)
+            print(match_item.signature.name)
+            # if match_item.file is None:
+            #     match_item.load_file(self._db, self._filestore)
             if file_uuid is not None:
                 if match_item.file_uuid == file_uuid:
                     return_list.append(match_item)
@@ -328,7 +338,9 @@ class Job(VertexObject):
         else:
             file_obj = SubmissionFile(uuid=file_uuid)
             file_obj.load(self._db)
-            ret_signatures =  file_obj.get_in_path(self._db, self.id, 1, ['has_match', 'added_match'], return_fields=['_key', 'name'])
+            ret_signatures_paths = file_obj.get_connected_to(self._db, self.id, filter_edges=['has_match', 'added_match'], return_path=True)
+            for path_item in ret_signatures_paths:
+                ret_signatures.append(path_item['vertices'][1])
 
         for ret_sig in ret_signatures:
             del ret_sig['_key']

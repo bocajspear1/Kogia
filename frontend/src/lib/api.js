@@ -232,8 +232,18 @@ export default  {
     get_instance_screenshot: function(instance_uuid, screenshot_name, on_succeeded, on_failed) {
         this.api_call("/exec_instance/" + instance_uuid  + "/screenshot/" + screenshot_name, on_succeeded, on_failed);
     },
-    get_process_events: function(skip, limit, process_uuid, on_succeeded, on_failed) {
-        this.api_call("/process/" + process_uuid + "/events?skip=" + skip.toString() + "&limit=" + limit.toString(), on_succeeded, on_failed);
+    get_process_events: function(skip, limit, process_uuid, type_filter, info_filter, data_filter, on_succeeded, on_failed) {
+        var filter_str = "";
+        if(type_filter != "") {
+            filter_str += "&type=" + type_filter;
+        }
+        if(info_filter != "") {
+            filter_str += "&info=" + info_filter;
+        }
+        if(data_filter != "") {
+            filter_str += "&data=" + data_filter;
+        }
+        this.api_call("/process/" + process_uuid + "/events?skip=" + skip.toString() + "&limit=" + limit.toString() + filter_str, on_succeeded, on_failed);
     },
     get_process_metadata_types: function(process_uuid, on_succeeded, on_failed) {
         this.api_call("/process/" + process_uuid + "/metadata/list", on_succeeded, on_failed);

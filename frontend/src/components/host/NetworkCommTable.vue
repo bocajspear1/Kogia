@@ -66,7 +66,7 @@ import Paginator from "../general/Paginator.vue";
                 <td class="content m-0">
                     {{ netcomm.dest_addr }}:{{ netcomm.dest_port }}
                 </td>
-                <td class="allow-newlines" >
+                <td class="allow-newlines overflow-pre" >
                     <pre>{{ netcomm.data }}</pre>
                 </td>
             </tr>
@@ -84,7 +84,9 @@ import Paginator from "../general/Paginator.vue";
 </template>
 
 <style scoped>
-
+.overflow-pre {
+    overflow-x: scroll;
+}
 </style>
 
 <script>

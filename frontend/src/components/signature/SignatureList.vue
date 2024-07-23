@@ -28,7 +28,7 @@
                                 <div class="list-item-title">{{ signature_match.signature.name }} ({{ signature_match.signature.plugin }})</div>
                                 <div class="list-item-description">
                                     {{ signature_match.signature.description }}
-                                    <table class="table m-2 is-fullwidth">
+                                    <table class="table m-2 is-fullwidth" v-if="Object.keys(signature_match.extra).length > 0">
                                         <thead>
                                             <tr>
                                                 <th>Key</th>

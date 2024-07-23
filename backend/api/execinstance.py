@@ -28,6 +28,15 @@ def get_exec_instance(uuid):
 
 @execinstance_endpoints.route('/<uuid>/metadata/<metatype>/list', methods=['GET'])
 def get_execinstance_metadata_list(uuid, metatype):
+    skip_int = 0
+    limit_int = 50
+    try:
+        limit_int, skip_int = get_pagination(request)
+    except ValueError:
+        return abort(400)
+    
+    filter = request.args.get('filter')
+    
     current_app._db.lock()
     exec_instance = ExecInstance(uuid=uuid)
     exec_instance.load(current_app._db)
@@ -35,17 +44,16 @@ def get_execinstance_metadata_list(uuid, metatype):
     if exec_instance.uuid == None:
         current_app._db.unlock()
         return abort(404)
-    exec_instance.load_metadata(current_app._db)
+
+    exec_instance.load_metadata(current_app._db, mtype=metatype.strip(), skip=skip_int, limit=limit_int, filter=filter, as_dict=True)
     current_app._db.unlock()
-
-    filter = request.args.get('filter')
-    metadata_type = metatype.strip()
-
-    return_list = exec_instance.get_metadata_by_type(metadata_type, data_filter=filter)
 
     return jsonify({
         "ok": True,
-        "result": return_list
+        "result": {
+            "metadata": exec_instance.metadata,
+            "total": exec_instance.metadata_total
+        }
     })
 
 @execinstance_endpoints.route('/<uuid>/metadata/list', methods=['GET'])

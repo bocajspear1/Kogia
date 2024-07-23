@@ -365,47 +365,25 @@ class ArangoConnection():
             for item in to_list:
                 job_res = batch_col.link(from_item, item)
 
-    def get_in_path(self, graph_name, from_item, end_item, path_pos, edges, max=2, return_fields=None):
-        start_collection = from_item.split("/")[0]
 
+    def _create_graph_query(self, graph_name, start_collection, start_item, end_item, edge_filter=None, max=2):
         query = f"""
 FOR start IN @@startCollection FILTER start._id == @fromId
     FOR v, e, p IN 1..@max ANY start 
     GRAPH @graphName
     FILTER v._id == @endId"""
+        
+        bind_vars = {
+            '@startCollection': start_collection,
+            'endId': end_item,
+            'graphName': graph_name,
+            'fromId': start_item,
+            'max': max
+        }
+        
 
-        filter_edge_query = ""
-        if len(edges) <= 0:
-            raise ValueError("must have edges for get_in_path")
+        return query, bind_vars
 
-        for edge in edges:
-            if filter_edge_query == "":
-                filter_edge_query = f" AND (IS_SAME_COLLECTION('{edge}', e._id)"
-            else:
-                filter_edge_query += f" OR IS_SAME_COLLECTION('{edge}', e._id)"
-
-
-        query += filter_edge_query + ")"
-
-        if return_fields is None:
-            query += "    RETURN p['vertices'][@pos]"
-        else:
-            query += "    RETURN {"
-            for return_field in return_fields:
-                query += f" {return_field}: p['vertices'][@pos].{return_field}, "
-            query += "}"
-
-        # print(query)
-        cursor = self._db.aql.execute(query, 
-            bind_vars={
-                '@startCollection': start_collection,
-                'endId': end_item,
-                'graphName': graph_name,
-                'fromId': from_item,
-                'max': max,
-                "pos": path_pos
-            })
-        return list(cursor)
 
 
     def _parse_filter(self, collection, filter_item):
@@ -468,10 +446,19 @@ FOR start IN @@startCollection FILTER start._id == @fromId
                 
                 
 
-    def get_connected_to(self, graph_name, from_item, end_collection, filter_edges=None, filter_vertices=None, sort_by=None, max=2, direction='both', limit=0, 
-                         skip=0, length_only=False, add_edges=False):
-
+    def get_connected_to(self, graph_name, from_item, end_item, filter_edges=None, filter_vertices=None, sort_by=None, max=2, direction='both', limit=0, 
+                         skip=0, length_only=False, add_edges=False, return_path=False):
+        """Get items connected in graph `graph_name` starting at `start_item` and ending at `end_item`. `end_item` can be the _id of another document 
+        or the name of a collection. 
+        
+        Use `filter_edges` to limit paths explored to speed up retrieval. `filter_edges` is a list of edge collection names.
+        
+        """
         start_collection = from_item.split("/")[0]
+        if "/" in end_item:
+            end_collection = end_item.split("/")[0]
+        else:
+            end_collection = end_item
 
         bind_vars = {
             '@startCollection': start_collection,
@@ -491,6 +478,9 @@ FOR start IN @@startCollection FILTER start._id == @fromId
 FOR start IN @@startCollection FILTER start._id == @fromId
     FOR v, e, p IN 1..@max {query_dir} start 
     GRAPH @graphName"""
+        
+        if filter_edges is not None and not isinstance(filter_edges, list):
+            raise ValueError("filter_edges is not list")
 
         filter_edge_query = ""
         if filter_edges is not None:
@@ -498,7 +488,11 @@ FOR start IN @@startCollection FILTER start._id == @fromId
             query += "edgeCollections: " + repr(filter_edges)
             query += " }"
 
-        query += f" FILTER IS_SAME_COLLECTION('{end_collection}', v._id)"
+        if end_collection == end_item:
+            query += f" FILTER IS_SAME_COLLECTION('{end_collection}', v._id)"
+        else:
+            bind_vars['endItem'] = end_item
+            query += f" FILTER v._id == @endItem"
 
         if filter_vertices is not None:
             new_bind_vars, filter_query = self._parse_filter(end_collection, filter_vertices)
@@ -522,13 +516,14 @@ FOR start IN @@startCollection FILTER start._id == @fromId
             query += "@limit"
             bind_vars['limit'] = limit
 
-        if not length_only:
-            if not add_edges:
-                query += "    RETURN v"
-            else:
-                query += "    RETURN merge(v, {_edge: e})"
+        if length_only:
+            query += "\n    COLLECT WITH COUNT INTO length RETURN length"
+        elif add_edges:
+            query += "\n    RETURN merge(v, {_edge: e})"
+        elif return_path:
+            query += "\n    RETURN p"
         else:
-            query += "    COLLECT WITH COUNT INTO length RETURN length"
+            query += "\n    RETURN v"
 
         # print(query, bind_vars)
 

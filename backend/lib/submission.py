@@ -4,10 +4,12 @@ import os
 import stat
 import time
 import hashlib
-import shutil
+import logging
 
 from .objects import VertexObject, VertexObjectWithMetadata, FilestoreObject
 from .helpers import safe_uuid
+
+logger = logging.getLogger(__name__)
 
 class SubmissionFile(VertexObjectWithMetadata, FilestoreObject):
     """Object for a single file submitted as part of a submission.
@@ -100,6 +102,7 @@ class SubmissionFile(VertexObjectWithMetadata, FilestoreObject):
 
 
     def load(self, db):
+        logger.debug("Loading submission file")
         document = {}
         if self.id is None:
             document = self.load_doc(db, field='_key', value=self._uuid)
@@ -327,6 +330,7 @@ class Submission(VertexObject):
         
 
     def load(self, db):
+        logger.debug("Loading submission")
         document = {}
         if self.id is None:
             document = self.load_doc(db, field='_key', value=self._uuid)
@@ -341,6 +345,7 @@ class Submission(VertexObject):
         
 
     def load_files(self, db, filestore):
+        logger.debug("Loading files in submission")
         self._files = []
         items = self.get_connected_to(db, 'files', add_edges=True, max=1)
         

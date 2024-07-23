@@ -99,6 +99,7 @@ class SignatureMatch(VertexObject):
         
 
     def load(self, db):
+        logger.debug("Loading signature match")
         document = {}
         if self.id is None:
             if self._uuid == "":
@@ -111,6 +112,7 @@ class SignatureMatch(VertexObject):
             self.from_dict(document)
 
     def load_file(self, db, filestore):
+        logger.debug("Loading file for signature match")
         my_file_list = self.get_connected_to(db, 'files')
         if len(my_file_list) > 0:
             self._file = SubmissionFile(id=my_file_list[0]['_id'], filestore=filestore)
@@ -914,14 +916,28 @@ class Process(VertexObjectWithMetadata):
                 load_data.load_events(db, count_only=True)
             self._child_processes.append(load_data)
 
-    def load_events(self, db, as_dict=False, limit=0, skip=0, count_only=False):
+    def load_events(self, db, as_dict=False, limit=0, skip=0, count_only=False, type_filter=None, info_filter=None, data_filter=None):
         logger.debug("Loading events for process %s, PID=%s", self._path, str(self._pid))
         # if not self._events_synced:
         #     self.save_events(db)
+
+        filter_obj = None
+        if type_filter is not None or info_filter is not None or data_filter is not None:
+            filter_obj = ("AND", [])
+        if type_filter is not None:
+            filter_obj[1].append(("ILIKE", "key", f"%{type_filter}%"))
+        if info_filter is not None:
+            filter_obj[1].append(("OR", [
+                ("ILIKE", "src", f"%{info_filter}%"),
+                ("ILIKE", "dest", f"%{info_filter}%")
+            ]))
+        if data_filter is not None:
+            filter_obj[1].append(("ILIKE", "data", f"%{data_filter}%"))
+               
         
         self._events = []
         if not count_only:
-            items = self.get_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1, limit=limit, skip=skip, 
+            items = self.get_connected_to(db, 'events', filter_edges=['has_event'], filter_vertices=filter_obj, direction='out', max=1, limit=limit, skip=skip, 
                                           sort_by=('has_event', 'event_time', 'ASC'), add_edges=True)
             
             if not as_dict:
@@ -942,7 +958,7 @@ class Process(VertexObjectWithMetadata):
                 self._events_synced = True
         
         
-        self._event_total = self.count_connected_to(db, 'events', filter_edges=['has_event'], direction='out', max=1)
+        self._event_total = self.count_connected_to(db, 'events', filter_edges=['has_event'], filter_vertices=filter_obj, direction='out', max=1)
         
         self._event_counter = self._event_total
     

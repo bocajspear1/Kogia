@@ -20,11 +20,12 @@ def get_process_events(uuid):
     skip_int = 0
     limit_int = 20
     try:
-        limit_int, skip_int  = get_pagination(request)
+        limit_int, skip_int = get_pagination(request)
     except ValueError:
         return abort(400)
     
-    proc.load_events(current_app._db, as_dict=True, skip=skip_int, limit=limit_int)
+    proc.load_events(current_app._db, as_dict=True, skip=skip_int, limit=limit_int,
+                     type_filter=request.args.get('type'), info_filter=request.args.get('info'), data_filter=request.args.get('data'))
     
     current_app._db.unlock()
 

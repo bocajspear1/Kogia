@@ -1,5 +1,5 @@
 <template>
-    <div class="tabs is-boxed">
+    <div class="tabs is-boxed mb-0">
         <ul>
             <slot name="main"></slot>
         </ul>
@@ -7,7 +7,9 @@
 </template>
 
 <style scoped>
-
+  .tabs ul {
+    margin-left: 0px;
+  }
 </style>
 
 <script>
