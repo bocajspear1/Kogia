@@ -37,6 +37,14 @@ import Paginator from '@/components/general/Paginator.vue'
         </tfoot>
 
         <tbody>
+            <tr v-if="loading">
+                <td :colspan="getColCount">
+                    <div class="container p-3">
+                        <progress class="progress is-medium is-info" max="100">50%</progress>
+                    </div>
+                </td>
+            </tr>
+            
             <template v-if="data.length > 0" >
                 
                 <tr v-for="row in data">
@@ -48,7 +56,7 @@ import Paginator from '@/components/general/Paginator.vue'
                     </td>
                 </tr>
             </template>
-            <template v-else-if="data.length == 0" >
+            <template v-else-if="data.length == 0 && !loading" >
                 <tr>
                     <td :colspan="getColCount" >
                         <div class="notification is-warning">
@@ -97,7 +105,11 @@ export default {
         default: {}
     },
     selectable: Boolean,
-    select_column: Number
+    select_column: Number,
+    loading: {
+        type: Boolean,
+        default: false
+    },
   },
   emits: ["onFilter", "onNewPage", "onItemSelect"],
   mounted() {

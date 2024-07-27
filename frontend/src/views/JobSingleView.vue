@@ -19,29 +19,29 @@ import ScoreTag from '@/components/job/ScoreTag.vue';
 
 <template>
     <div class="column is-2">
-        <SidebarMenu>
+        <SidebarMenu v-if="job != null">
             <template v-slot:main>
             <SidebarMenuItem iconname="monitor-dashboard" @click="setPage('overview')" :active="page=='overview'">
                 Overview&nbsp;
-                <ScoreTag v-if="job != null" :score="job.score"></ScoreTag>
+                <ScoreTag v-if="job != null && job.primary != null" :score="job.score"></ScoreTag>
             </SidebarMenuItem>
-            <SidebarMenuItem iconname="desktop-tower-monitor" @click="setPage('host')" :active="page=='host'">
+            <SidebarMenuItem iconname="desktop-tower-monitor" @click="setPage('host')" :active="page=='host'" v-if="job.primary != null">
                 Host Activity&nbsp;
                 <MenuTag v-if="job != null" :value="job.exec_inst_count"></MenuTag>
             </SidebarMenuItem>
-            <SidebarMenuItem iconname="server-network" @click="setPage('network')" :active="page=='network'">Network Activity</SidebarMenuItem>
+            <SidebarMenuItem iconname="server-network" @click="setPage('network')" :active="page=='network'" v-if="job.primary != null">Network Activity</SidebarMenuItem>
             <SidebarMenuItem iconname="folder-file" @click="setPage('files')" :active="page=='files'">
                 Files&nbsp;
                 <MenuTag v-if="submission != null" :value="submission.files.length"></MenuTag>
             </SidebarMenuItem>
-            <SidebarMenuItem iconname="table-multiple" @click="setPage('metadata')" :active="page=='metadata'">Metadata</SidebarMenuItem>
-            <SidebarMenuItem iconname="file-chart" @click="setPage('reports')" :active="page=='reports'">
+            <SidebarMenuItem iconname="table-multiple" @click="setPage('metadata')" :active="page=='metadata'" v-if="job.primary != null">Metadata</SidebarMenuItem>
+            <SidebarMenuItem iconname="file-chart" @click="setPage('reports')" :active="page=='reports'" v-if="job.primary != null">
                 Reports&nbsp;
                 <MenuTag v-if="job != null" :value="job.report_count"></MenuTag>
             </SidebarMenuItem>
             <SidebarMenuItem iconname="script-text" @click="setPage('logs')" :active="page=='logs'">Logs</SidebarMenuItem>
             <SidebarMenuItem iconname="information" @click="setPage('details')" :active="page=='details'">Details</SidebarMenuItem>
-            <SidebarMenuItem iconname="database-export" @click="setPage('export')" :active="page=='export'">Export</SidebarMenuItem>
+            <SidebarMenuItem iconname="database-export" @click="setPage('export')" :active="page=='export'" v-if="job.primary != null">Export</SidebarMenuItem>
             </template>
         </SidebarMenu>
     </div>

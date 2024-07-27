@@ -309,7 +309,7 @@ class Job(VertexObject):
                 ret_report['uuid'] = ret_report['_key']
                 del ret_report['_key']
                 ret_reports.append(ret_report)
-                
+
         return ret_reports
 
     def get_matches(self, file_uuid=None):
@@ -318,7 +318,7 @@ class Job(VertexObject):
             
             if match_item.signature is None:
                 match_item.load_signature(self._db)
-            print(match_item.signature.name)
+            # print(match_item.signature.name)
             # if match_item.file is None:
             #     match_item.load_file(self._db, self._filestore)
             if file_uuid is not None:

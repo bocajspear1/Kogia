@@ -46,6 +46,8 @@ class FileThread (threading.Thread):
     def run(self):
         order = ('identify', 'unarchive', 'unpack', 'syscall', 'metadata', 'signature')
 
+        self._job.info_log("JOB", f"Starting file thread for file {self._file_obj.uuid}")
+
         for i in range(len(order)):
             stage = order[i]
 
@@ -53,7 +55,7 @@ class FileThread (threading.Thread):
             
             self._logger.info("At stage %s for %s", stage, self._file_obj.name)
 
-            print(self._plugin_list)
+            # print(self._plugin_list)
 
             for plugin in self._plugin_list:
                 # Is this file the primary file
@@ -92,7 +94,10 @@ class FileThread (threading.Thread):
                     self._logger.info("Skipping plugin %s:%s", stage, plugin.name)
 
             self._token = self._sync.pass_runtoken(self._token)
-            
+
+            self._job.info_log("JOB", f"Finished stage {stage}") 
+
+        self._job.info_log("JOB", f"Completed all stages")  
                 
 
 def process_job(config, new_job : Job, pm, db, filestore, logger):
@@ -156,11 +161,11 @@ def process_job(config, new_job : Job, pm, db, filestore, logger):
 
             for new_file_uuid in new_file_uuids:
                 subjob.add_limit_to_file(new_file_uuid)
-                identify_plugins = pm.get_plugin_list('identify')
-                subjob.add_plugin_list(identify_plugins)
-                unarchive_plugins = pm.get_plugin_list('unarchive')
-                subjob.add_plugin_list(unarchive_plugins)
-                subjob.save()
+            identify_plugins = pm.get_plugin_list('identify')
+            subjob.add_plugin_list(identify_plugins)
+            unarchive_plugins = pm.get_plugin_list('unarchive')
+            subjob.add_plugin_list(unarchive_plugins)
+            subjob.save()
 
             # Now lets run our identify job
             try:
@@ -168,6 +173,10 @@ def process_job(config, new_job : Job, pm, db, filestore, logger):
             except Exception as e:
                 logger.error("Exception in sub-job: " + str(e))
 
+            # Submission may have changed in subjob, ensure it is synced
+            # Job's internal syncing ensures submission object is different
+            new_job.submission.load(db)
+            new_job.submission.load_files(db, filestore)
         else:
             logger.info("Adding new and re-running job")
             for new_file_uuid in new_file_uuids:
@@ -180,6 +189,7 @@ def process_job(config, new_job : Job, pm, db, filestore, logger):
     # else:
     new_job.complete = True
     logger.info("Saving job %s data...", new_job.uuid)
+    new_job.info_log("JOB", "Job completed")
     new_job.save()
     logger.info("Job %s done", new_job.uuid)
 

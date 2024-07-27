@@ -1,4 +1,5 @@
 from arango import ArangoClient
+from arango.http import DefaultHTTPClient
 from arango.exceptions import DocumentInsertError, AQLQueryExecuteError
 from threading import RLock
 
@@ -42,7 +43,7 @@ class ArangoConnection():
         if self._ssl:
             proto = "https"
 
-        self._conn = ArangoClient(hosts=f"{proto}://{self._host}:{self._port}")
+        self._conn = ArangoClient(hosts=f"{proto}://{self._host}:{self._port}", http_client=DefaultHTTPClient(request_timeout=5*60))
         self._db = self._conn.db(self._db_name, username=self._username, password=self._password)
 
 
@@ -57,6 +58,11 @@ class ArangoConnection():
         self._db_lock.release()
 
     def truncate_all_collections(self):
+        """
+        Remove all data in all collections. 
+
+        DANGEROUS!
+        """
         collection_list = self._db.collections()
         for collection in collection_list:
             if collection['name'].startswith("_"):
@@ -64,6 +70,11 @@ class ArangoConnection():
             self.truncate_collection(collection['name'])
 
     def truncate_collection(self, collection):
+        """
+        Remove all data in a collection. 
+
+        DANGEROUS!
+        """
         if self._db.has_collection(collection):
             self._db.collection(collection).truncate()
 
@@ -73,6 +84,9 @@ class ArangoConnection():
             new_collection = graph.create_vertex_collection(collection)
 
     def _get_graph(self, graph_name):
+        """
+        Get graph wrapper and ensure it exists
+        """
         if not self._db.has_graph(graph_name):
             return self._db.create_graph(graph_name)
         else:
@@ -114,6 +128,9 @@ class ArangoConnection():
         return id.split("/")[0]
             
     def get_vertex_by_match(self, graph_name, collection, field, value):
+        """
+        Get a single vertex by match
+        """
         col = self._get_vertexes(graph_name, collection)
         cursor = col.find({field: value}, skip=0, limit=1)
         if cursor.count() == 0:
@@ -122,8 +139,47 @@ class ArangoConnection():
         return item
 
     def get_vertex_by_id(self, graph_name, collection, id):
+        """
+        Get a single vertex by id value
+        """
         col = self._get_vertexes(graph_name, collection)
         return col.get(id)
+
+    def find_vertexes(self, graph_name, collection, sort_tuple=None, filter_tuple=None, limit=None, skip=0, count_only=False):
+        self._insert_indexed_collection(graph_name, collection)
+
+        aql_query = f"FOR v IN {collection}"
+        bind_vars = {
+            
+        }
+
+        if filter_tuple is not None:
+            new_bind_vars, filter_query = self._parse_filter(collection, filter_tuple)
+            bind_vars.update(new_bind_vars)
+            aql_query += " FILTER " + filter_query + " "
+
+        if sort_tuple is not None:
+            aql_query += f" SORT v.{sort_tuple[0]} {sort_tuple[1]}"
+
+        if limit is not None:
+            aql_query += f" LIMIT {int(skip)}, {int(limit)}"
+
+        if not count_only:
+            aql_query += " RETURN v"
+        else:
+            aql_query += " COLLECT WITH COUNT INTO length RETURN length"
+
+        print(aql_query)
+        print(bind_vars)
+
+        cursor = self._db.aql.execute(
+            aql_query,
+            bind_vars=bind_vars
+        )
+
+        items = list(cursor)
+        return items
+
 
     def _get_aql_filter(self, main_collection, filter_map):
 
@@ -525,7 +581,7 @@ FOR start IN @@startCollection FILTER start._id == @fromId
         else:
             query += "\n    RETURN v"
 
-        # print(query, bind_vars)
+        print(query, bind_vars)
 
         try:
             cursor = self._db.aql.execute(query, 

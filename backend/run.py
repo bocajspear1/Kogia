@@ -37,6 +37,7 @@ def run_gunicorn(config, workers, address, port):
         "accesslog": "./logs/kogia-web.log",
         "certfile": config['certfile'],
         "keyfile": config['keyfile'],
+        "timeout": 5*60,
         # "loglevel": "debug"
     }
 

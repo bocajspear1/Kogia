@@ -7,7 +7,10 @@ import DynamicFilterTable from '@/components/dynamic/DynamicFilterTable.vue'
     <div v-if="error != null" class="notification is-warning">
         {{ error }}
     </div>
-    <template v-else-if="error == null && (file_uuid != null || instance_uuid != null || process_uuid != null)">
+    <div v-else-if="!types_done && (file_uuid != null || process_uuid != null || instance_uuid != null )">
+        <progress class="progress is-medium is-primary" max="100">50%</progress>
+    </div>
+    <template v-else-if="types_done && error == null && (file_uuid != null || instance_uuid != null || process_uuid != null)">
         <div class="select is-fullwidth" v-if="Object.keys(metadata_types).length > 0 && types_done" >
             <select ref="metadataSelect" @change="onSelect">
                 <option selected value="">Select Metadata Type</option>
@@ -24,12 +27,15 @@ import DynamicFilterTable from '@/components/dynamic/DynamicFilterTable.vue'
                     :data="metadata_list" 
                     :pageSize="limit"
                     :totalItems="metadata_count"
+                    :loading="list_loading"
                     @onFilter="onFilter" 
                     @onNewPage="onNewPage" :selectable="selectable" :select_column="0" @onItemSelect="onItemSelect"></DynamicFilterTable>
+
     </template>
-    <div class="notification is-info" v-else>
+    <div class="notification is-info" v-else-if="!list_loading">
         No item is selected
     </div>
+    
 </div>
 </template>
 
@@ -44,7 +50,7 @@ export default {
   data() {
     return {
         types_done: false,
-        list_done: false,
+        list_loading: false,
         limit: 50,
         error: null,
         metadata_types: {},
@@ -88,6 +94,8 @@ export default {
         self.error = null;
         
         self.metadata_types = data;
+        self.current_page = 1;
+        self.metadata_count = 0;
         self.types_done = true;
     },
     _metadataError(status, data) {
@@ -114,17 +122,18 @@ export default {
     _updateMetadataList(resp_data) {
         var self = this;
         self.error = null;
-        self.metadata_list = [];
+        
         self.metadata_count = resp_data['total'];
 
         for (var i = 0; i < resp_data['metadata'].length; i++) {
             self.metadata_list.push([resp_data['metadata'][i]['value']])
         }
-        self.list_done = true;
+        self.list_loading = false;
     },
     updateSelectFilter() {
         var self = this;
-        self.list_done = false;
+        self.list_loading = true;
+        self.metadata_list = [];
         
         if (self.file_uuid != null) {
             api.get_file_metadata_list(self.file_uuid, self.selected_type, self.filter, (self.current_page-1)*self.limit, self.limit, self._updateMetadataList, self._metadataError);

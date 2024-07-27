@@ -35,6 +35,7 @@ from backend.api.execinstance import execinstance_endpoints
 from backend.api.system import system_endpoints
 from backend.api.export import export_endpoints
 from backend.api.docs import docs_endpoints
+from backend.api.explore import explore_endpoints
 
 from backend.lib.config import load_config
 from backend.auth import ROLES
@@ -155,6 +156,7 @@ app.register_blueprint(execinstance_endpoints, url_prefix='/api/v1/exec_instance
 app.register_blueprint(system_endpoints, url_prefix='/api/v1/system')
 app.register_blueprint(export_endpoints, url_prefix='/api/v1/export')
 app.register_blueprint(docs_endpoints, url_prefix='/api/v1/docs')
+app.register_blueprint(explore_endpoints, url_prefix='/api/v1/explore')
 
 with app.app_context():
 

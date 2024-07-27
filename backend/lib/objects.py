@@ -1,5 +1,8 @@
 import hashlib
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 from .db import ArangoConnection, DBNotUniqueError
 
@@ -205,6 +208,22 @@ class Metadata(VertexObject):
     COLLECTION = 'metadata'
 
     @classmethod
+    def get_search_tuple(cls, search):
+        return ('OR', [
+            ('ILIKE', "key", f"%{search}%"),
+            ('ILIKE', "value", f"%{search}%"),
+        ])
+
+    @classmethod
+    def list_dict(cls, db : ArangoConnection, skip=0, limit=20, search=None):
+        filter_tuple = None
+        if search is not None:
+            filter_tuple = cls.get_search_tuple()
+
+        results = db.find_vertexes(cls.GRAPH_NAME, cls.COLLECTION, filter_tuple=filter_tuple, limit=limit, skip=skip)
+        return results
+
+    @classmethod
     def bulk_insert(cls, db, insert_items):
         insert_metadata = []
         for metadata in insert_items:
@@ -308,12 +327,15 @@ class VertexObjectWithMetadata(VertexObject):
     def load_metadata(self, db, as_dict=False, mtype=None, skip=0, limit=None, filter=None):
         self._metadata = []
         items = []
+        logger.debug("Loading metadata")
 
         if limit is not None:
             filter_list = ('key', mtype)
             if filter is not None:
                 filter_list = ('AND', [filter_list, ('ILIKE', 'value', "%" + filter + "%")])
+            
             items = self.get_connected_to(db, 'metadata', filter_edges=[self._edge_col], filter_vertices=filter_list, skip=skip, limit=limit)
+            logger.debug("Counting metadata")
             self._metadata_total = self.count_connected_to(db, 'metadata', filter_edges=[self._edge_col], filter_vertices=filter_list)
         elif filter is not None:
             filter_list = ('ILIKE', 'value', "%" + filter + "%")
@@ -322,7 +344,7 @@ class VertexObjectWithMetadata(VertexObject):
         else:
             items = self.get_connected_to(db, 'metadata', filter_edges=[self._edge_col])
             self._metadata_total = self.count_connected_to(db, 'metadata', filter_edges=[self._edge_col])
-        
+        logger.debug("Got metadata")
         if not as_dict:
             for item in items:
                 load_data = Metadata(id=item['_id'])

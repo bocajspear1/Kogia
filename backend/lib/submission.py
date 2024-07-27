@@ -7,6 +7,7 @@ import hashlib
 import logging
 
 from .objects import VertexObject, VertexObjectWithMetadata, FilestoreObject
+from .db import ArangoConnection, DBNotUniqueError
 from .helpers import safe_uuid
 
 logger = logging.getLogger(__name__)
@@ -14,6 +15,8 @@ logger = logging.getLogger(__name__)
 class SubmissionFile(VertexObjectWithMetadata, FilestoreObject):
     """Object for a single file submitted as part of a submission.
     """
+
+    COLLECTION = 'files'
 
     @classmethod
     def new(cls, filestore, store_prefix, filename):
@@ -26,8 +29,55 @@ class SubmissionFile(VertexObjectWithMetadata, FilestoreObject):
         new_cls._file_id = f"{store_prefix}:{filename}-{new_cls.uuid}"
         return new_cls
     
+
+
+    @classmethod
+    def get_search_tuple(cls, search):
+
+        search_tokens = search.split(" ")
+        search_tuples = []
+
+        for token in search_tokens:
+
+            if ":" in token:
+                token_split = token.split(":")
+                token_key = token_split[0]
+                token_val = token_split[1]
+                if token_key == 'mime':
+                    search_tuples.append(('ILIKE', "mime_type", f"%{token_val}%"))
+                elif token_key == 'os':
+                    search_tuples.append(('ILIKE', "target_os", f"%{token_val}%"))
+                elif token_key == 'format':
+                    search_tuples.append(('ILIKE', "exec_format", f"%{token_val}%"))
+                elif token_key == 'arch':
+                    search_tuples.append(('ILIKE', "exec_arch", f"%{token_val}%"))
+                elif token_key == 'bits':
+                    search_tuples.append(('ILIKE', "exec_bits", f"%{token_val}%"))
+                elif token_key == 'packer':
+                    search_tuples.append(('ILIKE', "exec_packer", f"%{token_val}%"))
+            else:
+                search_tuples.append(('OR', [
+                    ('ILIKE', "name", f"%{search}%"),
+                    ('ILIKE', "hash", f"%{search}%"),
+                ]))
+        
+        if len(search_tuples) == 1:
+            return search_tuples[0]
+        else:
+            return ('AND', search_tuples)
+
+    @classmethod
+    def list_dict(cls, db : ArangoConnection, skip=0, limit=30, search=None):
+        filter_tuple = None
+        print(search)
+        if search is not None:
+            filter_tuple = cls.get_search_tuple(search)
+        print(search, filter_tuple)
+        results = db.find_vertexes(cls.GRAPH_NAME, cls.COLLECTION, filter_tuple=filter_tuple, limit=limit, skip=skip)
+        return results
+
     def __init__(self, uuid=None, id=None, filestore=None):
-        VertexObjectWithMetadata.__init__(self, 'files', 'has_metadata', id)
+        VertexObjectWithMetadata.__init__(self, self.COLLECTION, 'has_metadata', id)
         FilestoreObject.__init__(self, filestore, "", "")
         # super().__init__('files', 'has_metadata', id)
 
@@ -92,6 +142,8 @@ class SubmissionFile(VertexObjectWithMetadata, FilestoreObject):
         self._parent = parent_file.id
 
     def save(self, db):
+        logger.debug("Saving file %s", self._name)
+        print(self.to_dict())
         self.save_doc(db, self.to_dict())
         self.reset_modified()
 
@@ -102,7 +154,7 @@ class SubmissionFile(VertexObjectWithMetadata, FilestoreObject):
 
 
     def load(self, db):
-        logger.debug("Loading submission file")
+        
         document = {}
         if self.id is None:
             document = self.load_doc(db, field='_key', value=self._uuid)
@@ -110,9 +162,11 @@ class SubmissionFile(VertexObjectWithMetadata, FilestoreObject):
             document = self.load_doc(db)
 
         if document is not None:
+            logger.debug("Loading submission file %s", self._uuid)
             self.from_dict(document)
             self.reset_modified()
         else:
+            logger.debug("Submission file %s not found", self._uuid)
             self._uuid = None
 
     @property
@@ -389,6 +443,7 @@ class Submission(VertexObject):
         
 
     def save(self, db):
+        logger.debug("Saving submission %s", self._uuid)
         self.save_doc(db, self.to_dict())
 
         for file in self._files:

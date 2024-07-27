@@ -14,26 +14,31 @@ import FileDropdown from '@/components/file/FileDropdown.vue';
         <TabMenuItem iconname="file-cog" @click="metadataTabSelected('processes')" :active="metadata_selected=='processes'">Processes</TabMenuItem>
     </template>
     </TabMenu>
-    <template v-if="metadata_selected=='files'">
-        <FileDropdown :files="files" @file_selected="fileSelected" :selected="selected_file_i"></FileDropdown>
-        <MetadataTable :file_uuid="getFileUUID()" :selectable="selectable" @metadataSelected="onMetadataSelected"></MetadataTable>
-    </template>
-    <template v-if="metadata_selected=='execinst'">
-        <ExecInstDropdown :job_uuid="job.uuid" @execinst_selected="instanceSelected" :selected="selected_instance_i"></ExecInstDropdown>
-        <MetadataTable v-if="selected_instance_i != null" :instance_uuid="getInstanceUUID()" 
-            :selectable="selectable"
-            @metadataSelected="onMetadataSelected"></MetadataTable>
-    </template>
-    <template v-if="metadata_selected=='processes'">
-        <ExecInstDropdown :job_uuid="job.uuid" @execinst_selected="instanceSelected" :selected="selected_instance_i"></ExecInstDropdown>
-        <span v-if="selected_instance_i != null" class="m-2 is-vcentered" >
-            <ProcessDropdown ref="procDropdown" :processes="selected_instance_i.processes" @process_selected="processSelected"></ProcessDropdown>
-        </span>
-        <MetadataTable v-if="selected_process_i != null" 
-            :process_uuid="getProcessUUID()" 
-            :selectable="selectable"
-            @metadataSelected="onMetadataSelected"></MetadataTable>
-    </template>
+    <div class="card">
+        <div class="card-content">
+            <template v-if="metadata_selected=='files'">
+                <FileDropdown :files="files" @file_selected="fileSelected" :selected="selected_file_i"></FileDropdown>
+                <MetadataTable :file_uuid="getFileUUID()" :selectable="selectable" @metadataSelected="onMetadataSelected"></MetadataTable>
+            </template>
+            <template v-if="metadata_selected=='execinst'">
+                <ExecInstDropdown :job_uuid="job.uuid" @execinst_selected="instanceSelected" :selected="selected_instance_i"></ExecInstDropdown>
+                <MetadataTable v-if="selected_instance_i != null" :instance_uuid="getInstanceUUID()" 
+                    :selectable="selectable"
+                    @metadataSelected="onMetadataSelected"></MetadataTable>
+            </template>
+            <template v-if="metadata_selected=='processes'">
+                <ExecInstDropdown :job_uuid="job.uuid" @execinst_selected="instanceSelected" :selected="selected_instance_i"></ExecInstDropdown>
+                <span v-if="selected_instance_i != null" class="m-2 is-vcentered" >
+                    <ProcessDropdown ref="procDropdown" :processes="selected_instance_i.processes" @process_selected="processSelected"></ProcessDropdown>
+                </span>
+                <MetadataTable v-if="selected_process_i != null" 
+                    :process_uuid="getProcessUUID()" 
+                    :selectable="selectable"
+                    @metadataSelected="onMetadataSelected"></MetadataTable>
+            </template>
+        </div>
+    </div>
+    
     
 </template>
 

@@ -2,7 +2,13 @@
     {
         "name": "minimum",
         "description": "Minimum string size",
-        "default": "4",
+        "default": "5",
+        "type": "number"
+    },
+    {
+        "name": "min_insert",
+        "description": "Minimum string size inserted into database",
+        "default": "8",
         "type": "number"
     }
 ]
