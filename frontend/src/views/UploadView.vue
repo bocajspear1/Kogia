@@ -73,8 +73,8 @@ export default {
             self.job_uuid = job_uuid;
             self.submission_uuid = resp_data['submission_uuid'];
             self.stage = "wait";
-        }, function(){
-            self.$refs.notifications.addNotification("error", "Upload Error: " + resp);
+        }, function(status, error){
+            self.$refs.notifications.addNotification("error", "Upload Error: " + error);
         })
     }
   }

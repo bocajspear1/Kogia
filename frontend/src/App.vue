@@ -40,7 +40,9 @@ let session = useUserSession();
               <div class="navbar-dropdown is-right">
                 <router-link class="navbar-item" to="/plugins"><mdicon name="video-input-component" :size="20" />&nbsp;&nbsp;Plugins</router-link>
                 <hr class="navbar-divider">
-                <router-link class="navbar-item" to="/userguide"><mdicon name="bookshelf" :size="20" />&nbsp;&nbsp;User Guide</router-link>
+                <router-link class="navbar-item" to="/userguide/index"><mdicon name="bookshelf" :size="20" />&nbsp;&nbsp;User Guide</router-link>
+                <hr class="navbar-divider">
+                <router-link class="navbar-item" to="/runners"><mdicon name="hammer" :size="20" />&nbsp;&nbsp;Runners</router-link>
               </div>
             </div>
           </div>

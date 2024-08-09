@@ -80,10 +80,10 @@ export default  {
             } else {
                 on_failed(200, resp_data['error']);
             }
-        }).catch(function (resp) {
-            var resp_data = resp.response['data'];
+        }).catch(function (error) {
+            var resp_data = error.response['data'];
             var error_message = resp_data['error']
-            on_failed(resp.response.status, error_message); 
+            on_failed(error.response.status, error_message); 
         });
     },
     api_post_json(path, post_data, on_succeeded, on_failed) {
@@ -116,6 +116,9 @@ export default  {
     },
     get_system_usage: function(on_succeeded, on_failed) {
         this.api_call("/system/usage", on_succeeded, on_failed);
+    },
+    get_runners: function(on_succeeded, on_failed) {
+        this.api_call("/system/runners", on_succeeded, on_failed);
     },
     get_submission_list: function(file_uuid, on_succeeded, on_failed) {
         if (!file_uuid) {   

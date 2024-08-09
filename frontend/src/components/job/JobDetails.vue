@@ -1,6 +1,8 @@
 <template>
     <div class="box">
       <h4 class="title is-spaced is-4">Job {{ job.uuid }}</h4>
+
+      <h5 class="title is-spaced is-5">Runner: {{ job.runner }}</h5>
       
       <table class="table is-striped is-fullwidth">
         <thead>

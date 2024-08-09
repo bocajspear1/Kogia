@@ -1,15 +1,20 @@
 import multiprocessing
+import logging
 import time
 from backend.lib.helpers import configure_logging
+
+logger = logging.getLogger(__name__)
 
 def run_worker_receivers(config, workers):
     for worker in workers:
         worker.start_worker_receivers()
+        worker.start_monitoring_thread()
 
 def run_workers_only(config, workers):
 
     configure_logging(config, extra="workers")
 
+    logger.info("Starting workers")
     run_worker_receivers(config, workers)
     try:
         while True:

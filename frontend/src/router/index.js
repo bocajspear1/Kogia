@@ -12,6 +12,7 @@ import JobSingleView from "@/views/JobSingleView.vue";
 import LoginView from "@/views/LoginView.vue";
 import ExploreView from "@/views/ExploreView.vue";
 import UserGuideView from "@/views/UserGuideView.vue";
+import RunnersView from "@/views/RunnersView.vue";
 
 const routes = [
   {
@@ -78,6 +79,11 @@ const routes = [
     path: "/userguide/:page*",
     name: "UserGuide",
     component: UserGuideView,
+  },
+  {
+    path: "/runners",
+    name: "Runners",
+    component: RunnersView,
   },
 ];
 

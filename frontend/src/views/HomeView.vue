@@ -33,6 +33,7 @@
         </div>
     </div>
   </div>
+
 </div>
   
 </template>
@@ -62,7 +63,7 @@ export default {
   },
   mounted() {
     this.updateStats();
-  },
+  },   
   methods: {
     updateStats() {
         var self = this;
@@ -77,17 +78,7 @@ export default {
             console.log('FAILURE!!', status, data);
         })
     },
-    updateUsage() {
-        var self = this;
-        api.get_system_usage(function(data) {
-            self.file = data;
-            self.done = true;
-        },
-        function(status, data) {
-            self.done = true;
-            console.log('FAILURE!!', status, data);
-        })
-    },
+    
     getHomeImage() {
         return "/images/" + import.meta.env.VITE_IMAGE_PREFIX + ".png"
     },

@@ -28,6 +28,7 @@ def configure_logging(config, extra=None):
                 logging.getLogger("requests").setLevel(logging.WARNING)
                 logging.getLogger("urllib3").setLevel(logging.WARNING)
                 logging.getLogger("PIL").setLevel(logging.WARNING)
+                logging.getLogger("pika").setLevel(logging.WARNING)
 
         elif loglevel.lower() == 'info':
             level = logging.INFO
@@ -115,10 +116,16 @@ def prepare_all(config, check=True):
         config['db']['port'], 
         config['db']['user'], 
         config['db']['password'],
-        config['db']['db_name']
+        config['db']['db_name'],
+        ssl=bool(config['db'].get('ssl', False)),
+        ssl_verify=bool(config['db'].get('verify', True))
     )
 
-    pm = PluginManager()
+    pm = None
+    if 'docker_registry' in config and config['docker_registry'] != '':
+        pm = PluginManager(registry=config['docker_registry'])
+    else:
+        pm = PluginManager()
     pm.load_all(check=check)
 
     # Load filestore modules

@@ -10,11 +10,13 @@
   "dependencies": {
     "@mdi/js": "^6.9.96",
     "axios": "^1.7.1",
+    "chart.js": "^4.4.3",
     "dayjs": "^1.11.10",
     "mdi-vue": "^3.0.13",
     "pinia": "^2.1.7",
     "pinia-plugin-persistedstate": "^3.2.0",
     "vue": "^3.2.33",
+    "vue-chartjs": "^5.3.1",
     "vue-router": "^4.2.5",
     "vue-showdown": "^4.2.0"
   },

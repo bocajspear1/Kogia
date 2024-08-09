@@ -90,6 +90,7 @@ class Job(VertexObject):
         self._limit_to = []
         self._exec_instances = []
         self._score = 0
+        self._runner = ''
 
     def add_limit_to_file(self, file_uuid):
         self._limit_to.append(file_uuid)
@@ -133,6 +134,14 @@ class Job(VertexObject):
     @property
     def primary(self):
         return self._primary
+
+    @property
+    def runner(self):
+        return self._runner
+    
+    @runner.setter
+    def runner(self, new_val):
+        self._runner = new_val
     
     def get_primary_file(self) -> SubmissionFile:
         primary_file = self._submission.get_file(uuid=self._primary)
@@ -179,7 +188,8 @@ class Job(VertexObject):
             "submission": self._submission.uuid,
             "plugin_args": self._arg_map,
             "limit_to": self._limit_to,
-            "score": self._score
+            "score": self._score,
+            "runner": self._runner
         }
 
     def from_dict(self, pm, data_obj):
@@ -193,6 +203,7 @@ class Job(VertexObject):
         self._arg_map = data_obj.get('plugin_args', '')
         self._limit_to = data_obj.get('limit_to', [])
         self._score = data_obj.get('score', 0)
+        self._runner = data_obj.get('runner', '')
 
         if 'submission' in data_obj:
             load_sub = Submission(uuid=data_obj['submission'])

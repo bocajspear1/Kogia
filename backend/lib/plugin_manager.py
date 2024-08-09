@@ -5,11 +5,16 @@ import docker
 
 class PluginManager():
 
-    def __init__(self, plugin_dir="./plugins"):
+    def __init__(self, plugin_dir="./plugins", registry=None):
         self._plugin_dir = plugin_dir
         self.plugins = {}
+        self._registry = registry
 
         self.docker = docker.from_env()
+
+    @property
+    def registry(self):
+        return self._registry
 
     @property
     def plugin_dir(self):

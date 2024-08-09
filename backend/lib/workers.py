@@ -3,8 +3,14 @@ import queue
 import time
 import traceback
 import logging
+import platform
+
 
 from backend.lib.job import Job
+from backend.version import VERSION
+from backend.lib.db import ArangoConnection
+from backend.lib.system import get_system_string, get_local_storage, get_memory_total, get_cpu_usage, get_memory_percent
+
 
 class FileThreadSync:
     def __init__(self):
@@ -98,9 +104,116 @@ class FileThread (threading.Thread):
             self._job.info_log("JOB", f"Finished stage {stage}") 
 
         self._job.info_log("JOB", f"Completed all stages")  
-                
 
-def process_job(config, new_job : Job, pm, db, filestore, logger):
+
+class WorkerMonitorThread(threading.Thread):
+    """
+    Thread for polling and pushing local usage information to database
+    """
+
+
+    def __init__(self, runner_name, count_queue, db : ArangoConnection, fs):
+        threading.Thread.__init__(self)
+
+        self.db = db
+        self.runner_name = runner_name
+        self._count_queue = count_queue
+        self.fs = fs
+        self.daemon = True
+        self._logger = logging.getLogger("WorkerMonitorThread")
+
+
+    def run(self):
+        self._logger.debug("Started monitoring thread")
+
+        SLEEP_TIME_SECONDS = 15
+        HISTORY_MINUTES = 5
+        first_start = True
+
+        while True:
+            runner_data = self.db.get_by_match("runners", "name", self.runner_name)
+            runner_id = None
+            if runner_data is None:
+                runner_data = {}
+            else:
+                runner_id = runner_data['_id']
+
+            job_count = runner_data.get('job_count', 0)
+            while not self._count_queue.empty():
+                self._count_queue.get()
+                print("Increment job count")
+                job_count += 1
+            runner_data['job_count'] = job_count
+            
+            runner_data['name'] = self.runner_name
+            runner_data['version'] = VERSION
+            runner_data['system'] = get_system_string()
+            filestore_total, filestore_used = self.fs.get_space()
+            runner_data['filestore_total'] = filestore_total
+            runner_data['filestore_used'] = filestore_used
+            local_total, local_used = get_local_storage()
+            runner_data['localstore_total'] = local_total
+            runner_data['localstore_used'] = local_used
+            runner_data['updated'] = int(time.time())
+
+            max_items = int((HISTORY_MINUTES * 60) / SLEEP_TIME_SECONDS)
+
+            memory_history = runner_data.get('memory_usage', [])
+            if first_start:
+                memory_history = []
+            memory_history.insert(0, get_memory_percent())
+
+            if len(memory_history) > max_items:
+                memory_history = memory_history[:max_items]
+
+            runner_data['memory_usage'] = memory_history
+
+            # Get CPU history
+            cpu_history = runner_data.get('cpu_usage', [])
+            if first_start:
+                cpu_history = []
+            cpu_history.insert(0, get_cpu_usage())
+
+            if len(cpu_history) > max_items:
+                cpu_history = cpu_history[:max_items]
+
+            runner_data['cpu_usage'] = cpu_history
+
+            if first_start:
+                first_start = False
+
+            if runner_id is None:
+                self.db.insert("runners", runner_data)
+            else:
+                self.db.update("runners", runner_id, runner_data)
+
+            time.sleep(SLEEP_TIME_SECONDS)
+
+class BaseWorker():
+
+    def __init__(self, config, db_factory, filestore, plugin_manager):
+        self._config = config
+        self._db_factory = db_factory
+        self._pm = plugin_manager 
+        self._filestore = filestore
+        self._count_queue = queue.Queue()
+        self._monitor = None
+
+    def start_monitoring_thread(self):
+        self._monitor = WorkerMonitorThread(self.runner_name(), self._count_queue, self._db_factory.new(), self._filestore)
+        self._monitor.start()
+
+    def runner_name(self):
+        return platform.node()
+    
+    def increment_job(self):
+        self._count_queue.put(1)
+
+    
+
+
+def process_job(runner_name, config, new_job : Job, pm, db, filestore, logger):
+    new_job.runner = runner_name
     logger.info("Starting to process job %s", new_job.uuid)
     file_threads = []
     run_queue = queue.Queue()
@@ -169,7 +282,7 @@ def process_job(config, new_job : Job, pm, db, filestore, logger):
 
             # Now lets run our identify job
             try:
-                process_job(config, subjob, pm, db, filestore, logger)
+                process_job(runner_name, config, subjob, pm, db, filestore, logger)
             except Exception as e:
                 logger.error("Exception in sub-job: " + str(e))
 
@@ -183,7 +296,7 @@ def process_job(config, new_job : Job, pm, db, filestore, logger):
                 new_job.add_limit_to_file(new_file_uuid)
 
             # Now lets rerun our identify job
-            process_job(config, new_job, pm, db, filestore, logger)
+            process_job(runner_name, config, new_job, pm, db, filestore, logger)
             # Don't save again since our re-run should save for us
             return
     # else:

@@ -50,3 +50,7 @@ class FileStoreFS():
     def copy_file_from(self, src_file, file_id):
         dest_file = self._get_full_path(file_id)
         shutil.copy(src_file, dest_file)
+
+    def get_space(self):
+        total, used, _ = shutil.disk_usage(self._dir)
+        return total, used

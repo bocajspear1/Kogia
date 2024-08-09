@@ -9,5 +9,8 @@ export default  {
         if (!this.has_key(obj, key)) {
             obj[key] = default_val;
         }
+    },
+    bytesToGBs(value) {
+        return Math.round(value / 10000000) / 100
     }
 }

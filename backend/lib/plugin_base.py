@@ -193,6 +193,10 @@ class DockerPluginBase(PluginBase):
         self._running_name = ""
         self._tmp_dirs = []  
         self._container = True 
+
+    @property
+    def image_name(self):
+        return self._name
     
     def docker_image_exists(self):
         try:
@@ -209,13 +213,17 @@ class DockerPluginBase(PluginBase):
 
     def docker_build(self, nocache=False):
         plugin_dir = self.get_plugin_dir()
-        try:
-            self.pm.docker.images.build(path=plugin_dir, tag=self._name, rm=True, nocache=nocache)
-        except docker.errors.BuildError as e:
-            for line in e.build_log:
-                if 'stream' in line:
-                    print(line['stream'].strip())
-            raise
+        if self.pm.registry is None:
+            try:
+                self.pm.docker.images.build(path=plugin_dir, tag=self._name, rm=True, nocache=nocache)
+            except docker.errors.BuildError as e:
+                for line in e.build_log:
+                    if 'stream' in line:
+                        print(line['stream'].strip())
+                raise
+        else:
+            new_image = self.pm.docker.images.pull(self.pm.registry + "/" + self._name, tag="latest")
+            new_image.tag(self._name)
 
     def docker_rebuild(self):
         self.docker_build(nocache=True)
@@ -250,7 +258,7 @@ class DockerPluginBase(PluginBase):
         self.docker_vars = environment
 
         if isinstance(file_obj, SubmissionFile):
-            self._running_name = self._name + "-" + file_obj.uuid
+            self._running_name = self._name + "-" + str(file_obj.uuid)[:18] + "--" + str(job_obj.uuid)[:18]
         else:
             self._running_name = self._name + "-" + str(uuid.uuid4())
 

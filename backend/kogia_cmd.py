@@ -1,6 +1,8 @@
 import json
 import getpass
 import shutil
+import platform
+
 
 from colorama import Fore, Back, Style
 import click
@@ -173,6 +175,22 @@ def rebuild_container_cmd(ctx, plugin):
     print(f"{Fore.YELLOW}Rebuilding {plugin}...{Style.RESET_ALL}")
     plugin_obj.docker_rebuild()
     print(f"{Fore.GREEN}Rebuild complete!{Style.RESET_ALL}")
+
+
+#
+# dev subcommand
+#
+
+@main_cli.command('check')
+@click.pass_obj
+def check_connection(ctx):
+    file_id = "test:connection_verify-" + platform.node() + ".txt"
+    test_file = ctx.filestore.create_file(file_id)
+    test_file.write(b"test connection")
+    ctx.filestore.close_file(file_id, test_file)
+
+    print(ctx.db.version)
+
 
 
 #

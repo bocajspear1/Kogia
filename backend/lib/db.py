@@ -3,6 +3,9 @@ from arango.http import DefaultHTTPClient
 from arango.exceptions import DocumentInsertError, AQLQueryExecuteError
 from threading import RLock
 
+import requests
+requests.packages.urllib3.disable_warnings()
+
 NO_INDEX = ('logs', 'syscalls')
 
 class DBNotUniqueError(Exception):
@@ -10,27 +13,29 @@ class DBNotUniqueError(Exception):
 
 class ArangoConnectionFactory():
 
-    def __init__(self, host, port, username, password, db_name, ssl=False):
+    def __init__(self, host, port, username, password, db_name, ssl=False, ssl_verify=True):
         self._host = host
         self._port = port 
         self._username = username 
         self._password = password
         self._ssl = ssl
+        self._verify = ssl_verify
         self._db_name = db_name
 
     def new(self):
-        new_conn = ArangoConnection(self._host, self._port, self._username, self._password, self._db_name, ssl=self._ssl)
+        new_conn = ArangoConnection(self._host, self._port, self._username, self._password, self._db_name, ssl=self._ssl, ssl_verify=self._verify)
         new_conn.connect()
         return new_conn
 
 class ArangoConnection():
 
-    def __init__(self, host, port, username, password, db_name, ssl=False):
+    def __init__(self, host, port, username, password, db_name, ssl=False, ssl_verify=True):
         self._host = host
         self._port = port 
         self._username = username 
         self._password = password
         self._ssl = ssl
+        self._verify = ssl_verify
         self._db_name = db_name
         self._db_lock = RLock()
 
@@ -43,13 +48,19 @@ class ArangoConnection():
         if self._ssl:
             proto = "https"
 
-        self._conn = ArangoClient(hosts=f"{proto}://{self._host}:{self._port}", http_client=DefaultHTTPClient(request_timeout=5*60))
+        self._conn = ArangoClient(hosts=f"{proto}://{self._host}:{self._port}", 
+                                  http_client=DefaultHTTPClient(request_timeout=5*60),
+                                  verify_override=self._verify)
         self._db = self._conn.db(self._db_name, username=self._username, password=self._password)
 
 
     @property
     def db(self):
         return self._db
+    
+    @property
+    def version(self):
+        return self._db.version()
 
     def lock(self):
         self._db_lock.acquire()
@@ -169,8 +180,8 @@ class ArangoConnection():
         else:
             aql_query += " COLLECT WITH COUNT INTO length RETURN length"
 
-        print(aql_query)
-        print(bind_vars)
+        # print(aql_query)
+        # print(bind_vars)
 
         cursor = self._db.aql.execute(
             aql_query,
@@ -215,7 +226,7 @@ class ArangoConnection():
             else:
                 filter_query += " " + final_key + "." + filter_field + " " + compare + " @" + val_name + ""
 
-        print(filter_query)
+        # print(filter_query)
         return filter_query, new_bind_vars
 
     # {"test": ()}
@@ -581,7 +592,7 @@ FOR start IN @@startCollection FILTER start._id == @fromId
         else:
             query += "\n    RETURN v"
 
-        print(query, bind_vars)
+        # print(query, bind_vars)
 
         try:
             cursor = self._db.aql.execute(query, 
@@ -660,6 +671,9 @@ FOR start IN @@startCollection FILTER start._id == @fromId
     def delete(self, collection, query):
         pass 
 
+
+    def all(self, collection):
+        return self._get_collection(collection).all()
 
     def count(self, collection, filter=None, unique_by=None):
         if filter == None and unique_by == None:

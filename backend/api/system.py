@@ -1,10 +1,9 @@
-import platform
 
-import psutil
 
 from flask import Blueprint, Flask, g, jsonify, current_app, request, send_file, send_from_directory, abort
 from backend.lib.data import ExecInstance
 from backend.version import VERSION 
+from backend.lib.system import get_system_string, get_local_storage, get_memory_usage, get_cpu_usage
 
 system_endpoints = Blueprint('system_endpoints', __name__)
 
@@ -38,19 +37,35 @@ def stats():
 @system_endpoints.route('/usage')
 def usage():
 
-    system_info = "{} - {} {}".format(platform.node(), platform.system(), platform.release())
-    memory = psutil.virtual_memory() 
-    main_disk = psutil.disk_usage('/')
+    system_string = get_system_string()
+    memory_total, memory_used = get_memory_usage()
+    storage_total, storage_used = current_app._filestore.get_space()
+    local_storage_total, local_storage_used = get_local_storage()
 
     return jsonify({
         "ok": True,
         "result": {
-            "system": system_info,
-            "memory_used": memory.used,
-            "memory_total": memory.total,
-            "cpu_percent": psutil.cpu_percent(interval=.5),
-            "disk_used": main_disk.used,
-            "disk_total": main_disk.total
+            "system": system_string,
+            "memory_used": memory_used,
+            "memory_total": memory_total,
+            "cpu_percent": get_cpu_usage(),
+            "disk_used": local_storage_used,
+            "disk_total": local_storage_total,
+            "storage_total": storage_total,
+            "storage_used": storage_used,
         }
     })
 
+@system_endpoints.route('/runners')
+def runners():
+
+    current_app._db.lock()
+    runner_data = current_app._db.all('runners')
+    current_app._db.unlock()
+
+    return jsonify({
+        "ok": True,
+        "result": {
+            "runners": list(runner_data)
+        }
+    })
