@@ -1,0 +1,20 @@
+[
+    {
+        "name": "title",
+        "description": "Title",
+        "default": "Report",
+        "type": "string"
+    },
+    {
+        "name": "author",
+        "description": "Author",
+        "default": "Author",
+        "type": "string"
+    },
+    {
+        "name": "introduction",
+        "description": "Introduction",
+        "default": "This is an introduction",
+        "type": "textarea"
+    }
+]
