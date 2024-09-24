@@ -88,8 +88,10 @@ export default {
         content = content.replace(/Kogia/g, capFirst(uncapped));
 
         // Update links
-
         content = content.replace(/\(([-a-zA-Z0-9_/]+)\.md\)/g, "($1)");
+
+        // Update images
+        content = content.replace(/\((\/images\/.*)\)/g, "(/api/v1/docs$1)");
           
         self.page_content = content;
 

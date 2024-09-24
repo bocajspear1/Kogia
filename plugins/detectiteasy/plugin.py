@@ -26,6 +26,8 @@ class DetectItEasyPlugin(DockerPluginBase):
                 if 'type' in value and value['type'].lower() == 'packer':
                     file_obj.exec_packer = value['name'].lower()
 
+                file_obj.add_metadata(value['type'].upper(), value['name'].lower())
+
         self.remove_tmp_dirs()
         self.remove_container(job)
 

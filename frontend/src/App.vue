@@ -73,6 +73,13 @@ let session = useUserSession();
   <main class="main-content columns">
     <router-view />
   </main>
+  <footer class="footer">
+    <div class="content has-text-centered">
+      <p>
+        {{ getAppName() }} {{ version }}
+      </p>
+    </div>
+  </footer>
 </template>
 
 <style>
@@ -83,14 +90,23 @@ let session = useUserSession();
 </style>
 
 <script>
+import api from '@/lib/api';
+
 export default {
   data() {
     return {
-        
+        version: "?"
     }
   },
   mounted() {
-    
+    var self = this;
+    api.get_system_version(function(data) {
+        self.version = data['version'];
+    },
+    function(status, data) {
+        self.done = true;
+        console.log('FAILURE!!', status, data);
+    })
   },
   methods: {
     logout: function() {
@@ -101,6 +117,9 @@ export default {
     },
     getNavImage() {
         return "/images/" + import.meta.env.VITE_IMAGE_PREFIX + "-navbar.png"
+    },
+    getAppName() {
+        return import.meta.env.VITE_APP_NAME;
     },
   }
 }

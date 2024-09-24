@@ -18,7 +18,7 @@ import ScoreTag from '@/components/job/ScoreTag.vue';
 </script>
 
 <template>
-    <div class="column is-2">
+    <div class="column is-one-third-tablet is-one-quarter-desktop is-one-fifth-widescreen">
         <SidebarMenu v-if="job != null">
             <template v-slot:main>
             <SidebarMenuItem iconname="monitor-dashboard" @click="setPage('overview')" :active="page=='overview'">
@@ -45,7 +45,7 @@ import ScoreTag from '@/components/job/ScoreTag.vue';
             </template>
         </SidebarMenu>
     </div>
-    <div class="container column is-10 pt-6">
+    <div class="container column is-two-thirds-tablet is-three-quarters-desktop is-four-fifths-widescreen pt-6 pr-6">
         <template v-if="!done">
             <progress class="progress is-medium is-primary m-5" max="100">50%</progress>
         </template>
@@ -53,7 +53,7 @@ import ScoreTag from '@/components/job/ScoreTag.vue';
             <JobBlock v-if="job != null" :job="job"></JobBlock>
             <SubmissionBlock v-if="submission != null" :submission="submission"></SubmissionBlock>
             
-            <div class="columns">
+            <div class="columns" id="main-bottom">
                 
                 <div class="column">
                     <div v-if="job.error.length > 0" class="notification  is-warning">

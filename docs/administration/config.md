@@ -19,6 +19,8 @@ openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -node
     - **user**: User to connect to the DB with. An unprivileged user is normally recommended.
     - **password**: Password for DB user
     - **db_name**: Name of the database to use.
+    - **ssl**: Boolean indicating if SSL will be used to connect to the database. Must be `true` or `false`.
+    - **verify**: Boolean indicating if SSL certificates will be verified. Must be `true` or `false`.
 - **auth**: Type of authentication to use. Format must be object with value name of the authentication class to use, under which goes any configuration values. (See [Authentication](auth.md)). For example:
 ```
 "auth": {

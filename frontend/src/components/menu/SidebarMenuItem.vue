@@ -1,6 +1,6 @@
 <template>
     <li>
-        <a @click="buttonClick" :class="active ? 'sidebar-menu-item is-active' : 'sidebar-menu-item'">
+        <a @click="buttonClick" :class="active ? 'sidebar-menu-item is-active sidebar-' + iconname : 'sidebar-menu-item sidebar-' + iconname">
             <span class="icon is-small">
                 <mdicon :name="iconname" :size="30" />
             </span>&nbsp;&nbsp;

@@ -1,5 +1,5 @@
 <template>
-    <li :class="active ? 'is-active' : ''">
+    <li :class="active ? 'is-active tab-icon-' + iconname : 'tab-icon-' + iconname">
         <a @click="buttonClick">
             <span class="icon is-small">
                 <mdicon :name="iconname" :size="30" />

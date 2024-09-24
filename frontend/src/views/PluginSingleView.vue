@@ -1,5 +1,5 @@
 <script setup>
-import DynamicPanel from '@/components/DynamicPanel.vue'
+import PluginPanel from '@/components/plugin/PluginPanel.vue';
 import Notifications from '@/components/general/Notifications.vue'
 import TabMenuItem from '@/components/menu/TabMenuItem.vue';
 import TabMenu from '@/components/menu/TabMenu.vue';
@@ -43,7 +43,7 @@ import TabMenu from '@/components/menu/TabMenu.vue';
                         </div>
                         <template v-for="display_tab in plugin.display">
                         <div v-if="current_tab == display_tab.title">
-                            <DynamicPanel :panel_data="display_tab" :plugin_name="plugin_name"></DynamicPanel>
+                            <PluginPanel :panel_data="display_tab" :plugin_name="plugin_name"></PluginPanel>
                         </div>
                         </template>
                     </div>

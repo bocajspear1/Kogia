@@ -23,9 +23,5 @@
     },
     "default_zip_password": "infected",
     "loglevel": "debug",
-    "branding": {
-        "main_logo": "",
-        "navbar_logo": ""
-    },
     "docs_dir": "./docs"
 }

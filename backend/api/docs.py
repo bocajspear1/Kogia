@@ -27,6 +27,9 @@ def get_pages_nav(dir, subpath):
                     "path": os.path.join(subpath, item.replace(".md", "")),
                 })
         elif os.path.isdir(full_path):
+            # Ignore images directory
+            if item == "images":
+                continue
             title = item.capitalize()
             nav_items.append({
                 "title": title,
@@ -38,24 +41,35 @@ def get_pages_nav(dir, subpath):
 @docs_endpoints.route('/<path:page>')
 def get_page(page):
 
+    extension = ""
+
+    if page.endswith(".png"):
+        extension = ".png"
+        page = page.replace(".png", "")
+
     path_items = page.split("/")
     for i in range(len(path_items)):
         path_items[i] = re.sub(r"[^-a-zA-Z0-9_]", "", path_items[i])
 
     filename = path_items[-1]
-    subpath = path_items[:-1]
 
-   
-
-    full_path = os.path.join(current_app._docs_dir, *subpath, filename + ".md")
-
-    if not os.path.exists(full_path):
-        return json_resp_not_found("Page does not exist")
+    if path_items[0] == "images":
+        full_path = os.path.join(current_app._docs_dir, "images", filename + extension)
+        return send_file(full_path, mimetype='image/png')
     else:
-        page_data = ""
-        with open(full_path, "r") as page_file:
-            page_data = page_file.read()
-        return json_resp_ok({
-            "page": page_data,
-            "navigation": get_pages_nav(current_app._docs_dir, "")
-        })
+        subpath = path_items[:-1]
+
+    
+
+        full_path = os.path.join(current_app._docs_dir, *subpath, filename + ".md")
+
+        if not os.path.exists(full_path):
+            return json_resp_not_found("Page does not exist")
+        else:
+            page_data = ""
+            with open(full_path, "r") as page_file:
+                page_data = page_file.read()
+            return json_resp_ok({
+                "page": page_data,
+                "navigation": get_pages_nav(current_app._docs_dir, "")
+            })

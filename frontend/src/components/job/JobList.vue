@@ -4,7 +4,7 @@ import ScoreTag from '@/components/job/ScoreTag.vue';
 </script>
 
 <template>
-    <table class="table is-striped is-fullwidth is-hoverable" v-if="jobs.length > 0 && done == true">
+    <table class="job-list table is-striped is-fullwidth is-hoverable" v-if="jobs.length > 0 && done == true">
         <thead>
             <tr>
                 <th>Status</th>
@@ -38,7 +38,7 @@ import ScoreTag from '@/components/job/ScoreTag.vue';
         </tfoot>
 
         <tbody>
-            <tr v-for="job in jobs">
+            <tr v-for="job in jobs" :class="job['primary'] != null ? 'analysis-job' : 'detection-job'">
                 <td v-if="job['complete'] == true && job['error'] == '' && job.primary != null" title="Job complete" class="has-text-success">
                     <ScoreTag :score="job['score']"></ScoreTag>
                 </td>
@@ -48,9 +48,9 @@ import ScoreTag from '@/components/job/ScoreTag.vue';
                 <td v-else-if="job['error'] != ''" title="Error occured in job" class="has-text-danger"><mdicon name="alert" :size="25" /></td>
                 <td v-else-if="job['complete'] == false && job['error'] == ''" title="Job in progress" class="has-text-info"><mdicon name="clock" :size="25" /></td>
                 
-                <td><router-link :to="{ name: 'JobSingle', params: { job_uuid: job['uuid'] }}">{{ job['uuid'] }}</router-link></td>
-                <!-- <td v-if="job['primary'] != null" ><router-link :to="{ name: 'JobSingle', params: { job_uuid: job['uuid'] }}">{{ job['uuid'] }}</router-link></td> -->
-                <!-- <td v-if="job['primary'] == null" class="has-text-grey-light">{{ job['uuid'] }}</td> -->
+                <!-- <td><router-link :to="{ name: 'JobSingle', params: { job_uuid: job['uuid'] }}">{{ job['uuid'] }}</router-link></td> -->
+                <td v-if="job['primary'] != null"><router-link :to="{ name: 'JobSingle', params: { job_uuid: job['uuid'] }}">{{ job['uuid'] }}</router-link></td>
+                <td v-if="job['primary'] == null"><router-link :to="{ name: 'JobSingle', params: { job_uuid: job['uuid'] }}">{{ job['uuid'] }}</router-link></td>
                 <td><router-link v-if="job['primary'] != null" :to="{ name: 'FileSingle', params: { file_uuid: job['primary'] }}">{{ job['primary_name'] }}</router-link></td>
                 <td v-if="!submission_uuid"><router-link :to="{ name: 'SubmissionSingle', params: { submission_uuid: job['submission']['uuid'] }}">{{ job['submission']['name'] }}</router-link></td>
                 <td>{{ job['start_time'] }}</td>

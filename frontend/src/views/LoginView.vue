@@ -17,7 +17,7 @@ import router from '../router'
                         <div class="field">
                             <label class="label">Username</label>
                             <div class="control has-icons-left has-icons-right">
-                                <input class="input" type="text" ref="username">
+                                <input class="input" type="text" ref="username" id="login-username">
                                 <span class="icon is-small is-left">
                                     <mdicon name="account" :size="24" />
                                 </span>
@@ -26,7 +26,7 @@ import router from '../router'
                         <div class="field">
                             <label class="label">Password</label>
                             <div class="control has-icons-left has-icons-right">
-                                <input class="input" type="password" ref="password" @keyup.enter="login">
+                                <input class="input" type="password" ref="password" @keyup.enter="login"  id="login-password">
                                 <span class="icon is-small is-left">
                                     <mdicon name="key" :size="24" />
                                 </span>

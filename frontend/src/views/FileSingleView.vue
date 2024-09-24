@@ -6,6 +6,9 @@ import MenuButton from '@/components/menu/MenuButton.vue';
 import MenuBar from '@/components/menu/MenuBar.vue';
 import SubmissionList from '@/components/submission/SubmissionList.vue';
 import MetadataTable from '@/components/metadata/MetadataTable.vue';
+
+import TabMenuItem from '@/components/menu/TabMenuItem.vue';
+import TabMenu from '@/components/menu/TabMenu.vue';
 </script>
 
 <template>
@@ -25,13 +28,16 @@ import MetadataTable from '@/components/metadata/MetadataTable.vue';
             
           </template>
         </MenuBar>
-        <div class="tabs">
-            <ul>
-                <li :class="tab == 'submissions' ? 'is-active' : ''"><a @click="setTab('submissions')">Submissions</a></li>
-                <li :class="tab == 'metadata' ? 'is-active' : ''"><a @click="setTab('metadata')">Metadata</a></li>
-                <li :class="tab == 'hexview' ? 'is-active' : ''"><a @click="setTab('hexview')">View Hex</a></li>
-            </ul>
+        <div class="mt-2">
+          <TabMenu>
+            <template v-slot:main>
+            <TabMenuItem iconname="view-list-outline" @click="setTab('submissions')" :active="tab=='submissions'">Submissions</TabMenuItem>
+            <TabMenuItem iconname="table-multiple" @click="setTab('metadata')" :active="tab=='metadata'">Metadata</TabMenuItem>
+            <TabMenuItem iconname="hexadecimal" @click="setTab('hexview')" :active="tab=='hexview'">View Hex</TabMenuItem>
+            </template>
+          </TabMenu>
         </div>
+        
     </template>
 
    

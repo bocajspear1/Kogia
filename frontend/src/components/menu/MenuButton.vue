@@ -1,13 +1,13 @@
 <template>
     <template v-if="!disabled">
-      <a class="button is-outlined" @click="buttonClick">
+      <a :class="'button is-outlined icon-' + iconname" @click="buttonClick">
           <span class="icon is-small" :title="tooltip">
               <mdicon :name="iconname" :size="30" />
           </span>
       </a>
     </template>
     <template v-else>
-      <span class="button is-outlined" disabled>
+      <span :class="'button is-outlined icon-' + iconname" disabled>
         <span class="icon is-small " :title="tooltip">
           <mdicon :name="iconname" :size="30" />
         </span>

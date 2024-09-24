@@ -70,6 +70,7 @@ AUTH_PATH = '/api/v1/authenticate'
 FILE_PATH = "/api/v1/file/"
 SUBMISSION_PATH = "/api/v1/submission/"
 EXPORT_PATH = "/api/v1/export/"
+DOCS_IMAGES_PATH = "/api/v1/docs/images/"
 
 @app.before_request
 def check_req():
@@ -80,6 +81,8 @@ def check_req():
     if first_item == "":
         return send_from_directory(STATIC_DIR, "index.html")
     if first_item in ("index.html", "css", "assets", "images", "icons"):
+        return
+    elif request.path.startswith(DOCS_IMAGES_PATH):
         return
     elif not first_item == "api":
         return send_from_directory(STATIC_DIR, "index.html")

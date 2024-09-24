@@ -28,7 +28,7 @@ import Notifications from '@/components/general/Notifications.vue';
   </p>
   <FileList v-if="submission != null" :toggle="true" :files="submission.files" @file_clicked="fileClicked"></FileList>
   <h3 class="subtitle is-spaced is-3">Select plugins:</h3>
-  <div class="columns">
+  <div class="columns" id="plugin-columns">
     <div class="column">
       <h5 class="title is-5" title="Dynamically executes the submission to get syscalls and other info">Syscall</h5>
       <div v-for="plugin in plugins">

@@ -117,6 +117,9 @@ export default  {
     get_system_usage: function(on_succeeded, on_failed) {
         this.api_call("/system/usage", on_succeeded, on_failed);
     },
+    get_system_version: function(on_succeeded, on_failed) {
+        this.api_call("/system/version", on_succeeded, on_failed);
+    },
     get_runners: function(on_succeeded, on_failed) {
         this.api_call("/system/runners", on_succeeded, on_failed);
     },
@@ -205,6 +208,9 @@ export default  {
     },
     get_plugin_data: function(plugin_name, on_succeeded, on_failed) {
         this.api_call("/plugin/" + plugin_name + "/info", on_succeeded, on_failed);
+    },
+    get_plugin_action: function(plugin_name, action, on_succeeded, on_failed) {
+        this.api_call("/plugin/" + plugin_name + "/action/" + action, on_succeeded, on_failed);
     },
     get_instance_data: function(instance_uuid, on_succeeded, on_failed) {
         this.api_call("/exec_instance/" + instance_uuid, on_succeeded, on_failed);

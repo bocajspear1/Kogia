@@ -31,7 +31,9 @@
 </template>
 
 <style scoped>
-
+nav {
+  z-index: 25;
+}
 </style>
 
 <script>
