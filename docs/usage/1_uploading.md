@@ -8,6 +8,6 @@ On the "Upload" page, enter the name for the submission. You can add an optional
 
 > Sample files are grouped in a "submission" instead of being managed individually. This allows groups of files to analyzed and processed together, which is needed for certain malware families and techniques.
 
-Drag and drop files onto the blue bar or select "Select a File" to add files to the submission. Multiple files are supported.
+Drag and drop files onto the blue bar or select "Select a File" to add files to the submission. Multiple files are supported can be submitted at once or uploaded as an archive. Archives with the common password `infected` will be automatically extracted with the contents being processed as if uploaded directly.
 
-Once all files have been completed, click "Upload" to upload the submission. A wait screen will appear as a basic analysis job is completed to perform actions such as extract files from archives, identify files, identify packers and attempt ot unpack files. Once this is complete you will be brought to the "New Analysis" page.
+Once all files have been completed, click "Upload" to upload the submission. A wait screen will appear as a basic analysis job is completed to perform actions such as extract files from archives, identify files, identify packers, and attempting to unpack files. Once this is complete you will be brought to the ["New Analysis" page](2_analysis.md).

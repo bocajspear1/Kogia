@@ -1,4 +1,4 @@
-# Commands
+# CLI Commands
 
 Kogia comes with the CLI helper `./kogiacmd`, which provides a wide variety of functionality to managing your Kogia instance.
 

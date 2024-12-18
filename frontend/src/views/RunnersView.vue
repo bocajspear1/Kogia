@@ -1,5 +1,4 @@
 <script setup>
-import SystemInfo from '@/components/system/SystemInfo.vue';
 import {
   Chart as ChartJS,
   CategoryScale,

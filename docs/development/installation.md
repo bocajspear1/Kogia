@@ -37,7 +37,7 @@ The example configuration file `config.example.json` is a good starting point. C
 cp config.example.json config.json
 ```
 
-Then update `config.json` with details on the database and other modifications you'd like to make.
+Then update `config.json` with details on the database and other modifications you'd like to make. View details on the configuration file [here](../administration/config.md).
 
 ## Building Containers
 
