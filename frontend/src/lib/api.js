@@ -42,15 +42,7 @@ export default  {
     },
     api_call: function(path, on_succeeded, on_failed) {
         this.api_call_raw(path, 
-        function(resp_data){
-            // console.log(resp_data)
-            if (resp_data['ok'] === true) {
-                // console.log(path, on_succeeded, on_failed);
-                on_succeeded(resp_data['result']);
-            } else {
-                on_failed(200, resp_data['error']);
-            }
-        }, 
+        on_succeeded, 
         function(resp) {
             if (resp == 404) {
                 on_failed(404, "Not Found");

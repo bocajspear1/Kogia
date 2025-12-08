@@ -268,18 +268,21 @@ class Submission(VertexObject):
         return new_cls
 
     @classmethod
-    def list_dict(cls, db, file_uuid=None):
+    def list_dict(cls, db, file_uuid=None, skip=0, limit=30):
+        total_len = 0
         if file_uuid is None:
-            submission_list = db.get_vertex_list_sorted(cls.GRAPH_NAME, cls.COLLECTION_NAME, "submit_time", "DESC")
+            submission_list = db.get_vertex_list_sorted(cls.GRAPH_NAME, cls.COLLECTION_NAME, "submit_time", "DESC", skip=skip, limit=limit)
+            total_len = db.get_vertex_list_sorted(cls.GRAPH_NAME, cls.COLLECTION_NAME, "submit_time", "DESC", length_only=True)[0]
         else:
             filter_file = SubmissionFile(uuid=file_uuid)
             filter_file.load(db)
-            submission_list = db.get_connected_to(cls.GRAPH_NAME, filter_file.id, cls.COLLECTION_NAME, filter_edges=['has_file'], sort_by=(cls.COLLECTION_NAME, 'submit_time', 'DESC'))
+            submission_list = db.get_connected_to(cls.GRAPH_NAME, filter_file.id, cls.COLLECTION_NAME, filter_edges=['has_file'], sort_by=(cls.COLLECTION_NAME, 'submit_time', 'DESC'), skip=skip, limit=limit)
+            total_len = db.get_connected_to(cls.GRAPH_NAME, filter_file.id, cls.COLLECTION_NAME, filter_edges=['has_file'], sort_by=(cls.COLLECTION_NAME, 'submit_time', 'DESC'), length_only=True)[0]
         for submission_item in submission_list:
             del submission_item['_rev']
             del submission_item['_id']
-            submission_item['uuid'] = submission_item['_key']
-        return submission_list
+            # submission_item['uuid'] = submission_item['_key']
+        return submission_list, total_len
         
     @property
     def uuid(self):
@@ -432,6 +435,7 @@ class Submission(VertexObject):
             data_dict['files'] = files_list
             return data_dict
         else:
+            data_dict['files'] = None
             return data_dict
 
     def from_dict(self, data_obj):

@@ -1,104 +1,87 @@
-from flask import Blueprint, Flask, g, jsonify, current_app, request, send_file, send_from_directory, abort
+from fastapi import APIRouter, Request, HTTPException
 from backend.lib.data import Process
 from backend.api.helpers import get_pagination, json_resp_ok, json_resp_invalid, json_resp_not_found
 
-process_endpoints = Blueprint('process_endpoints', __name__)
+from .types import OptionalStrParam, SyscallList, ProcessEventList, ProcessEvent, MetadataList, MetadataItem
 
+import uuid
+
+router = APIRouter(tags=['process'])
 #
 # Process API endpoints
 #
 
-@process_endpoints.route('/<uuid>/events', methods=['GET'])
-def get_process_events(uuid):
-    current_app._db.lock()
+@router.get('/{uuid}/events')
+def get_process_events(request: Request, uuid: uuid.UUID, 
+                       type : OptionalStrParam = None,
+                       info : OptionalStrParam = None,
+                       data : OptionalStrParam = None,
+                       skip=0, limit=30) -> ProcessEventList:
+    request.app._db.lock()
     proc = Process(uuid=uuid)
-    proc.load(current_app._db)
-    if proc.uuid == None:
-        current_app._db.unlock()
-        return abort(404)
+    proc.load(request.app._db)
+    if not proc.found:
+        request.app._db.unlock()
+        raise HTTPException(404, detail="Process not found")
     
-    skip_int = 0
-    limit_int = 20
-    try:
-        limit_int, skip_int = get_pagination(request)
-    except ValueError:
-        return abort(400)
-    
-    proc.load_events(current_app._db, as_dict=True, skip=skip_int, limit=limit_int,
-                     type_filter=request.args.get('type'), info_filter=request.args.get('info'), data_filter=request.args.get('data'))
-    
-    current_app._db.unlock()
+    proc.load_events(request.app._db, as_dict=True, skip=skip, limit=limit,
+                     type_filter=type, info_filter=info, data_filter=data)
 
-    return json_resp_ok({
-        "events": proc.events,
-        "total": proc.event_total
-    })
+    request.app._db.unlock()
+    
+    event_list = []
+    for event in proc.events:
+        event_list.append(ProcessEvent(**event.to_dict()))
+    
+    
 
-@process_endpoints.route('/<uuid>/syscalls', methods=['GET'])
-def get_process_syscalls(uuid):
-    current_app._db.lock()
+    return ProcessEventList(events=event_list, total=proc.event_total)
+
+@router.get('/{uuid}/syscalls')
+def get_process_syscalls(request: Request, uuid: uuid.UUID, skip=0, limit=30) -> SyscallList:
+    request.app._db.lock()
     proc = Process(uuid=uuid)
-    proc.load(current_app._db)
-    if proc.uuid == None:
-        current_app._db.unlock()
-        return abort(404)
+    proc.load(request.app._db)
+    if not proc.found:
+        request.app._db.unlock()
+        raise HTTPException(404, detail="Process not found")
     
-    skip_int = 0
-    limit_int = 20
-    try:
-        limit_int, skip_int  = get_pagination(request)
-    except ValueError:
-        return abort(400)
+    proc.load_syscalls(request.app._db, skip=skip, limit=limit)
     
-    proc.load_syscalls(current_app._db, skip=skip_int, limit=limit_int)
-    
-    current_app._db.unlock()
+    request.app._db.unlock()
 
-    return jsonify({
-        "ok": True,
-        "result": {
-            "total": proc.syscall_total,
-            "syscalls": proc.syscalls
-        }
-    })
+    
 
-@process_endpoints.route('/<uuid>/metadata/<metatype>/list', methods=['GET'])
-def get_process_metadata_list(uuid, metatype):
-    skip_int = 0
-    limit_int = 50
-    try:
-        limit_int, skip_int = get_pagination(request)
-    except ValueError:
-        return abort(400)
+    return SyscallList(syscalls=proc.syscalls, total=proc.syscall_total)
+    
+@router.get('/{uuid}/metadata/{metatype}/list')
+def get_process_metadata_list(request: Request, uuid: uuid.UUID, metatype: str, filter: str, skip = 0, limit = 30) -> MetadataList:
     
     proc = Process(uuid=uuid)
-    current_app._db.lock()
-    proc.load(current_app._db)
-    if proc.uuid == None:
-        current_app._db.unlock()
-        return abort(404)
-    
-    filter = request.args.get('filter')
+    request.app._db.lock()
+    proc.load(request.app._db)
+    if not proc.found:
+        request.app._db.unlock()
+        raise HTTPException(404, detail="Process not found")
 
-    proc.load_metadata(current_app._db, mtype=metatype.strip(), skip=skip_int, limit=limit_int, filter=filter, as_dict=True)
-    current_app._db.unlock()
+    proc.load_metadata(request.app._db, mtype=metatype.strip(), skip=skip, limit=limit, filter=filter, as_dict=True)
+    request.app._db.unlock()
+
+
+    metadata_list = []
+    for metadata in proc.metadata:
+        metadata_list.append(MetadataItem(**metadata.to_dict()))
 
             
-    return jsonify({
-        "ok": True,
-        "result": {
-            "metadata": proc.metadata ,
-            "total": proc.metadata_total
-        }
-    })
+    return MetadataList(items=metadata_list, total=proc.metadata_total)
 
-@process_endpoints.route('/<uuid>/metadata/list', methods=['GET'])
-def get_process_metadata_types(uuid):
+@router.get('/{uuid}/metadata/list')
+def get_process_metadata_types(request: Request, uuid: uuid.UUID):
     proc = Process(uuid=uuid)
-    current_app._db.lock()
-    proc.load(current_app._db)
-    proc.load_metadata(current_app._db)
-    current_app._db.unlock()
+    request.app._db.lock()
+    proc.load(request.app._db)
+    proc.load_metadata(request.app._db)
+    request.app._db.unlock()
 
     return_map = {}
 
@@ -107,6 +90,8 @@ def get_process_metadata_types(uuid):
         if item.key not in return_map:
             return_map[item.key] = 0
         return_map[item.key] += 1
+
+    
 
     return jsonify({
         "ok": True,

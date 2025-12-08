@@ -15,6 +15,98 @@ def safe_uuid(raw_uuid):
     raw_uuid = re.sub(r'[^-_\w]', '', raw_uuid)
     return raw_uuid
 
+
+def get_logging_config(config):
+
+    log_path = "./logs"
+    if 'logpath' in config:
+        log_path = config['logpath']
+
+    log_level = config.get('log_level', 'info').upper()
+    format_str = "%(asctime)s | %(levelname)-8s | %(name)s - %(message)s"
+    if log_level == "DEBUG":
+        format_str = "%(asctime)s | %(levelname)-8s | %(name)s:%(module)s:%(funcName)s:%(lineno)d - %(message)s"
+    return {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "custom": {
+                "format": format_str,
+                "datefmt": "%Y-%m-%d %H:%M:%S",
+                # "style": "{",
+                "use_colors": True,
+            },
+            "custom-file": {
+                "format": format_str,
+                "datefmt": "%Y-%m-%d %H:%M:%S",
+                # "style": "{",
+                "use_colors": False,
+            },
+            'access': {
+                '()': 'uvicorn.logging.AccessFormatter',
+                'fmt': '%(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s',
+                "use_colors": False,
+            }
+        },
+        "handlers": {
+            "console": {
+                "level": log_level,
+                "formatter": "custom",
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stderr",  # Default is stderr
+            },
+            "file": {
+                "level": log_level,
+                "formatter": "custom-file",
+                "class": "logging.handlers.RotatingFileHandler",
+                "filename": os.path.join(log_path, "kogia.log"), 
+            },
+            "file-access": {
+                "level": log_level,
+                "formatter": "access",
+                "class": "logging.handlers.RotatingFileHandler",
+                "filename": os.path.join(log_path, "kogia-access.log"), 
+            },
+        },
+        "loggers": {
+            "uvicorn": {
+                "handlers": ["console", "file"],
+                "level": log_level,
+                "propagate": False,
+            },
+            "uvicorn.access": {
+                "handlers": ["console", "file-access"],
+                "level": log_level,
+                "propagate": False,
+            },
+            "urllib3.connectionpool": { # Noisy, so we suppress
+                "handlers": ["console"],
+                "level": "INFO",
+                "propagate": False,
+            },
+            "PIL.PngImagePlugin": { # Noisy, so we suppress
+                "handlers": ["console"],
+                "level": "INFO",
+                "propagate": False,
+            },
+            "pika": { # Noisy, so we suppress
+                "handlers": ["console"],
+                "level": "INFO",
+                "propagate": False,
+            },
+            "watchfiles.main": {
+                "handlers": ["console"],
+                "level": "WARNING",
+                "propagate": False,
+            }
+        },
+        "root": {
+            "handlers": ["console", "file"],
+            "level": log_level,
+            "propagate": False,
+        }
+    }
+
 def configure_logging(config, extra=None):
     
     level = logging.INFO
@@ -53,18 +145,18 @@ def configure_logging(config, extra=None):
         ],
     )
 
-def generate_download_token(current_app, g, file_uuid):
+def generate_download_token(current_app, file_uuid):
     # Get file token lock
     current_app._download_tokens_lock.acquire()
 
     # Generate new token
-    new_token = g.req_username + ":" + file_uuid + ":" + secrets.token_hex(48)
+    new_token = current_app.req_username + ":" + file_uuid + ":" + secrets.token_hex(48)
 
     found = False
     # Replace any other token from this user
     for i in range(len(current_app._download_tokens)):
         token = current_app._download_tokens[i]
-        if token.startswith(f"{g.req_username}:"):
+        if token.startswith(f"{current_app.req_username}:"):
             found = True
             current_app._download_tokens[i] = new_token
     

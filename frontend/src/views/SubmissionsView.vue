@@ -36,8 +36,8 @@ export default {
 
         api.get_submission_list("",
             function(resp_data){
-                for (var i in resp_data) {
-                    var item = resp_data[i];
+                for (var i in resp_data['submissions']) {
+                    var item = resp_data['submissions'][i];
                     item['submit_time'] = time.seconds_to_string(item['submit_time']);
                     self.submissions.push(item);
                 }

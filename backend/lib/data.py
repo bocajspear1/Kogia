@@ -19,12 +19,26 @@ from .helpers import safe_uuid
 logger = logging.getLogger(__name__)
 
 class SIGNATURE_SEVERITY(IntEnum):
+    """
+    Severity level for signature matches.
+
+    - INFO = 1 # Just informational
+    - CAUTION = 2 # Sometimes used for malicious activity
+    - SUSPICIOUS = 3 # Often used for malicious activities
+    - MALICIOUS = 4 # Known to be malicious
+
+    """
     INFO = 1 # Just informational
     CAUTION = 2 # Sometimes used for malicious activity
-    SUSPICIOUS = 3 # Often used for malicious activies
+    SUSPICIOUS = 3 # Often used for malicious activities
     MALICIOUS = 4 # Known to be malicious
 
 class SignatureMatch(VertexObject):
+    """
+    SignatureMatch stores data about matches to a Signature object. This allows 
+    graph connections to both the Signature and other related objects (Metadata, Syscall, etc.)
+    and the ability to store things like time matched.
+    """
 
     COLLECTION_NAME = 'signature_matches'
 
@@ -46,6 +60,8 @@ class SignatureMatch(VertexObject):
 
     @property
     def file_uuid(self):
+        if self._file is None:
+            return None
         return self._file.uuid
     
     @property
@@ -66,7 +82,8 @@ class SignatureMatch(VertexObject):
         return_obj =  {
             "_key": self._uuid,
             "match_time": self._match_time,
-            "extra": self._extra
+            "extra": self._extra,
+            "file_uuid": self.file_uuid
         }
         if full:
             return_obj['signature'] = self._signature.to_dict()
@@ -77,6 +94,7 @@ class SignatureMatch(VertexObject):
         self._uuid = data_obj.get('_key', '')
         self._match_time = data_obj.get('match_time', '')
         self._extra = data_obj.get('extra', [])
+        self._file_uuid = data_obj.get('file_uuid', None)
         if 'signature' in data_obj:
             self._signature = Signature(uuid=data_obj['signature'])
 
@@ -137,6 +155,11 @@ class SignatureMatch(VertexObject):
         return self._file
 
 class Signature(VertexObject):
+    """
+    Represents a match to a rule or signature of some kind.
+
+    Has a name, description, name of the plugin that triggered the signature, and severity.
+    """
 
     COLLECTION_NAME = 'signatures'
 
@@ -246,6 +269,7 @@ class Report(VertexObject):
         super().__init__('reports', id)
         self._uuid = safe_uuid(uuid)
         self._value = ""
+        self._report_type = ""
         self._file_uuid = ""
         self.name = ""
 
@@ -257,6 +281,14 @@ class Report(VertexObject):
     def value(self, value):
         self._value = value
         self._gen_uuid()
+
+    @property
+    def report_type(self):
+        return self._report_type
+
+    @report_type.setter
+    def report_type(self, report_type):
+        self._report_type = report_type
 
     @property
     def file_uuid(self):
@@ -281,6 +313,7 @@ class Report(VertexObject):
             "_key": self._uuid,
             "uuid": self._uuid,
             "value": self._value,
+            "report_type": self._report_type,
             "file_uuid": self._file_uuid,
             "name": self.name
         }
@@ -289,6 +322,7 @@ class Report(VertexObject):
         self._uuid = data_obj.get('_key', '')
         self._value = data_obj.get('value', '')
         self._file_uuid = data_obj.get('file_uuid', '')
+        self._report_type = data_obj.get('report_type', '')
         self.name = data_obj.get('name', '')
 
     def save(self, db):

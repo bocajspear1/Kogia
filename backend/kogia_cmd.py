@@ -2,7 +2,7 @@ import json
 import getpass
 import shutil
 import platform
-
+import sys
 
 from colorama import Fore, Back, Style
 import click
@@ -13,7 +13,7 @@ from backend.auth.db import DBAuth
 from backend.auth import ROLES
 from backend.lib.plugin_manager import PluginManager
 from backend.lib.job import Job
-from backend.lib.data import ExecInstance
+from backend.lib.data import ExecInstance, SIGNATURE_SEVERITY
 from backend.lib.submission import SubmissionFile
 
 from backend.lib.helpers import prepare_all
@@ -240,7 +240,7 @@ def plugin_run_command(ctx, plugin_name, job_uuid):
 @dev_group.command('insertdata')
 @click.argument('parent_uuid')
 @click.argument('filename', type=click.Path(exists=True))
-@click.option('--dtype',type=click.Choice(['metadata', 'netcomm', 'syscall', 'report'], case_sensitive=False))
+@click.option('--dtype',type=click.Choice(['metadata', 'netcomm', 'syscall', 'report', 'signature'], case_sensitive=False))
 @click.option('--file')
 @click.pass_obj
 def plugin_insert_command(ctx, parent_uuid, filename, dtype, file):
@@ -263,11 +263,53 @@ def plugin_insert_command(ctx, parent_uuid, filename, dtype, file):
                 job_obj = Job(ctx.db, ctx.filestore, parent_uuid)
                 job_obj.load(ctx.pm)
 
+                if job_obj.uuid is None:
+                    print("Invalid Job UUID")
+                    sys.exit(1)
+                
+                if file is None:
+                    print("No file selected, these are available")
+                    for file_item in job_obj.submission.files:
+                        print(f" - {file_item.uuid}")
+                    
+                    sys.exit(1)
+
                 file_obj = SubmissionFile(uuid=file)
                 file_obj.load(ctx.db)
 
+                if file_obj.uuid is None:
+                    print("Invalid file UUID")
+                    sys.exit(1)
 
                 job_obj.add_report(item['report_name'], file_obj, item['data'])
+    elif dtype in ('signature',):
+         with open(filename, "r") as data_file:
+            signature_list = json.load(data_file)
+
+            job_obj = Job(ctx.db, ctx.filestore, parent_uuid)
+            job_obj.load(ctx.pm)
+
+            if not job_obj.found:
+                print("Invalid Job UUID")
+                sys.exit(1)
+
+            if file is None:
+                print("No file selected, these are available")
+                for file_item in job_obj.submission.files:
+                    print(f" - {file_item.uuid}")
+                
+                sys.exit(1)
+
+            file_obj = SubmissionFile(uuid=file)
+            file_obj.load(ctx.db)
+
+            if not file_obj.found:
+                print("Invalid file UUID")
+                sys.exit(1)
+
+            for item in signature_list:
+                job_obj.add_signature(item['plugin_name'], item['name'], file_obj, item['description'], SIGNATURE_SEVERITY(item['severity']))
+
             job_obj.save()
 
 if __name__ == '__main__':

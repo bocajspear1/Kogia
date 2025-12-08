@@ -8,6 +8,25 @@ requests.packages.urllib3.disable_warnings()
 
 NO_INDEX = ('logs', 'syscalls')
 
+
+
+class DbConnection():
+
+    def __init__(self):
+        pass
+
+    def get_vertices(self, collection, skip=0, limit=30):
+        """
+        For listing vertex objects when we don't care about what its connected to
+        """
+        pass
+
+    def get_connected_to(self, start_item, end_item, skip=0, limit=30):
+        """
+        For listing vertex objects starting from start_item going to end_item (an item or collection) 
+        """
+        pass
+
 class DBNotUniqueError(Exception):
     pass
 
@@ -49,7 +68,7 @@ class ArangoConnection():
             proto = "https"
 
         self._conn = ArangoClient(hosts=f"{proto}://{self._host}:{self._port}", 
-                                  http_client=DefaultHTTPClient(request_timeout=5*60),
+                                  http_client=DefaultHTTPClient(),
                                   verify_override=self._verify)
         self._db = self._conn.db(self._db_name, username=self._username, password=self._password)
 
@@ -649,10 +668,21 @@ FOR start IN @@startCollection FILTER start._id == @fromId
     def get_list_by_match(self, collection, field, value, skip=0, limit=0):
         col = self._get_collection(collection) 
         cursor = None
-        if limit != 0:
-            cursor = col.find({field: value}, skip=skip, limit=limit)
+        print(skip, limit)
+
+        if skip == 0:
+            if limit != 0:
+               cursor = col.find({field: value}, limit=limit)
+            else:
+               cursor = col.find({field: value})
         else:
-            cursor = col.find({field: value}, skip=skip)
+            if limit != 0:
+               cursor = col.find({field: value}, skip=skip, limit=limit)
+            else:
+               cursor = col.find({field: value}, skip=skip)
+
+        
+
         return list(cursor)
 
     def get_by_match(self, collection, field, value):

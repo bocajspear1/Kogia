@@ -1,108 +1,103 @@
 import io
-import zipfile
+import shutil
 import uuid
+import zipfile
 
 import pyzipper
 
-from flask import Blueprint, Flask, g, jsonify, current_app, request, send_file, send_from_directory, abort
+from fastapi import APIRouter, Request, HTTPException
+
+from backend.lib.data import Process
+
+from .types import SubmissionItem, SubmissionItemList, OptionalStrParam, DownloadTokenResponse, NewSubmissionResponse, OptionalFlagParam
+
+from typing_extensions import Annotated, List, Union
+
+from fastapi import Form, File, UploadFile, Query
+from fastapi.responses import Response
+
 from werkzeug.utils import secure_filename
 
 from backend.lib.job import Job
 from backend.lib.submission import Submission, SubmissionFile
 from backend.lib.helpers import generate_download_token
-from backend.api.helpers import get_pagination, json_resp_ok, json_resp_invalid, json_resp_not_found
-submission_endpoints = Blueprint('submission_endpoints', __name__)
+
 
 #
 # Submission API endpoints
 #
 
-@submission_endpoints.route('/new', methods=['POST'])
-def submit_sample():
 
-    single_param = 'submission'
-    multi_param = 'submissions[]'
-    files_param = 'file_uuids[]'
+router = APIRouter(tags=['submission'])
 
-    if single_param not in request.files and multi_param not in request.files and files_param not in request.form:   
-        return json_resp_invalid(
-            f"Nothing submitted in '{single_param}', '{multi_param}', or '{files_param}' parameters"
-        ) 
+@router.post('/new')
+def submit_sample(req : Request, 
+                  name: Annotated[str, Form()],
+                  files: Union[None, List[UploadFile], List[str]] = None, 
+                  file: Union[None, UploadFile, str] = None,
+                  file_uuids: Annotated[Union[None, List[str]], Form()] = None,
+                  description: Annotated[Union[None, str], Form()] = None) -> NewSubmissionResponse:
+    
+    if files is not None and files[0] == "":
+        files = None
 
-    multiple = False
+    if file_uuids is not None and file_uuids[0] == "":
+        file_uuids = None
 
-    if 'name' not in request.form or request.form['name'].strip() == "":
-        return jsonify({
-            "ok": False,
-            "error": "Name not set for submission"
-        })
+    if (files is None and file is None and file_uuids is None) and files[0] == "":   
+        raise HTTPException(400, detail="Files not submitted")
 
-
-    file_uuids = request.form.getlist(files_param)
     if file_uuids is not None and len(file_uuids) > 0:
-        new_submission = Submission.new(current_app._filestore, g.req_username)
-
-        if 'description' in request.form:
-            new_submission.description = request.form['description']
-
-        new_submission.name = request.form['name']
-
-        
 
         for file_uuid in file_uuids:
-
             try:
                 uuid.UUID(file_uuid)
             except ValueError:
-                return json_resp_invalid(f"Invalid UUID")
+                raise HTTPException(400, detail="Invalid UUID")
+            
+        new_submission = Submission.new(req.app._filestore, req.app.req_username)
 
-            current_app._db.lock()
-            resubmit_file = SubmissionFile(uuid=file_uuid, filestore=current_app._filestore)
-            resubmit_file.load(current_app._db)
+        new_submission.description = description
+        new_submission.name = name
+
+        for file_uuid in file_uuids:
+
+            req.app._db.lock()
+            resubmit_file = SubmissionFile(uuid=file_uuid, filestore=req.app._filestore)
+            resubmit_file.load(req.app._db)
             if resubmit_file.uuid is None:
-                current_app._db.unlock()
-                return json_resp_not_found(f"File {file_uuid} not found")
+                req.app._db.unlock()
+                raise HTTPException(404, detail=f"File {file_uuid} not found")
             else:
                 new_submission.add_file(resubmit_file)
 
-            current_app._db.unlock()
+            req.app._db.unlock()
 
-        current_app._db.lock()
-        new_submission.save(current_app._db)
-        current_app._db.unlock()
+        req.app._db.lock()
+        new_submission.save(req.app._db)
+        req.app._db.unlock()
 
-        return json_resp_ok({
-            "submission_uuid": str(new_submission.uuid),
-            "job_uuid": ""
-        })
+        return NewSubmissionResponse(submission_uuid=str(new_submission.uuid))
 
     else:
-        file_list = request.files.getlist(multi_param)
+        file_list = []
 
-        if file_list is not None and len(file_list) > 0:
-            current_app.logger.info("Got multiple files")
-            multiple = True
-        else:
-            current_app.logger.info("Got single file")
-            single_sample = request.files[single_param]
+        if file is not None:
+            req.app.logger.info("Got single file")
+            file_list.append(file)
 
-            if single_sample.filename == '':
-                return jsonify({
-                    "ok": False,
-                    "error": "No sample submitted in '{single_param}' parameter. Name was blank."
-                })
-            file_list = [single_sample]
+        if files is not None:
+            req.app.logger.info("Got multiple files")
+            file_list += files
 
-        new_submission = Submission.new(current_app._filestore, g.req_username)
+        new_submission = Submission.new(req.app._filestore, req.app.req_username)
 
-        if 'description' in request.form:
-            new_submission.description = request.form['description']
+        new_submission.description = description
+        new_submission.name = name
 
-        new_submission.name = request.form['name']
-
-        current_app._db.lock()
-        new_submission.load_files(current_app._db, current_app._filestore)
-        current_app._db.unlock()
+        req.app._db.lock()
+        new_submission.load_files(req.app._db, req.app._filestore)
+        req.app._db.unlock()
 
         for uploaded_file in file_list:
             filename = secure_filename(uploaded_file.filename)
@@ -110,92 +105,112 @@ def submit_sample():
 
             # Save file to filestore
             file_io = new_file.create_file()
-            uploaded_file.save(file_io)
+            shutil.copyfileobj(uploaded_file.file, file_io)
             new_file.close_file()
 
-            current_app._db.lock()
+            req.app._db.lock()
             
             new_submission.add_file(new_file)
-            new_file.save(current_app._db)
+            new_file.save(req.app._db)
             # Don't need to load_metadata, since a generate_file initializes metadata
 
-            current_app._db.unlock()
+            req.app._db.unlock()
 
-        current_app._db.lock()
-        new_submission.save(current_app._db)
-        current_app._db.unlock()
+        req.app._db.lock()
+        new_submission.save(req.app._db)
+        req.app._db.unlock()
 
-        new_job = Job.new(new_submission, None, current_app._db_factory.new(), current_app._filestore)
+        new_job = Job.new(new_submission, None, req.app._db_factory.new(), req.app._filestore)
         # No primary is set, since we are just identifying
-        identify_plugins = current_app._manager.get_plugin_list('identify')
+        identify_plugins = req.app._manager.get_plugin_list('identify')
         new_job.add_plugin_list(identify_plugins)
-        unarchive_plugins = current_app._manager.get_plugin_list('unarchive')
+        unarchive_plugins = req.app._manager.get_plugin_list('unarchive')
         new_job.add_plugin_list(unarchive_plugins)
         new_job.save()
 
-        current_app._worker_manager.assign_job(new_job.uuid)
+        req.app._worker_manager.assign_job(new_job.uuid)
 
-        return jsonify({
-            "ok": True,
-            "result": {
-                "submission_uuid": str(new_submission.uuid),
-                "job_uuid": str(new_job.uuid)
-            }
-        })
+        return NewSubmissionResponse(submission_uuid=new_submission.uuid, job_uuid=str(new_job.uuid))
 
-@submission_endpoints.route('/<uuid>/info', methods=['GET'])
-def get_submission_info(uuid):
+@router.get('/list')
+def get_submission_list(req : Request, file : OptionalStrParam = None, skip=0, limit=30) -> SubmissionItemList:
+    
+    req.app._db.lock()
+    file_uuid = file
+    submissions = []
+    total_count = 0
+    if file_uuid is not None:
+        submissions, total_count = Submission.list_dict(req.app._db, file_uuid=file_uuid, skip=skip, limit=limit)
+    else:
+        submissions, total_count = Submission.list_dict(req.app._db, skip=skip, limit=limit)
+
+    req.app._db.unlock()
+
+    ret_list = []
+    for submission in submissions:
+        if "_key" not in submission:
+            submission['_key'] = submission['uuid']
+        if 'files' not in submission:
+            submission['files'] = None
+        ret_list.append(SubmissionItem(**submission))
+    
+    return SubmissionItemList(submissions=ret_list, total=total_count)
+
+@router.get('/{uuid}/info')
+def get_submission_info(req : Request, uuid : str) -> SubmissionItem:
     submission = Submission(uuid=uuid)
-    current_app._db.lock()
-    submission.load(current_app._db)
+    req.app._db.lock()
+    submission.load(req.app._db)
+    # "uuid" is set to None is the submission is not found
     if submission.uuid == None:
-        current_app._db.unlock()
-        return abort(404)
-    submission.load_files(current_app._db, current_app._filestore)
+        req.app._db.unlock()
+        raise HTTPException(404, detail="Submission not found")
+        
+    submission.load_files(req.app._db, req.app._filestore)
     if submission.uuid == None:
-        current_app._db.unlock()
-        return abort(404)
-    current_app._db.unlock()
-    return jsonify({
-        "ok": True,
-        "result": submission.to_dict(files=True)
-    })
+        req.app._db.unlock()
+        raise HTTPException(404, detail="Submission not found")
+    
+    req.app._db.unlock()
 
-@submission_endpoints.route('/<uuid>/gettoken', methods=['GET'])
-def get_submission_token(uuid):
+    submission_display = SubmissionItem(**submission.to_dict(files=True))
+    return submission_display
+
+@router.get('/{uuid}/gettoken')
+def get_submission_token(req : Request, uuid : str) -> DownloadTokenResponse:
+    """
+    Get submission download token. Use this token to download a file.
+    """
+    print(uuid)
     submission = Submission(uuid=uuid)
-    current_app._db.lock()
-    submission.load(current_app._db)
+    req.app._db.lock()
+    submission.load(req.app._db)
 
     # TODO: Perform any file access permissions here, as /download doesn't have the user info
     
-
     if submission.uuid == None:
-        current_app._db.unlock()
-        return abort(404)
+        req.app._db.unlock()
+        raise HTTPException(404, detail="Submission not found")
     
-    current_app._db.lock()
+    req.app._db.unlock()
     
-    new_token = generate_download_token(current_app, g)
-    return jsonify({
-        "ok": True,
-        "result": {
-            "download_token": new_token
-        }
-    })
+    new_token = generate_download_token(req.app)
 
-@submission_endpoints.route('/<uuid>/download', methods=['GET'])
-def download_submission(uuid):
+    return DownloadTokenResponse(download_token=new_token)
+
+@router.get('/{uuid}/download')
+def download_submission(req : Request, uuid : str, nopassword : OptionalFlagParam = Query(None, description="Set to disable archive encryption",)):
     submission = Submission(uuid=uuid)
-    current_app._db.lock()
-    submission.load(current_app._db)
+    req.app._db.lock()
+    submission.load(req.app._db)
     if submission.uuid == None:
-        current_app._db.unlock()
-        return abort(404)
+        req.app._db.unlock()
+        raise HTTPException(404, detail="Submission not found")
 
-    nopassword = request.args.get('nopassword')
+    if nopassword is None:
+        nopassword = False
 
-    submission.load_files(current_app._db, current_app._filestore)
+    submission.load_files(req.app._db, req.app._filestore)
 
     new_zip = None
     out_stream = io.BytesIO()
@@ -206,8 +221,6 @@ def download_submission(uuid):
     else:
         new_zip = zipfile.ZipFile(out_stream, "w", compression=pyzipper.ZIP_DEFLATED)
 
-    
-
     for file in submission.files:
         file_handle = file.open_file()
         new_zip.writestr(file.name, file_handle.read())
@@ -216,22 +229,8 @@ def download_submission(uuid):
     new_zip.close()
     out_stream.seek(0)
 
-    current_app._db.unlock()
-    return send_file(out_stream, mimetype='application/zip', as_attachment=True,
-                     download_name=f"{submission.uuid}.zip")
+    req.app._db.unlock()
+    out_headers = {'Content-Disposition': f'attachment; filename="{submission.uuid}.zip"'}
+    return Response(content=out_stream.read(), media_type='application/zip', headers=out_headers)
 
-@submission_endpoints.route('/list', methods=['GET'])
-def get_submission_list():
-    
-    current_app._db.lock()
-    file_uuid = request.args.get('file')
-    submissions = []
-    if file_uuid is not None:
-        submissions = Submission.list_dict(current_app._db, file_uuid=file_uuid)
-    else:
-        submissions = Submission.list_dict(current_app._db)
-    current_app._db.unlock()
-    return jsonify({
-        "ok": True,
-        "result": submissions
-    })
+

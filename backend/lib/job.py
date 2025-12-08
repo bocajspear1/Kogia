@@ -22,6 +22,9 @@ class Job(VertexObject):
 
     @classmethod
     def new(cls, submission, primary, db, filestore):
+        """
+        Initialize a new job generated with a new UUID.
+        """
         new_cls = cls(db, filestore, uuid=str(uuid.uuid4()))
         new_cls._submission = submission
         new_cls._primary = primary
@@ -33,7 +36,7 @@ class Job(VertexObject):
         return new_cls
 
     @classmethod
-    def list_dict(cls, db, skip=0, limit=20, submission_uuid=None):
+    def list_dict(cls, db, skip=0, limit=30, submission_uuid=None):
         new_list = []
         job_items = []
         if submission_uuid is None:
@@ -171,11 +174,12 @@ class Job(VertexObject):
             if args is not None:
                 self._arg_map[new_plugin.__name__] = args
             
-    def to_dict(self):
+    def to_dict(self, full_dict=False):
         plugin_list = []
         for plugin in self._plugins:
             plugin_list.append(plugin.__name__)
-        return {
+
+        ret_dict =  {
             "_key": self._uuid,
             "uuid": self._uuid,
             "user": self._user,
@@ -185,12 +189,19 @@ class Job(VertexObject):
             "complete": self._complete,
             "error": self._error,
             "plugins": plugin_list,
-            "submission": self._submission.uuid,
             "plugin_args": self._arg_map,
             "limit_to": self._limit_to,
             "score": self._score,
             "runner": self._runner
         }
+
+        if self._submission is not None:
+            if full_dict:
+                ret_dict['submission'] = self._submission.to_dict()
+            else:
+                ret_dict['submission'] = self._submission.uuid
+        
+        return ret_dict
 
     def from_dict(self, pm, data_obj):
         self._uuid = data_obj.get('_key', '')
@@ -301,17 +312,20 @@ class Job(VertexObject):
         self._exec_instances.append(new_exec_instance)
         return new_exec_instance
 
-    def get_reports(self, file_uuid=None):
+    def get_reports(self, file_uuid=None, skip=0, limit=30):
         # Ensure any stored reports are saved
         self._save_reports()
 
         ret_reports = []
+        report_count = 0
         if file_uuid is None:
-            ret_reports = self.get_connected_to(self._db, 'reports', filter_edges=['added_report'])
+            ret_reports = self.get_connected_to(self._db, 'reports', filter_edges=['added_report'], skip=skip, limit=limit)
+            report_count = self.count_connected_to(self._db, 'reports', filter_edges=['added_report'])
         else:
             file_obj = SubmissionFile(uuid=file_uuid)
             file_obj.load(self._db)
-            ret_reports_paths = file_obj.get_connected_to(self._db, self.id, filter_edges=['has_report', 'added_report'], return_path=True)
+            ret_reports_paths = file_obj.get_connected_to(self._db, self.id, filter_edges=['has_report', 'added_report'], skip=skip, limit=limit, return_path=True)
+            report_count = file_obj.count_connected_to(self._db, self.id, filter_edges=['has_report', 'added_report'])
 
         
             for ret_report_paths in ret_reports_paths:
@@ -321,7 +335,7 @@ class Job(VertexObject):
                 del ret_report['_key']
                 ret_reports.append(ret_report)
 
-        return ret_reports
+        return report_count, ret_reports
 
     def get_matches(self, file_uuid=None):
         return_list = []
@@ -447,6 +461,8 @@ class Job(VertexObject):
 
     def load(self, pm):
         doc = self.load_doc(self._db, '_key', self._uuid)
+        if doc is None:
+            return
         self.from_dict(pm, doc)
         self._submission.load(self._db)
         self._submission.load_files(self._db, self._filestore)

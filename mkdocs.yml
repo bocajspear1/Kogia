@@ -1,3 +1,9 @@
 site_name: Kogia Documentation
 theme:
   name: readthedocs
+plugins:
+- mkdocstrings:
+    handlers:
+          python:
+            options:
+              show_source: false

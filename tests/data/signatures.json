@@ -1,0 +1,8 @@
+[
+    {
+        "name": "Test signature",
+        "description": "This is a test signature",
+        "severity": 1,
+        "plugin_name": "test_plugin"
+    }
+]

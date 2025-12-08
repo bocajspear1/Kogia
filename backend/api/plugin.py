@@ -1,53 +1,52 @@
-from flask import Blueprint, Flask, g, jsonify, current_app, request, send_file, send_from_directory, abort
+
+from fastapi import APIRouter, Request, HTTPException
+
 from backend.lib.data import Process
 
-plugin_endpoints = Blueprint('plugin_endpoints', __name__)
+from .types import PluginDisplay, PluginDisplayList, OptionalStrParam
+
+router = APIRouter(tags=['plugin'])
 
 #
 # Plugin API endpoints
 #
 
-@plugin_endpoints.route('/list', methods=['GET'])
-def get_plugin_list():
+@router.get('/list')
+def get_plugin_list(request : Request, type : OptionalStrParam = None) -> PluginDisplayList:
 
     plugin_type = "*"
-    if request.args.get('type') is not None:
-        plugin_type = request.args.get('type')
+    if type is not None:
+        plugin_type = type
     
-    current_app._db.lock()
-    plugins = current_app._manager.get_plugin_list(plugin_type)
-    init_plugins = current_app._manager.initialize_plugins(plugins)
+    request.app._db.lock()
+    plugins = request.app._manager.get_plugin_list(plugin_type)
+    init_plugins = request.app._manager.initialize_plugins(plugins)
     ret_list = []
     for plugin in init_plugins:
         if not plugin.enabled:
             continue
-        ret_list.append(plugin.to_dict())
-    current_app._db.unlock()
-    return jsonify({
-        "ok": True,
-        "result": ret_list
-    })
+        display = PluginDisplay(**plugin.to_dict())
+        ret_list.append(display)
+    request.app._db.unlock()
+    return PluginDisplayList(plugins=ret_list)
 
-@plugin_endpoints.route('/<plugin_name>/info', methods=['GET'])
-def get_plugin(plugin_name):
+@router.get('/{plugin_name}/info')
+def get_plugin(request : Request, plugin_name : str):
     
-    current_app._db.lock()
-    plugin = current_app._manager.get_plugin(plugin_name)
+    request.app._db.lock()
+    plugin = request.app._manager.get_plugin(plugin_name)
     if plugin is None:
-        return abort(404)
-    init_plugins = current_app._manager.initialize_plugins([plugin])
+        raise HTTPException(404, detail="Invalid plugin name")
+    init_plugins = request.app._manager.initialize_plugins([plugin])
     plugin = init_plugins[0]
 
-    current_app._db.unlock()
+    request.app._db.unlock()
 
-    plugin_data = plugin.to_dict()
-    del plugin_data['config']
-    return jsonify({
-        "ok": True,
-        "result": plugin_data
-    })
+    plugin_data = PluginDisplay(**plugin.to_dict())
 
-@plugin_endpoints.route('/<plugin_name>/action/<action>', methods=['GET'])
+    return plugin_data
+
+@router.get('/{plugin_name}/action/{action}')
 def run_plugin_action(plugin_name, action):
     
     current_app._db.lock()

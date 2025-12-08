@@ -68,6 +68,7 @@ export default {
     updateStats() {
         var self = this;
         api.get_system_stats(function(data) {
+            console.log(data)
             self.version = data['version'];
             self.submission_count = data['submission_count'];
             self.file_count = data['file_count'];
