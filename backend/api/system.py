@@ -17,6 +17,9 @@ class VersionResponse(DataResponse):
 
 @router.get('/version')
 def version() -> VersionResponse: 
+    """
+    Get version of the Kogia instance
+    """
     version = VersionResponse(version=VERSION)
     return version
 

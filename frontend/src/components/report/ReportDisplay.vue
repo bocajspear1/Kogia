@@ -74,7 +74,7 @@ export default {
         if (self.file_uuid != null) {
             api.get_job_reports(self.job_uuid, self.file_uuid, 
                 function(data) {
-                    self.report_list = data;
+                    self.report_list = data.reports;
                 },
                 function(status, data) {
 

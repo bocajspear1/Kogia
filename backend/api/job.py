@@ -3,7 +3,8 @@ import uuid
 from fastapi import APIRouter, Request, HTTPException
 
 from .types import OptionalStrParam, JobList, JobItem, OptionalFlagParam, SubmissionItem, \
-    JobItemExtended, LogList, LogItem, ReportItem, ReportList, SignatureItem, SignatureMatchList, SignatureMatchItem
+    JobItemExtended, LogList, LogItem, ReportItem, ReportList, SignatureItem, SignatureMatchList, SignatureMatchItem, \
+    ExecInstanceItem, ExecInstanceList
 
 from typing_extensions import Annotated, List, Union
 
@@ -64,8 +65,6 @@ def get_job_status(req : Request, uuid : uuid.UUID):
     
     resp = job.to_dict(full_dict=True)
 
-    print(resp)
-
     submission = SubmissionItem(**resp['submission'])
     resp['submission'] = submission
     
@@ -98,7 +97,7 @@ def get_job_logs(req : Request, uuid : uuid.UUID, skip : int=0, limit : int=30):
     return LogList(logs=ret_list, total=log_count)
 
 @router.get('/{uuid}/reports')
-def get_job_reports(req : Request, uuid : uuid.UUID, file_uuid : OptionalStrParam = None, skip : int=0, limit : int=30):
+def get_job_reports(req : Request, uuid : uuid.UUID, file_uuid : OptionalStrParam = None, skip : int=0, limit : int=30) -> ReportList:
     req.app._db.lock()
     job = Job(req.app._db, req.app._filestore, uuid=uuid)
     job.load(req.app._manager)
@@ -116,12 +115,12 @@ def get_job_reports(req : Request, uuid : uuid.UUID, file_uuid : OptionalStrPara
     return ReportList(reports=report_list, total=report_count)
 
 @router.get('/{uuid}/signatures')
-def get_job_signatures(req : Request, uuid : uuid.UUID, file_uuid : OptionalStrParam = None):
+def get_job_signatures(req : Request, uuid : uuid.UUID, file_uuid : OptionalStrParam = None) -> SignatureMatchList:
     req.app._db.lock()
     job = Job(req.app._db, req.app._filestore, uuid=uuid)
     job.load(req.app._manager)
     job.load_matches()
-    if job.uuid == None:
+    if not job.found:
         req.app._db.unlock()
         raise HTTPException(404, "Job not found")
     matches = job.get_matches(file_uuid=file_uuid)
@@ -135,21 +134,24 @@ def get_job_signatures(req : Request, uuid : uuid.UUID, file_uuid : OptionalStrP
 
     return SignatureMatchList(signatures=signature_list, total=0)
 
-# @job_endpoints.route('/<uuid>/exec_instances', methods=['GET'])
-# def get_job_exec_instances(uuid):
-#     current_app._db.lock()
-#     job = Job(current_app._db, current_app._filestore, uuid=uuid)
-#     job.load(current_app._manager)
-#     if job.uuid == None:
-#         return abort(404)
-#     resp = job.get_exec_instances()
+@router.get('/{uuid}/exec_instances')
+def get_job_exec_instances(req : Request, uuid : uuid.UUID):
+    req.app._db.lock()
+    job = Job(req.app._db, req.app._filestore, uuid=uuid)
+    job.load(req.app._manager)
+    if not job.found:
+        req.app._db.unlock()
+        raise HTTPException(404, "Job not found")
+    inst_count, inst_list = job.get_exec_instances()
 
-#     current_app._db.unlock()
+    req.app._db.unlock()
 
-#     return jsonify({
-#         "ok": True,
-#         "result": resp
-#     })
+    ret_list = []
+
+    for inst in inst_list:
+        ret_list.append(ExecInstanceItem(**inst.to_dict()))
+
+    return ExecInstanceList(instances=ret_list, total=inst_count)
 
 # @job_endpoints.route('/<uuid>/details', methods=['GET'])
 # def get_job_details(uuid):

@@ -15,9 +15,12 @@ import ProcessPanel from '@/components/host/ProcessPanel.vue';
 import NetworkPanel from '@/components/host/NetworkPanel.vue';
 import JobDetails from '@/components/job/JobDetails.vue';
 import ScoreTag from '@/components/job/ScoreTag.vue';
+import Notifications from '@/components/general/Notifications.vue'
 </script>
 
 <template>
+    <Notifications ref="notifications"></Notifications>
+
     <div class="column is-one-third-tablet is-one-quarter-desktop is-one-fifth-widescreen">
         <SidebarMenu v-if="job != null">
             <template v-slot:main>
@@ -231,10 +234,10 @@ export default {
         api.get_job_info(this.job_uuid, 
             function(data) {
                 self.job = data;
-                self.getSubmission(self.job.submission);
+                self.getSubmission(self.job.submission.uuid);
             },
             function(status, data){
-                console.log('failed', status, data);
+                self.$refs.notifications.addNotification("error", "Error getting submission: " + data);
             }
         );
     },

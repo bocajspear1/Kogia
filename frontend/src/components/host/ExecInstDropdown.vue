@@ -55,10 +55,11 @@ export default {
     var self = this;
     api.get_job_exec_instances(self.job_uuid, 
         function(data) {
-            for (var i in data) {
-                data[i] = time.add_pretty_times(data[i], ['start_time', 'end_time'], [['start_time', 'end_time', 'duration']]);
+            var instances = data.instances;
+            for (var i in instances) {
+                instances[i] = time.add_pretty_times(instances[i], ['start_time', 'end_time'], [['start_time', 'end_time', 'duration']]);
             }
-            self.instances = data;
+            self.instances = instances;
             self.loaded = true;
             self.$emit('execinst_loaded', self.instances.length);
             console.log(self.selected);

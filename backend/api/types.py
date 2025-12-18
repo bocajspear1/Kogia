@@ -68,6 +68,18 @@ class NewSubmissionResponse(BaseModel):
     submission_uuid: uuid.UUID
     job_uuid: Union[uuid.UUID, None]
 
+class NewAnalysisPluginData(BaseModel):
+    name: str
+    options: dict
+
+class NewAnalysis(BaseModel):
+    plugins: List[NewAnalysisPluginData]
+    submission_uuid: uuid.UUID
+    primary_uuid: uuid.UUID
+    ignore_uuids: Union[None, List[Union[uuid.UUID, None]]]
+
+class NewAnalysisResponse(BaseModel):
+    job_uuid: uuid.UUID
 
 # Jobs
 
@@ -120,7 +132,7 @@ class SubmissionFileList(BaseModel):
 
 class LogItem(BaseModel):
     severity: str
-    name: str
+    log_name: str
     message: str
 
 class LogList(BaseModel):
@@ -182,7 +194,7 @@ class ProcessEvent(BaseModel):
     data: str
     time: int
     success: bool
-    uuid: uuid.UUID
+    uuid: str
 
 class ProcessEventList(BaseModel):
     events: List[Union[ProcessEvent, None]]
@@ -192,7 +204,7 @@ class SyscallList(BaseModel):
     syscalls: List[Union[dict, None]]
     total: int
 
-class Process(BaseModel):
+class ProcessItem(BaseModel):
     pid: int
     parent_pid: int
     path: str
@@ -200,9 +212,27 @@ class Process(BaseModel):
     start_time: int
     end_time: int
     event_total: int
-    child_processes: Union['List[Process]', None]
-    child_process_uuids: Union[List[uuid.UUID], None]
+    child_processes: Union['List[ProcessItem]', None]
+    # child_process_uuids: Union[List[Union[uuid.UUID, None]], None]
     syscall_total: int
     event_total: int
     libraries: Union[List[Union[uuid.UUID, None]], None]
     uuid: uuid.UUID
+
+
+# ExecInstance data
+
+class ExecInstanceItem(BaseModel):
+    submission_uuid: uuid.UUID
+    start_time: float
+    end_time: float
+    exec_module: str
+    run_os: str
+    screenshots: List[str]
+    process_count: int
+    processes: Union[None, List[Union[ProcessItem, None]]]
+    uuid: uuid.UUID
+
+class ExecInstanceList(BaseModel):
+    instances: List[Union[ExecInstanceItem, None]]
+    total: int   

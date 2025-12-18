@@ -213,11 +213,17 @@ def prepare_all(config, check=True):
         ssl_verify=bool(config['db'].get('verify', True))
     )
 
+    plugin_dirs = []
+    if 'plugin_dirs' not in config:
+        plugin_dirs.append("./plugins")
+    else:
+        plugin_dirs += config['plugin_dirs']
+
     pm = None
     if 'docker_registry' in config and config['docker_registry'] != '':
-        pm = PluginManager(registry=config['docker_registry'])
+        pm = PluginManager(plugin_dirs, registry=config['docker_registry'])
     else:
-        pm = PluginManager()
+        pm = PluginManager(plugin_dirs)
     pm.load_all(check=check)
 
     # Load filestore modules

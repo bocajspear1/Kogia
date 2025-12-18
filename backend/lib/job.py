@@ -379,7 +379,7 @@ class Job(VertexObject):
                 return_objs.append(new_obj)
             return return_objs
 
-    def get_exec_instances(self, as_obj=False):
+    def get_exec_instances(self, as_obj=True, load_processes=False):
         self.save_exec_instances()
         exec_instances = self.get_connected_to(self._db, 'exec_instance', filter_edges=['has_exec_instance'])
         if not as_obj:
@@ -388,9 +388,10 @@ class Job(VertexObject):
         for instance in exec_instances:
             new_obj = ExecInstance(id=instance['_id'])
             new_obj.from_dict(instance)
-            new_obj.load_processes(self._db)
+            if load_processes:
+                new_obj.load_processes(self._db)
             return_objs.append(new_obj)
-        return return_objs
+        return len(return_objs), return_objs
 
     def add_screenshot(self, exec_instance : ExecInstance, in_stream, format='png'):
         exec_instance.add_screenshot(self._filestore, in_stream, format=format)

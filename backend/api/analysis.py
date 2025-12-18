@@ -1,88 +1,58 @@
 """Analysis endpoints (/analysis)
 
 """
-from flask import Blueprint, Flask, g, jsonify, current_app, request, send_file, send_from_directory, abort
+import uuid
+
 from backend.lib.submission import Submission
 from backend.lib.job import Job
 
-analysis_endpoints = Blueprint('analysis_endpoints', __name__)
+from fastapi import APIRouter, Request, HTTPException
+
+from typing_extensions import Annotated, List, Union
+
+from fastapi import Form, File, UploadFile, Query
+from fastapi.responses import Response
+from .types import NewAnalysisResponse, NewAnalysis
+
+router = APIRouter(tags=['analysis'])
 
 #
 # Analysis API endpoints
 #
 
-@analysis_endpoints.route('/new', methods=['POST'])
-def create_analysis_job():
+@router.post('/new')
+def create_analysis_job(req : Request, new_analysis : NewAnalysis) -> NewAnalysisResponse:
 
-    plugins_param = 'plugins'
-    submission_uuid_param = "submission_uuid"
-    primary_uuid_param = "primary_uuid"
-    ignore_uuids_param = "ignore_uuids"
 
-    request_data = request.get_json()
+    req.app._db.lock()
 
-    if plugins_param not in request_data or len(request_data[plugins_param]) == 0:   
-        return jsonify({
-            "ok": False,
-            "error": f"No plugins submitted"
-        })
+    submission = Submission(uuid=str(new_analysis.submission_uuid))
+    submission.load(req.app._db)
 
-    if submission_uuid_param not in request_data:   
-        return jsonify({
-            "ok": False,
-            "error": f"No submission uuid submitted"
-        })
+    new_job = Job.new(submission, str(new_analysis.primary_uuid), req.app._db_factory.new(), req.app._filestore)
 
-    if primary_uuid_param not in request_data:   
-        return jsonify({
-            "ok": False,
-            "error": f"No primary file uuid submitted"
-        })
-
-    current_app._db.lock()
-
-    submission_uuid = request_data[submission_uuid_param]
-    primary_file_uuid = request_data[primary_uuid_param]
-    ignore_uuids = request_data.get(ignore_uuids_param, [])
-    submission = Submission(uuid=submission_uuid)
-    submission.load(current_app._db)
-
-    new_job = Job.new(submission, primary_file_uuid, current_app._db_factory.new(), current_app._filestore)
-
-    for plugin in request_data[plugins_param]:
-        if 'name' not in plugin:
-            return jsonify({
-                "ok": False,
-                "error": f"Invalid plugin object (no name field)"
-            })
-        add_plugin_class = current_app._manager.get_plugin(plugin['name'])
+    for plugin in new_analysis.plugins:
+        
+        add_plugin_class = req.app._manager.get_plugin(plugin.name)
         
         add_plugin = None
-        if 'options' in plugin:
-            options = plugin['options']
-            if not isinstance(options, dict):
-                return jsonify({
-                    "ok": False,
-                    "error": f"Invalid plugin object (options field is not dict)"
-                })
-            new_job.add_plugin(add_plugin_class, args=options)
+        if plugin.options is not None and len(plugin.options) > 0:
+            new_job.add_plugin(add_plugin_class, args=plugin.options)
         else:
             new_job.add_plugin(add_plugin_class)
     
-    if len(ignore_uuids) > 0:
+    if new_analysis.ignore_uuids is not None and len(new_analysis.ignore_uuids) > 0:
         limit_list = []
         for submission_file in submission.files:
-            if submission_file.uuid not in ignore_uuids:
-                new_job.add_limit_to_file(submission_file.uuid)
+            if submission_file.uuid not in new_analysis.ignore_uuids:
+                new_job.add_limit_to_file(str(submission_file.uuid))
 
         
     new_job.save()
+    req.app._db.unlock()
 
-    current_app._worker_manager.assign_job(new_job.uuid)
+    req.app._worker_manager.assign_job(str(new_job.uuid))
 
-    return jsonify({
-        "ok": True,
-        "result": {
-            "job_uuid": str(new_job.uuid)
-        }
-    })
+    response = NewAnalysisResponse(job_uuid=str(new_job.uuid))
+
+    return response

@@ -10,7 +10,7 @@ router = APIRouter(tags=['report'])
 #
 
 @router.get('/{uuid}')
-def get_report(req : Request, uuid : str):
+def get_report(req : Request, uuid : str) -> ReportItem:
     req.app._db.lock()
     report = Report(uuid=uuid)
     report.load(req.app._db)

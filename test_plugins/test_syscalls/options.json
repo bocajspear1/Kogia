@@ -1,0 +1,8 @@
+[
+    {
+        "name": "Test Input",
+        "description": "Existing Job UUID",
+        "default": "",
+        "type": "string"
+    }
+]

@@ -25,7 +25,7 @@
                         <div>
                             <p class="heading">Event Count</p>
                             <p class="title">
-                                {{ process.event_count }}
+                                {{ process.event_total }}
                             </p>
                         </div>
                     </div>

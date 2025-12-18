@@ -135,6 +135,7 @@ export default {
   },
   watch: {
     'process_uuid' (to, from) {
+        console.log(to, from)
         this.getEventList();
         this.event_map = {};
     }
@@ -166,6 +167,10 @@ export default {
         this.updateSelectFilter(new_filter)
     },
     onNewPage: function(page_num) {
+        if (this.event_page == page_num) {
+            return;
+        }
+
         this.event_page = page_num;
         this.getEventList();
     },
@@ -173,14 +178,23 @@ export default {
         this.$emit('event_checked', event, value);
     },
     newTypeFilter: function(value) {
+        if (this.type_filter == value) {
+            return;
+        }
         this.type_filter = value;
         this.getEventList();
     },
     newInfoFilter: function(value) {
+        if (this.info_filter == value) {
+            return;
+        }
         this.info_filter = value;
         this.getEventList();
     },
     newDataFilter: function(value) {
+        if (this.data_filter == value) {
+            return;
+        }
         this.data_filter = value;
         this.getEventList();
     }

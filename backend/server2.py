@@ -26,6 +26,8 @@ import backend.api.job
 import backend.api.report
 import backend.api.process
 import backend.api.file
+import backend.api.analysis
+import backend.api.execinstance
 
 from backend.auth.db import DBAuth
 from backend.version import VERSION
@@ -176,6 +178,20 @@ app.include_router(
 app.include_router(
     backend.api.file.router,
     prefix="/api/v1/file",
+    dependencies=[
+        Depends(handle_api_key),
+    ]
+)
+app.include_router(
+    backend.api.analysis.router,
+    prefix="/api/v1/analysis",
+    dependencies=[
+        Depends(handle_api_key),
+    ]
+)
+app.include_router(
+    backend.api.execinstance.router,
+    prefix="/api/v1/exec_instance",
     dependencies=[
         Depends(handle_api_key),
     ]

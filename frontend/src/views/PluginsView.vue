@@ -87,7 +87,7 @@ export default {
 
         var self = this;
         api.get_plugin_list(function(result) {
-            self.plugins = result;
+            self.plugins = result['plugins'];
             self.done = true;
         }, 
         function(status, error){

@@ -648,7 +648,7 @@ FOR start IN @@startCollection FILTER start._id == @fromId
     def insert_bulk(self, collection, doc_array, requery=True):
         col = self._get_collection(collection)
         
-        db_data = col.insert_many(doc_array, overwrite=True, overwrite_mode="replace", return_new=True)  
+        db_data = col.insert_many(doc_array, overwrite=True, return_new=True)  
         if requery:
             db_data = col.get_many(doc_array)
 

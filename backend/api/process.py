@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request, HTTPException
 from backend.lib.data import Process
 from backend.api.helpers import get_pagination, json_resp_ok, json_resp_invalid, json_resp_not_found
 
-from .types import OptionalStrParam, SyscallList, ProcessEventList, ProcessEvent, MetadataList, MetadataItem
+from .types import OptionalStrParam, SyscallList, ProcessEventList, ProcessEvent, MetadataList, MetadataItem, MetadataMap
 
 import uuid
 
@@ -16,7 +16,7 @@ def get_process_events(request: Request, uuid: uuid.UUID,
                        type : OptionalStrParam = None,
                        info : OptionalStrParam = None,
                        data : OptionalStrParam = None,
-                       skip=0, limit=30) -> ProcessEventList:
+                       skip: int = 0, limit: int  = 30) -> ProcessEventList:
     request.app._db.lock()
     proc = Process(uuid=uuid)
     proc.load(request.app._db)
@@ -31,14 +31,14 @@ def get_process_events(request: Request, uuid: uuid.UUID,
     
     event_list = []
     for event in proc.events:
-        event_list.append(ProcessEvent(**event.to_dict()))
+        event_list.append(ProcessEvent(**event))
     
     
 
     return ProcessEventList(events=event_list, total=proc.event_total)
 
 @router.get('/{uuid}/syscalls')
-def get_process_syscalls(request: Request, uuid: uuid.UUID, skip=0, limit=30) -> SyscallList:
+def get_process_syscalls(request: Request, uuid: uuid.UUID, skip: int=0, limit: int =30) -> SyscallList:
     request.app._db.lock()
     proc = Process(uuid=uuid)
     proc.load(request.app._db)
@@ -76,7 +76,7 @@ def get_process_metadata_list(request: Request, uuid: uuid.UUID, metatype: str, 
     return MetadataList(items=metadata_list, total=proc.metadata_total)
 
 @router.get('/{uuid}/metadata/list')
-def get_process_metadata_types(request: Request, uuid: uuid.UUID):
+def get_process_metadata_types(request: Request, uuid: uuid.UUID) -> MetadataMap:
     proc = Process(uuid=uuid)
     request.app._db.lock()
     proc.load(request.app._db)
@@ -93,7 +93,4 @@ def get_process_metadata_types(request: Request, uuid: uuid.UUID):
 
     
 
-    return jsonify({
-        "ok": True,
-        "result": return_map
-    })
+    return return_map

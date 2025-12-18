@@ -793,7 +793,6 @@ class Process(VertexObjectWithMetadata):
         self._end_time = 0
         self._syscalls = []
         self._events = []
-        self._event_total = -1
         self._event_total = 0
         self._events_synced = False
         self._child_processes = []
@@ -835,6 +834,8 @@ class Process(VertexObjectWithMetadata):
             "end_time": self._end_time,
             "libraries": self._libs,
             "event_count": self.event_count,
+            "syscall_total": self._syscall_total,
+            "event_total": self._event_total
         }
         if get_children:
             ret_dict["child_processes"] = []

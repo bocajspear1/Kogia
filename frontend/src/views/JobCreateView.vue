@@ -129,6 +129,7 @@ export default {
         self.$refs.notifications.addNotification("info", "Job submitted!");
       },
       function(status, error){
+        console.log(status);
         self.$refs.notifications.addNotification("error", "Analysis Create Error: " + error);
       });
     },
@@ -147,11 +148,12 @@ export default {
     getPlugins() {
       var self = this;
       api.get_plugin_list(function(result) {
+        var plugin_list = result.plugins;
         const shown_plugin_types = ['syscall', 'metadata', 'signature'];
         var new_list = [];
         
-        for (var i in result) {
-          var item = result[i];
+        for (var i in plugin_list) {
+          var item = plugin_list[i];
           if (shown_plugin_types.includes(item['type'])) {
             item['enabled'] = true;
             new_list.push(item);

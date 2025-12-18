@@ -32,6 +32,7 @@ export default  {
                 if (resp.response.status == 401) {
                     router.push({ name: 'LoginPage'});
                 } else {
+                    console.log(resp);
                     on_failed(resp.response.status, resp.message);
                 }
             } else {
@@ -67,15 +68,9 @@ export default  {
             config_data
         ).then(function (resp) {
             var resp_data = resp['data'];
-            if (resp_data['ok'] === true) {
-                on_succeeded(resp_data['result']);
-            } else {
-                on_failed(200, resp_data['error']);
-            }
+            on_succeeded(resp_data);
         }).catch(function (error) {
-            var resp_data = error.response['data'];
-            var error_message = resp_data['error']
-            on_failed(error.response.status, error_message); 
+            on_failed(resp.response.status, resp.message);
         });
     },
     api_post_json(path, post_data, on_succeeded, on_failed) {
