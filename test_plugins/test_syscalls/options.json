@@ -1,8 +1,20 @@
 [
     {
-        "name": "Test Input",
-        "description": "Existing Job UUID",
-        "default": "",
-        "type": "string"
+        "name": "add_processes",
+        "description": "Add Processes",
+        "default": true,
+        "type": "check"
+    },
+    {
+        "name": "add_report",
+        "description": "Add Report",
+        "default": true,
+        "type": "check"
+    },
+    {
+        "name": "add_metadata",
+        "description": "Add Metadata",
+        "default": true,
+        "type": "check"
     }
 ]

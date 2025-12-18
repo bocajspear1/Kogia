@@ -7,7 +7,16 @@
         <div v-if="option.type == 'number' || option.type == 'int'" class="field">
             <label class="label">{{ option.description }}</label>
             <div class="control">
-                <input class="input short-textbox" type="text" :name="option.name" v-model="option_data[option.name]" size="10" @change="onChange">
+                <input class="input" type="text" :name="option.name" v-model="option_data[option.name]" size="10" @change="onChange">
+            </div>
+        </div>
+        <div v-if="option.type == 'check' || option.type == 'boolean'" class="field">
+            
+            <div class="control">
+                <label class="checkbox">
+                    <input type="checkbox" :name="option.name" v-model="option_data[option.name]" @change="onChange">
+                    {{ option.description }}
+                </label>
             </div>
         </div>
         <div v-if="option.type == 'string'" class="field">
@@ -106,6 +115,7 @@ export default {
         this.$emit('onOptionChange', this.option_data);
     },
     onChange() {
+        console.log( this.option_data)
         this.$emit('onOptionChange', this.option_data);
     },
     onMultiAddChange(option_name, new_value) {
