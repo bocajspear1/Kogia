@@ -14,9 +14,8 @@ def get_report(req : Request, uuid : str) -> ReportItem:
     req.app._db.lock()
     report = Report(uuid=uuid)
     report.load(req.app._db)
+    req.app._db.unlock()
     if not report.found:
         raise HTTPException(404, detail="Report not found")
-
-    req.app._db.unlock()
 
     return ReportItem(**report.to_dict())

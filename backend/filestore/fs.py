@@ -35,6 +35,9 @@ class FileStoreFS():
     def open_file(self, file_id):
         full_path = self._get_full_path(file_id)
         return open(full_path, "rb")
+
+    def write_to_file(self, file_handle, data):
+        file_handle.write(data)
     
     def close_file(self, file_id, file_handle):
         file_handle.close()

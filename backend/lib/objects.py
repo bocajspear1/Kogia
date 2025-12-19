@@ -41,6 +41,10 @@ class FilestoreObject():
     def open_file(self):
         self._handle = self._filestore.open_file(self._file_id)
         return self._handle
+
+    def write_to_file(self, data):
+        self._handle = self._filestore.write_to_file(self._handle, data)
+        return self._handle
     
     def copy_file_from(self, src_path):
         self._filestore.copy_file_from(src_path, self._file_id)

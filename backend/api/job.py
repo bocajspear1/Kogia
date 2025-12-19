@@ -97,7 +97,7 @@ def get_job_logs(req : Request, uuid : uuid.UUID, skip : int=0, limit : int=30):
     return LogList(logs=ret_list, total=log_count)
 
 @router.get('/{uuid}/reports')
-def get_job_reports(req : Request, uuid : uuid.UUID, file_uuid : OptionalStrParam = None, skip : int=0, limit : int=30) -> ReportList:
+def get_job_reports(req : Request, uuid : uuid.UUID, file : OptionalStrParam = None, skip : int=0, limit : int=30) -> ReportList:
     req.app._db.lock()
     job = Job(req.app._db, req.app._filestore, uuid=uuid)
     job.load(req.app._manager)
@@ -105,7 +105,7 @@ def get_job_reports(req : Request, uuid : uuid.UUID, file_uuid : OptionalStrPara
         req.app._db.unlock()
         raise HTTPException(404, "Job not found")
 
-    report_count, reports = job.get_reports(file_uuid=file_uuid, skip=skip, limit=limit)
+    report_count, reports = job.get_reports(file_uuid=file, skip=skip, limit=limit)
 
     req.app._db.unlock()
 

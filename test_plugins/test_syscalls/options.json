@@ -16,5 +16,30 @@
         "description": "Add Metadata",
         "default": true,
         "type": "check"
+    },
+    {
+        "name": "add_events",
+        "description": "Add Events",
+        "default": true,
+        "type": "check"
+    },
+    {
+        "name": "add_syscalls",
+        "description": "Add Events",
+        "default": true,
+        "type": "check"
+    },
+    {
+        "name": "add_libraries",
+        "description": "Add Libraries",
+        "default": true,
+        "type": "check"
+    }
+    ,
+    {
+        "name": "add_dropped_files",
+        "description": "Add Dropped Files",
+        "default": true,
+        "type": "check"
     }
 ]

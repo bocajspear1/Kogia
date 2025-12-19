@@ -595,7 +595,7 @@ FOR start IN @@startCollection FILTER start._id == @fromId
             query += f" SORT {sort_item}.{sort_by[1]} {sort_by[2]} "
 
         if limit > 0:
-            query += "LIMIT "
+            query += " LIMIT "
             if skip > 0:
                 query += "@skip, "
                 bind_vars['skip'] = skip
@@ -614,6 +614,7 @@ FOR start IN @@startCollection FILTER start._id == @fromId
         # print(query, bind_vars)
 
         try:
+            print(query)
             cursor = self._db.aql.execute(query, 
                 bind_vars=bind_vars
             )

@@ -216,7 +216,7 @@ class ProcessItem(BaseModel):
     # child_process_uuids: Union[List[Union[uuid.UUID, None]], None]
     syscall_total: int
     event_total: int
-    libraries: Union[List[Union[uuid.UUID, None]], None]
+    libraries: Union[List[Union[str, None]], None]
     uuid: uuid.UUID
 
 

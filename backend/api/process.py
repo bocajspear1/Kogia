@@ -55,7 +55,7 @@ def get_process_syscalls(request: Request, uuid: uuid.UUID, skip: int=0, limit: 
     return SyscallList(syscalls=proc.syscalls, total=proc.syscall_total)
     
 @router.get('/{uuid}/metadata/{metatype}/list')
-def get_process_metadata_list(request: Request, uuid: uuid.UUID, metatype: str, filter: str, skip = 0, limit = 30) -> MetadataList:
+def get_process_metadata_list(request: Request, uuid: uuid.UUID, metatype: str, filter: OptionalStrParam = None, skip: int = 0, limit: int = 30) -> MetadataList:
     
     proc = Process(uuid=uuid)
     request.app._db.lock()
@@ -70,7 +70,7 @@ def get_process_metadata_list(request: Request, uuid: uuid.UUID, metatype: str, 
 
     metadata_list = []
     for metadata in proc.metadata:
-        metadata_list.append(MetadataItem(**metadata.to_dict()))
+        metadata_list.append(MetadataItem(**metadata))
 
             
     return MetadataList(items=metadata_list, total=proc.metadata_total)

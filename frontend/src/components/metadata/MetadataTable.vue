@@ -125,8 +125,8 @@ export default {
         
         self.metadata_count = resp_data['total'];
 
-        for (var i = 0; i < resp_data['metadata'].length; i++) {
-            self.metadata_list.push([resp_data['metadata'][i]['value']])
+        for (var i = 0; i < resp_data['items'].length; i++) {
+            self.metadata_list.push([resp_data['items'][i]['value']])
         }
         self.list_loading = false;
     },

@@ -94,6 +94,11 @@ def get_logging_config(config):
                 "level": "INFO",
                 "propagate": False,
             },
+            "charset_normalizer": { # Noisy, so we suppress
+                "handlers": ["console"],
+                "level": "WARNING",
+                "propagate": False,
+            },
             "watchfiles.main": {
                 "handlers": ["console"],
                 "level": "WARNING",
