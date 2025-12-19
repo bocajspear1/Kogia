@@ -614,12 +614,13 @@ FOR start IN @@startCollection FILTER start._id == @fromId
         # print(query, bind_vars)
 
         try:
-            print(query)
+            # print(query)
             cursor = self._db.aql.execute(query, 
                 bind_vars=bind_vars
             )
             return list(cursor)
         except AQLQueryExecuteError as e:
+            print(query)
             print(e, e.error_code)
             if e.error_code == 1203:
                 # Print We are missing a collection, probably hasn't been created yet.

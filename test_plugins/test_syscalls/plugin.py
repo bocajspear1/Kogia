@@ -8,6 +8,9 @@ from datetime import datetime, timedelta
 from backend.lib.job import Job
 
 class TestSyscallPlugin(PluginBase):
+    """
+    Test plugin that fakes a syscall-type plugin.
+    """
     PLUGIN_TYPE = 'syscall'
     INGESTS = []
 
@@ -26,11 +29,13 @@ class TestSyscallPlugin(PluginBase):
         new_exec.start_time = (datetime.now()-timedelta(minutes=5)).timestamp()
         new_exec.end_time = datetime.now().timestamp()
 
+        if self.args['raise_exception']:
+            raise ValueError("Something went wrong, but not really")
+
         if self.args['add_processes']:
+            job.info_log(self.name, "Adding processes")
 
             new_proc = new_exec.add_process("/test/test.fake", 16, "test.fake arg1 arg2")
-
-        
 
             child_proc = new_proc.add_child_process("/test/child.fake", 22, "child.fake arg1 arg2")
 
@@ -46,6 +51,7 @@ class TestSyscallPlugin(PluginBase):
             ]
 
             if self.args['add_events']:
+                job.info_log(self.name, "Adding events")
 
                 for i in range(3):
                     new_proc.add_event(event_keys[event_counter], "SRC", "DEST", "DATA GOES HERE", event_counter, True)
@@ -56,12 +62,16 @@ class TestSyscallPlugin(PluginBase):
                     event_counter += 1
 
             if self.args['add_libraries']:
+                job.info_log(self.name, "Adding libraries")
                 new_proc.add_shared_lib("/lib/fake.lib")
                 new_proc.add_shared_lib("/lib/secure.lib")
 
                 child_proc.add_shared_lib("/lib/secure.lib")
 
             if self.args['add_metadata']:
+                job.info_log(self.name, "Adding metadata")
+                new_exec.add_metadata("EXEC_METADATA1", "COOL")
+
                 new_proc.add_metadata("METADATA1", "VALUE1")
                 for i in range(3):
                     new_proc.add_metadata("INCREMENT", f"VALUE_INC_{i}")
@@ -71,6 +81,8 @@ class TestSyscallPlugin(PluginBase):
                     child_proc.add_metadata("INCREMENT", f"VALUE_INC_{i}")
 
             if self.args['add_syscalls']:
+                job.info_log(self.name, "Adding syscalls")
+
                 new_proc.add_syscall("open", ['a', 'b'], 1, 1, 42)
                 new_proc.add_syscall("read", ['1'], 0, 2, 42)
                 new_proc.add_syscall("close", ['1'], 0, 2, 42)
@@ -80,13 +92,18 @@ class TestSyscallPlugin(PluginBase):
                 child_proc.add_syscall("close", ['2'], 0, 2, 42)
 
         if self.args['add_report']:
+            job.info_log(self.name, "Adding report")
             job.add_report("Test Report", file_obj, "This is a report!")
 
         if self.args['add_dropped_files']:
+            job.info_log(self.name, "Adding dropped file")
             dropped = job.submission.generate_file("dropped1.txt")
             dropped.create_file()
             dropped.write_to_file(b"This is a some data in the dropped file!")
             job.submission.add_file(dropped, dropped=True)
+
+        if self.args['log_error']:
+            job.error_log(self.name, "This is an error")
 
         return []
 

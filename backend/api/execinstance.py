@@ -3,7 +3,7 @@ import uuid
 
 from fastapi import APIRouter, Request, HTTPException
 
-from .types import OptionalStrParam, ExecInstanceItem
+from .types import OptionalStrParam, ExecInstanceItem, MetadataItem, MetadataList, MetadataMap
 
 from typing_extensions import Annotated, List, Union
 
@@ -40,54 +40,44 @@ def get_exec_instance(req : Request, uuid : uuid.UUID) -> ExecInstanceItem:
     return ExecInstanceItem(**exec_inst_dict)
 
 
-# @execinstance_endpoints.route('/<uuid>/metadata/<metatype>/list', methods=['GET'])
-# def get_execinstance_metadata_list(uuid, metatype):
-#     skip_int = 0
-#     limit_int = 50
-#     try:
-#         limit_int, skip_int = get_pagination(request)
-#     except ValueError:
-#         return abort(400)
+@router.get('/{uuid}/metadata/{metatype}/list')
+def get_execinstance_metadata_list(req : Request, uuid : uuid.UUID, metatype: str, filter: OptionalStrParam = None, skip: int = 0, limit: int = 50) -> MetadataList:
+   
+
+    req.app._db.lock()
+    exec_instance = ExecInstance(uuid=uuid)
+    exec_instance.load(req.app._db)
+
+    if not exec_instance.found:
+        req.app._db.unlock()
+        raise HTTPException(404, "Execution instance not found")
+
+    exec_instance.load_metadata(req.app._db, mtype=metatype.strip(), skip=skip, limit=limit, filter=filter, as_dict=True)
+    req.app._db.unlock()
+
+    metadata_list = []
+
+    for item in exec_instance.metadata:
+        metadata_list.append(MetadataItem(**item))
+
+    return MetadataList(items=metadata_list, total=exec_instance.metadata_total)
+
+@router.get('/{uuid}/metadata/list')
+def get_execinstance_metadata_types(req : Request, uuid : uuid.UUID) -> MetadataMap:
+    req.app._db.lock()
+    exec_instance = ExecInstance(uuid=uuid)
+    exec_instance.load(req.app._db)
+
+    if not exec_instance.found:
+        req.app._db.unlock()
+        raise HTTPException(404, "Execution instance not found")
     
-#     filter = request.args.get('filter')
-    
-#     current_app._db.lock()
-#     exec_instance = ExecInstance(uuid=uuid)
-#     exec_instance.load(current_app._db)
+    exec_instance.load_metadata(req.app._db)
+    req.app._db.unlock()
 
-#     if exec_instance.uuid == None:
-#         current_app._db.unlock()
-#         return abort(404)
+    return_map = exec_instance.get_metadata_types()
 
-#     exec_instance.load_metadata(current_app._db, mtype=metatype.strip(), skip=skip_int, limit=limit_int, filter=filter, as_dict=True)
-#     current_app._db.unlock()
-
-#     return jsonify({
-#         "ok": True,
-#         "result": {
-#             "metadata": exec_instance.metadata,
-#             "total": exec_instance.metadata_total
-#         }
-#     })
-
-# @execinstance_endpoints.route('/<uuid>/metadata/list', methods=['GET'])
-# def get_execinstance_metadata_types(uuid):
-#     current_app._db.lock()
-#     exec_instance = ExecInstance(uuid=uuid)
-#     exec_instance.load(current_app._db)
-
-#     if exec_instance.uuid == None:
-#         current_app._db.unlock()
-#         return abort(404)
-#     exec_instance.load_metadata(current_app._db)
-#     current_app._db.unlock()
-
-#     return_map = exec_instance.get_metadata_types()
-
-#     return jsonify({
-#         "ok": True,
-#         "result": return_map
-#     })
+    return return_map
 
 # @execinstance_endpoints.route('/<uuid>/netcomm/list', methods=['GET'])
 # def get_execinstance_netcomm(uuid):

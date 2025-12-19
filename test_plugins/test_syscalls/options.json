@@ -34,12 +34,23 @@
         "description": "Add Libraries",
         "default": true,
         "type": "check"
-    }
-    ,
+    },
     {
         "name": "add_dropped_files",
         "description": "Add Dropped Files",
         "default": true,
+        "type": "check"
+    },
+    {
+        "name": "raise_exception",
+        "description": "Raise an exception",
+        "default": false,
+        "type": "check"
+    },
+    {
+        "name": "log_error",
+        "description": "Log an error",
+        "default": false,
         "type": "check"
     }
 ]

@@ -55,7 +55,7 @@ def get_job_list(req : Request, submission_uuid : OptionalStrParam = None, skip=
     return JobList(jobs=item_list, total=total_len)
 
 @router.get('/{uuid}/info')
-def get_job_status(req : Request, uuid : uuid.UUID):
+def get_job_info(req : Request, uuid : uuid.UUID):
     req.app._db.lock()
     job = Job(req.app._db, req.app._filestore, uuid=uuid)
     job.load(req.app._manager)
@@ -70,10 +70,10 @@ def get_job_status(req : Request, uuid : uuid.UUID):
     
     signature_list = job.get_signatures()
     resp['signature_count'] = len(signature_list)
-    reports_list = job.get_reports()
-    resp['report_count'] = len(reports_list)
-    exec_inst_list = job.get_exec_instances()
-    resp['exec_inst_count'] = len(exec_inst_list)
+    reports_count, _ = job.get_reports()
+    resp['report_count'] = reports_count
+    exec_inst_count, _ = job.get_exec_instances()
+    resp['exec_inst_count'] = exec_inst_count
     req.app._db.unlock()
     return JobItemExtended(**resp)
 

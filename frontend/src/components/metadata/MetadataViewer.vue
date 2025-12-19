@@ -70,7 +70,7 @@ export default {
     mounted() {
         this.selected_instance_i = this.selected_instance;
         this.selected_file_i = this.selected_file;
-        this.getSubmission(this.job.submission);
+        this.getSubmission(this.job.submission.uuid);
     },
     methods: {
         // Get data data about submission, particularly files

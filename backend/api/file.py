@@ -131,8 +131,8 @@ def get_file_metadata_types(request : Request, file_uuid : uuid.UUID) -> Metadat
 
     return return_map
 
-@router.get('/{file_uuid}/metadata/<metatype>/list')
-def get_file_metadata_list(request : Request, file_uuid : uuid.UUID, metatype: str, filter: OptionalStrParam = None, skip = 0, limit = 30) -> MetadataList:
+@router.get('/{file_uuid}/metadata/{metatype}/list')
+def get_file_metadata_list(request : Request, file_uuid : uuid.UUID, metatype: str, filter: OptionalStrParam = None, skip: int = 0, limit: int = 30) -> MetadataList:
 
     file_obj = SubmissionFile(uuid=file_uuid, filestore=request.app._filestore)
     request.app._db.lock()
@@ -146,7 +146,7 @@ def get_file_metadata_list(request : Request, file_uuid : uuid.UUID, metatype: s
     metadata_list = []
 
     for item in file_obj.metadata:
-        metadata_list.append(MetadataItem(**item.to_dict()))
+        metadata_list.append(MetadataItem(**item))
 
             
     return MetadataList(items=metadata_list, total=file_obj.metadata_total)
