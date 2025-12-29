@@ -83,7 +83,12 @@ class CollectionObject():
         # self._db = db
         self._collection = collection
         self._id = id
+        self._found = False
 
+    @property
+    def found (self):
+        return self._found
+    
     @property
     def id (self):
         return self._id
@@ -121,6 +126,7 @@ class CollectionObject():
         
         if '_id' in doc:
             self._id = doc['_id']
+            self._found = True
 
         if doc is None:
             return None

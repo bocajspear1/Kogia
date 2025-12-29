@@ -7,7 +7,6 @@ import pyzipper
 
 from backend.lib.submission import SubmissionFile
 from backend.lib.helpers import generate_download_token
-from backend.api.helpers import get_pagination, json_resp_invalid
 
 from fastapi import APIRouter, Request, HTTPException, Response
 
@@ -55,7 +54,7 @@ def get_file_token(request : Request, file_uuid : uuid.UUID) -> DownloadTokenRes
 def download_file(request : Request, file_uuid : uuid.UUID, format: str):
 
     if hasattr(request.app, "file_uuid") and file_uuid != request.app.file_uuid:
-        return json_resp_invalid("Token UUID does not match requested file")
+        raise HTTPException(400, detail="File does not match token UUID")
 
     file_info = SubmissionFile(uuid=file_uuid, filestore=request.app._filestore)
     request.app._db.lock()

@@ -28,6 +28,9 @@ import backend.api.process
 import backend.api.file
 import backend.api.analysis
 import backend.api.execinstance
+import backend.api.docs
+import backend.api.export
+
 
 from backend.auth.db import DBAuth
 from backend.version import VERSION
@@ -107,6 +110,7 @@ def create_app():
     app._db_factory = dbf
     app._db = app._db_factory.new()
     app._filestore = filestore
+    app._docs_dir = os.path.abspath(app._config['docs_dir'])
 
     app._auth = None
     if 'DBAuth' in app._config['auth']:
@@ -192,6 +196,20 @@ app.include_router(
 app.include_router(
     backend.api.execinstance.router,
     prefix="/api/v1/exec_instance",
+    dependencies=[
+        Depends(handle_api_key),
+    ]
+)
+app.include_router(
+    backend.api.docs.router,
+    prefix="/api/v1/docs",
+    dependencies=[
+        Depends(handle_api_key),
+    ]
+)
+app.include_router(
+    backend.api.export.router,
+    prefix="/api/v1/export",
     dependencies=[
         Depends(handle_api_key),
     ]

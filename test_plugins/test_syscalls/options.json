@@ -24,6 +24,18 @@
         "type": "check"
     },
     {
+        "name": "add_networking",
+        "description": "Add Networking",
+        "default": true,
+        "type": "check"
+    },
+    {
+        "name": "add_screenshots",
+        "description": "Add Screenshots",
+        "default": true,
+        "type": "check"
+    },
+    {
         "name": "add_syscalls",
         "description": "Add Events",
         "default": true,

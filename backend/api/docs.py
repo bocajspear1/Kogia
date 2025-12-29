@@ -1,13 +1,16 @@
 import os
 import re
 
-from flask import Blueprint, Flask, g, jsonify, current_app, request, send_file, send_from_directory, abort
-from backend.lib.data import ExecInstance
-from backend.api.helpers import json_resp_ok, json_resp_invalid, json_resp_not_found
+from fastapi import APIRouter, Request, HTTPException, Response
+
+from backend.lib.data import Process
+
+from .types import OptionalStrParam, DocsResponse
+
 
 from backend.version import VERSION 
 
-docs_endpoints = Blueprint('docs', __name__)
+router = APIRouter(tags=['docs'])
 
 def get_pages_nav(dir, subpath):
     nav_items = []
@@ -38,8 +41,8 @@ def get_pages_nav(dir, subpath):
             })
     return nav_items
 
-@docs_endpoints.route('/<path:page>')
-def get_page(page):
+@router.get('/{page:path}')
+def get_page(req : Request, page: str) -> DocsResponse:
 
     extension = ""
 
@@ -54,22 +57,20 @@ def get_page(page):
     filename = path_items[-1]
 
     if path_items[0] == "images":
-        full_path = os.path.join(current_app._docs_dir, "images", filename + extension)
-        return send_file(full_path, mimetype='image/png')
+        full_path = os.path.join(req.app._docs_dir, "images", filename + extension)
+
+        return Response(content=open(full_path, "rb").read(), media_type='image/png')
     else:
         subpath = path_items[:-1]
 
     
 
-        full_path = os.path.join(current_app._docs_dir, *subpath, filename + ".md")
+        full_path = os.path.join(req.app._docs_dir, *subpath, filename + ".md")
 
         if not os.path.exists(full_path):
-            return json_resp_not_found("Page does not exist")
+            raise HTTPException(404, detail="Page not found")
         else:
             page_data = ""
             with open(full_path, "r") as page_file:
                 page_data = page_file.read()
-            return json_resp_ok({
-                "page": page_data,
-                "navigation": get_pages_nav(current_app._docs_dir, "")
-            })
+            return DocsResponse(page=page_data, navigation=get_pages_nav(req.app._docs_dir, ""))

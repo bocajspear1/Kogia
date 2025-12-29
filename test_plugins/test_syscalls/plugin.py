@@ -1,7 +1,8 @@
 from backend.lib.plugin_base import PluginBase
 import shutil
-import os
-import time
+from io import BytesIO
+
+from PIL import Image
 
 from datetime import datetime, timedelta
 
@@ -20,10 +21,6 @@ class TestSyscallPlugin(PluginBase):
         print(args)
 
     def run(self, job : Job, file_obj):
-        
-        minke_uuid = self.args.get("uuid", '')
-
-        print(minke_uuid)
 
         new_exec = job.add_exec_instance('test_syscall', "fake os")
         new_exec.start_time = (datetime.now()-timedelta(minutes=5)).timestamp()
@@ -31,6 +28,21 @@ class TestSyscallPlugin(PluginBase):
 
         if self.args['raise_exception']:
             raise ValueError("Something went wrong, but not really")
+        
+        if self.args['add_screenshots']:
+
+            color = [0, 0, 0]
+
+            for i in range(3):
+                screenshot_color = color
+                screenshot_color[i] = 155
+                file = BytesIO()
+                image = Image.new('RGBA', size=(1920, 1080), color=tuple(screenshot_color))
+                image.save(file, 'png')
+                file.name = f'test-{i}.png'
+                file.seek(0)
+
+                job.add_screenshot(new_exec, file)
 
         if self.args['add_processes']:
             job.info_log(self.name, "Adding processes")
@@ -60,6 +72,11 @@ class TestSyscallPlugin(PluginBase):
                 for i in range(3):
                     child_proc.add_event(event_keys[event_counter], "SRC", "DEST", "DATA GOES HERE", 2, True)
                     event_counter += 1
+
+            if self.args['add_networking']:
+                job.info_log(self.name, "Adding networking")
+                new_exec.add_network_comm("fake", "1.1.1.1", 80, "1.1.1.2", 9090, "data is here", 1)
+                new_exec.add_network_comm("fake", "1.1.1.2", 9090, "1.1.1.1", 80, "data is here", 2)
 
             if self.args['add_libraries']:
                 job.info_log(self.name, "Adding libraries")

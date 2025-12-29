@@ -141,11 +141,17 @@ export default {
         this.getNetComms();
     },
     onAddressSelect: function(event) {
+        if (this.address_filter == event.target.value) {
+            return;
+        }
         this.address_filter = event.target.value;
         this.netcomm_page = 1;
         this.getNetComms();
     },
     onPortSelect: function(event) {
+        if (this.port_filter == event.target.value) {
+            return;
+        }
         this.port_filter = event.target.value;
         this.netcomm_page = 1;
         this.getNetComms();

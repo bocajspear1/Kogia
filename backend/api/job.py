@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request, HTTPException
 
 from .types import OptionalStrParam, JobList, JobItem, OptionalFlagParam, SubmissionItem, \
     JobItemExtended, LogList, LogItem, ReportItem, ReportList, SignatureItem, SignatureMatchList, SignatureMatchItem, \
-    ExecInstanceItem, ExecInstanceList
+    ExecInstanceItem, ExecInstanceList, JobExportData, JobExportResponse
 
 from typing_extensions import Annotated, List, Union
 
@@ -174,71 +174,64 @@ def get_job_exec_instances(req : Request, uuid : uuid.UUID):
 #     })
 
 
-# @job_endpoints.route('/<uuid>/export/<plugin_name>', methods=['POST'])
-# def get_job_export_plugin(uuid, plugin_name):
+@router.post('/{job_uuid}/export/{plugin_name}')
+def get_job_export_plugin(req : Request, job_uuid : uuid.UUID, plugin_name: str, export_item: JobExportData) -> JobExportResponse:
 
-#     request_data = request.get_json()
+    req.app._db.lock()
 
-#     current_app._db.lock()
-
-#     # Load the job
-#     job = Job(current_app._db, current_app._filestore, uuid=uuid)
-#     job.load(current_app._manager)
-#     job.load_matches()
-#     if job.uuid == None:
-#         current_app._db.unlock()
-#         return json_resp_not_found("Could not find job")
+    # Load the job
+    job = Job(req.app._db, req.app._filestore, uuid=job_uuid)
+    job.load(req.app._manager)
+    job.load_matches()
+    if not job.found:
+        req.app._db.unlock()
+        raise HTTPException(404, "Job not found")
     
     
-#     # Load the plugin
-#     plugin = current_app._manager.get_plugin(plugin_name)
-#     if plugin is None:
-#         current_app._db.unlock()
-#         return json_resp_not_found("Could not find plugin")
+    # Load the plugin
+    plugin = req.app._manager.get_plugin(plugin_name)
+    if plugin is None:
+        req.app._db.unlock()
+        raise HTTPException(404, "Plugin not found")
     
-#     plugin_args = {}
-#     if 'options' in request_data['export_items']:
-#         plugin_args = request_data['export_items']['options']
-#     # Init plugin
-#     init_plugin = plugin(current_app._manager, args=plugin_args)
-#     # current_app._manager.initialize_plugins([])[0]
+    plugin_args = {}
+    if export_item.export_items.options is not None:
+        plugin_args = export_item.export_items.options
+    # Init plugin
+    init_plugin = plugin(req.app._manager, args=plugin_args)
+    # current_app._manager.initialize_plugins([])[0]
 
-#     export_name, export_type = init_plugin.get_export_metadata()
+    export_name, export_type = init_plugin.get_export_metadata()
 
-#     new_export = job.generate_export_file(export_name, plugin_name, export_type, g.req_username)
+    new_export = job.generate_export_file(export_name, plugin_name, export_type, req.app.req_username)
 
-#     new_export.set_event_filter(request_data['export_items']['events'])
-#     new_export.set_file_filter(request_data['export_items']['files'])
-#     new_export.set_network_filter(request_data['export_items']['network'])
+    new_export.set_event_filter(export_item.export_items.events)
+    new_export.set_file_filter(export_item.export_items.files)
+    new_export.set_network_filter(export_item.export_items.network)
 
-#     # Run plugin
-#     export_ok, export_data = init_plugin.export(job, new_export)
+    # Run plugin
+    export_ok, export_data = init_plugin.export(job, new_export)
 
 
-#     if export_ok == True:
+    if export_ok == True:
     
-#         current_app._db.unlock()
+        req.app._db.unlock()
 
-#         # Save file to filestore
-#         file_io = new_export.create_file()
-#         file_io.write(export_data)
-#         new_export.close_file()
+        # Save file to filestore
+        file_io = new_export.create_file()
+        file_io.write(export_data)
+        new_export.close_file()
 
-#         current_app._db.lock()
-#         new_export.save()
-#         current_app._db.unlock()
+        req.app._db.lock()
+        new_export.save()
+        req.app._db.unlock()
 
-#         new_token = generate_download_token(current_app, g, new_export.uuid)
-#         return jsonify({
-#             "ok": True,
-#             "result": {
-#                 "download_token": new_token,
-#                 "export_uuid": new_export.uuid
-#             }
-#         })
+        new_token = generate_download_token(req.app, new_export.uuid)
+        return JobExportResponse(download_token=new_token, export_uuid=new_export.uuid)
 
-#     else:
-#         return json_resp_invalid("Export plugin failed: " + export_ok)
+    else:
+        raise HTTPException(500, "Export plugin failed: " + export_ok)
+        return json_resp_invalid()
 
 
 # @job_endpoints.route('/<uuid>/export/<export_uuid>', methods=['POST'])

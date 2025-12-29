@@ -194,7 +194,7 @@ export default {
         var self = this;
 
         api.get_plugin_list_type("export", function(data){
-            self.export_plugins = data;
+            self.export_plugins = data.plugins;
         }, function(status, data) {
 
         });
@@ -219,10 +219,11 @@ export default {
         var self = this;
         api.get_job_exec_instances(self.job.uuid, 
             function(data) {
-                for (var i in data) {
-                    data[i] = time.add_pretty_times(data[i], ['start_time', 'end_time'], [['start_time', 'end_time', 'duration']]);
+                var instances = data.instances;
+                for (var i in instances) {
+                    instances[i] = time.add_pretty_times(instances[i], ['start_time', 'end_time'], [['start_time', 'end_time', 'duration']]);
                 }
-                self.exec_instances = data;
+                self.exec_instances = instances;
             },
             function(status, data) {
 
@@ -242,7 +243,6 @@ export default {
         
         this.event_filter = new_filter['events'];
         this.syscall_filter = new_filter['syscalls'];
-        console.log(this.event_filter)
     },
     onNetCommFilterUpdate(new_filter) {
         this.netcomm_filter = new_filter;

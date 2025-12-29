@@ -8,11 +8,36 @@ from typing import Generic, List, Union, Type, Optional, TypeVar, Any, Dict
 
 OptionalStrParam = Union[str, None]
 OptionalFlagParam = Union[bool, None]
+OptionalIntParam = Union[int, None]
 
 class DataResponse(BaseModel):
     pass
 
 DataType = TypeVar('DataType', bound=DataResponse)
+
+
+
+class RunnersResponse(DataResponse):
+    runners: List[Any]
+
+class StatsResponse(DataResponse):
+    version: str
+    submission_count: int
+    file_count: int
+    job_count: int
+
+class VersionResponse(DataResponse):
+    version: str
+
+class UsageResponse(DataResponse):
+    system: str
+    memory_used: float
+    memory_total: float
+    cpu_percent: float
+    disk_used: float
+    disk_total: float
+    storage_total: float
+    storage_used: float
 
 class PluginDisplay(BaseModel):
     name: str
@@ -107,6 +132,21 @@ class JobItemExtended(JobItem):
 class JobList(BaseModel):
     jobs: List[JobItem]
     total: int
+
+
+class JobExportOptions(BaseModel):
+    options: dict
+    events: dict
+    files: List[Union[None, str]]
+    network: dict
+    reports: List[Union[None, str]]
+
+class JobExportData(BaseModel):
+    export_items: JobExportOptions
+
+class JobExportResponse(BaseModel):
+    download_token: str
+    export_uuid: uuid.UUID
 
 # SubmissionFile
 
@@ -236,3 +276,29 @@ class ExecInstanceItem(BaseModel):
 class ExecInstanceList(BaseModel):
     instances: List[Union[ExecInstanceItem, None]]
     total: int   
+
+class ScreenshotResponse(BaseModel):
+    image_data: str
+    name: str
+
+# NetComms
+
+class NetCommItem(BaseModel):
+    protocol: str
+    src_addr: str
+    src_port: int
+    dest_addr: str
+    dest_port: int
+    data: str
+    uuid: str
+
+class NetCommList(BaseModel):
+    netcomms: List[Union[NetCommItem, None]]
+    total: int   
+    statistics: dict
+
+# Docs
+
+class DocsResponse(BaseModel):
+    page: str
+    navigation: List[dict]

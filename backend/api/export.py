@@ -1,28 +1,36 @@
-from flask import Blueprint, Flask, g, jsonify, current_app, request, send_file, send_from_directory, abort
-from backend.lib.job import ExportFile
-from backend.api.helpers import get_pagination, json_resp_invalid, json_resp_not_found
+import uuid
 
-export_endpoints = Blueprint('export_endpoints', __name__)
+from backend.lib.job import ExportFile
+
+
+from fastapi import APIRouter, Request, HTTPException
+from fastapi import Form, File, UploadFile, Query
+from fastapi.responses import Response
+
+from backend.lib.data import ExecInstance
+
+router = APIRouter(tags=['export'])
 
 #
 # Report API endpoints
 #
 
-@export_endpoints.route('/<uuid>/download', methods=['GET'])
-def get_export(uuid):
+@router.get('/{export_uuid}/download')
+def get_export(req: Request, export_uuid: uuid.UUID):
 
-    if hasattr(g, "file_uuid") and uuid != g.file_uuid:
-        return json_resp_invalid("Token UUID does not match requested file")
+    if hasattr(req.app, "file_uuid") and export_uuid != req.app.file_uuid:
+        raise HTTPException(400, detail="File does not match token UUID")
+
     
-    current_app._db.lock()
-    export_file = ExportFile(uuid=uuid, filestore=current_app._filestore, db=current_app._db)
-    export_file.load(current_app._manager)
-    if export_file.uuid == None:
-        return json_resp_not_found("Export file not found")
+    req.app._db.lock()
+    export_file = ExportFile(uuid=export_uuid, filestore=req.app._filestore, db=req.app._db)
+    export_file.load(req.app._manager)
+    if not export_file.found:
+        raise HTTPException(404, detail="Export not found")
 
-    current_app._db.unlock()
+    req.app._db.unlock()
 
     raw_file = export_file.open_file()
 
-    return send_file(raw_file, mimetype=export_file.file_type, as_attachment=True,
-                         download_name=export_file.name)
+    out_headers = {'Content-Disposition': f'attachment; filename="{export_file.name}_"'}
+    return Response(content=raw_file.read(), media_type=export_file.file_type, headers=out_headers)

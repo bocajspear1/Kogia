@@ -97,7 +97,8 @@ pandoc-latex-environment:
             markdown_content += ":::\n"
 
         markdown_content += "# Processes\n\n"
-        for instance in job_obj.get_exec_instances(as_obj=True):
+        _, instances = job_obj.get_exec_instances(as_obj=True, load_processes=True)
+        for instance in instances:
             markdown_content += f"## {instance.exec_module}\n\n"
             for process in instance.processes:
                 markdown_content += self._add_processes(process)

@@ -707,7 +707,7 @@ class ExportFile(CollectionObject, FilestoreObject):
                     yield exec_instance, process, event
     
     def network_comms(self):
-        exec_instances = self._job.get_exec_instances(as_obj=True)
+        _, exec_instances = self._job.get_exec_instances(as_obj=True)
 
         for exec_inst in exec_instances:
             if not exec_inst.uuid in self._network_filters:

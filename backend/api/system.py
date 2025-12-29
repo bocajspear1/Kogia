@@ -5,15 +5,13 @@ from backend.lib.data import ExecInstance
 from backend.version import VERSION 
 from backend.lib.system import get_system_string, get_local_storage, get_memory_usage, get_cpu_usage
 
-from .types import DataResponse
+from .types import DataResponse, UsageResponse, VersionResponse, StatsResponse, RunnersResponse
 
 from typing import List, Any
 
 router = APIRouter(tags=['system'])
 
 
-class VersionResponse(DataResponse):
-    version: str
 
 @router.get('/version')
 def version() -> VersionResponse: 
@@ -23,12 +21,6 @@ def version() -> VersionResponse:
     version = VersionResponse(version=VERSION)
     return version
 
-
-class StatsResponse(DataResponse):
-    version: str
-    submission_count: int
-    file_count: int
-    job_count: int
 
 @router.get('/stats')
 def stats(request: Request) -> StatsResponse:
@@ -48,16 +40,6 @@ def stats(request: Request) -> StatsResponse:
 
     return stats_resp
 
-
-class UsageResponse(DataResponse):
-    system: str
-    memory_used: float
-    memory_total: float
-    cpu_percent: float
-    disk_used: float
-    disk_total: float
-    storage_total: float
-    storage_used: float
 
 @router.get('/usage')
 def usage(request: Request) -> UsageResponse:
@@ -79,10 +61,6 @@ def usage(request: Request) -> UsageResponse:
     )
 
     return usage
-
-
-class RunnersResponse(DataResponse):
-    runners: List[Any]
 
 @router.get('/runners')
 def runners(request: Request) -> RunnersResponse:
