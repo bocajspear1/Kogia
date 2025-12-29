@@ -74,3 +74,7 @@ class DBAuth():
         self._db.update('users', user_data['_id'], {
             "password": hashed_pass
         })
+
+    def list_users(self):
+        user_list = list(self._db.all('users'))
+        return user_list

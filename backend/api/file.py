@@ -51,17 +51,17 @@ def get_file_token(request : Request, file_uuid : uuid.UUID) -> DownloadTokenRes
     return DownloadTokenResponse(download_token=new_token)
 
 @router.get('/{file_uuid}/download')
-def download_file(request : Request, file_uuid : uuid.UUID, format: str):
+def download_file(req : Request, file_uuid : uuid.UUID, format: str):
 
-    if hasattr(request.app, "file_uuid") and file_uuid != request.app.file_uuid:
+    if hasattr(req.state, "file_uuid") and str(file_uuid) != str(req.state.file_uuid):
         raise HTTPException(400, detail="File does not match token UUID")
 
-    file_info = SubmissionFile(uuid=file_uuid, filestore=request.app._filestore)
-    request.app._db.lock()
-    file_info.load(request.app._db)
+    file_info = SubmissionFile(uuid=file_uuid, filestore=req.app._filestore)
+    req.app._db.lock()
+    file_info.load(req.app._db)
     
     if not file_info.found:
-        request.app._db.unlock()
+        req.app._db.unlock()
         raise HTTPException(404, detail="File not found")
 
 
@@ -76,7 +76,7 @@ def download_file(request : Request, file_uuid : uuid.UUID, format: str):
 
         if format == 'enczip':
             new_zip = pyzipper.AESZipFile(out_stream, "w", compression=pyzipper.ZIP_DEFLATED, encryption=pyzipper.WZ_AES)
-            new_zip.setpassword(request.app._config['default_zip_password'].encode('utf-8'))
+            new_zip.setpassword(req.app._config['default_zip_password'].encode('utf-8'))
         elif format == 'zip':
             new_zip = zipfile.ZipFile(out_stream, "w", compression=pyzipper.ZIP_DEFLATED)
 
@@ -85,14 +85,14 @@ def download_file(request : Request, file_uuid : uuid.UUID, format: str):
 
         new_zip.close()
         out_stream.seek(0)
-        request.app._db.unlock()
+        req.app._db.unlock()
 
         out_headers = {'Content-Disposition': f'attachment; filename="{file_info.name}.zip"'}
         return Response(content=out_stream.read(), media_type='application/zip', headers=out_headers)
 
     elif format == 'raw' or format == 'hex':
         if format == 'raw':
-            request.app._db.unlock()
+            req.app._db.unlock()
 
             out_headers = {'Content-Disposition': f'attachment; filename="{file_info.name}_"'}
             return Response(content=raw_file.read(), media_type='application/octet-stream', headers=out_headers)

@@ -79,6 +79,7 @@ export default {
         self.error_message = null;
         api.do_login(self.$refs.username.value, self.$refs.password.value, 
             function(response){
+                console.log(response)
                 session.updateSession(self.$refs.username.value, response['api_key'], response['roles']);
                 router.push({ name: 'Home'});
             },
@@ -86,7 +87,7 @@ export default {
                 if (status_code == 401) {
                     self.error_message = "Login failed. Wrong username or password."
                 } else {
-                    self.error_message = "An error occcured. Please contact system administator."
+                    self.error_message = "An error occurred. Please contact system administrator."
                 }   
             }
         )

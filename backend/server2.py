@@ -48,17 +48,31 @@ Kogia can support a wide variety of malware analysis pipelines and supports all 
 analyze, compare, and explore malware.
 """
 
-api_key = APIKeyHeader(name="x-api-key", auto_error=False)
+api_key = APIKeyHeader(name="X-Kogia-API-Auth", auto_error=False)
 
 async def handle_api_key(req: Request, key: str = Security(api_key)):
 
     ok = False
 
-    if req.client.host in ("127.0.0.1", "testclient"):
+    if req.client.host in ("testclient",):
         req.app.req_username = "localapi"
         ok = True
     elif req.url.path in ("/api/v1/authenticate",):
         ok = True
+    # Extra checks ensure we won't use this for endpoints other then download endpoints
+    elif 'download_token' in req.query_params and req.method == "GET" and req.url.path.endswith("/download"):
+        download_token = req.query_params['download_token']
+        req.app._download_tokens_lock.acquire()
+        if download_token in app._download_tokens:
+            # Pass to API endpoint the file UUID to ensure we aren't downloading a different file
+            # TODO: Check if this is thread safe
+            req.state.file_uuid = download_token.split(":")[1]
+            req.app._download_tokens.remove(download_token)
+            req.app._download_tokens_lock.release()
+            ok = True
+        else:
+            req.app._download_tokens_lock.release()
+            ok = False
     elif req.app._auth is not None:
         ok, username, roles = req.app._auth.authenticate_existing(key)
         if not ok:

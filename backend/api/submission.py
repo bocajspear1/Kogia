@@ -176,13 +176,12 @@ def get_submission_info(req : Request, uuid : str) -> SubmissionItem:
     submission_display = SubmissionItem(**submission.to_dict(files=True))
     return submission_display
 
-@router.get('/{uuid}/gettoken')
-def get_submission_token(req : Request, uuid : str) -> DownloadTokenResponse:
+@router.get('/{submission_uuid}/gettoken')
+def get_submission_token(req : Request, submission_uuid : str) -> DownloadTokenResponse:
     """
     Get submission download token. Use this token to download a file.
     """
-    print(uuid)
-    submission = Submission(uuid=uuid)
+    submission = Submission(uuid=submission_uuid)
     req.app._db.lock()
     submission.load(req.app._db)
 
@@ -194,18 +193,25 @@ def get_submission_token(req : Request, uuid : str) -> DownloadTokenResponse:
     
     req.app._db.unlock()
     
-    new_token = generate_download_token(req.app)
+    new_token = generate_download_token(req.app, submission_uuid)
 
     return DownloadTokenResponse(download_token=new_token)
 
-@router.get('/{uuid}/download')
-def download_submission(req : Request, uuid : str, nopassword : OptionalFlagParam = Query(None, description="Set to disable archive encryption",)):
-    submission = Submission(uuid=uuid)
+@router.get('/{submission_uuid}/download')
+def download_submission(req : Request, submission_uuid : str, nopassword : OptionalFlagParam = Query(None, description="Set to disable archive encryption",)):
+
+
+    if hasattr(req.state, "file_uuid") and str(submission_uuid) != str(req.state.file_uuid):
+        raise HTTPException(400, detail="File does not match token UUID")
+    
+    submission = Submission(uuid=submission_uuid)
     req.app._db.lock()
     submission.load(req.app._db)
     if submission.uuid == None:
         req.app._db.unlock()
         raise HTTPException(404, detail="Submission not found")
+    
+    
 
     if nopassword is None:
         nopassword = False

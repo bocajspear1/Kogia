@@ -95,6 +95,13 @@ def workers_cmd(ctx):
 def dbauth_group():
     pass
 
+
+@dbauth_group.command('list')
+@click.pass_obj
+def listuser_cmd(ctx):
+    auth = DBAuth(ctx.db)
+    print(auth.list_users())
+
 @dbauth_group.command('adduser')
 @click.argument('username')
 @click.option('--role', '-r', multiple=True, type=click.Choice(ROLES, case_sensitive=False))

@@ -69,7 +69,7 @@ export default  {
         ).then(function (resp) {
             var resp_data = resp['data'];
             on_succeeded(resp_data);
-        }).catch(function (error) {
+        }).catch(function (resp) {
             on_failed(resp.response.status, resp.message);
         });
     },
@@ -84,7 +84,7 @@ export default  {
         }, post_data, on_succeeded, on_failed);
     },
     do_login: function(username, password, on_succeeded, on_failed){
-        this.api_post_form('/authenticate', {
+        this.api_post_json('/authenticate/password', {
             username: username,
             password: password
         }, on_succeeded, on_failed);

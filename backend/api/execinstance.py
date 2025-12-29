@@ -99,7 +99,7 @@ def get_execinstance_netcomm(req : Request, exec_uuid : uuid.UUID, address : Opt
     return NetCommList(netcomms=netcomm_list, total=exec_instance.network_comms_total, statistics=comm_stats)
 
 @router.get('/{exec_uuid}/thumbnail/{name}')
-def get_execinstance_thumbnails(req : Request, exec_uuid : uuid.UUID, name : str):
+def get_execinstance_thumbnails(req : Request, exec_uuid : uuid.UUID, name : str) -> ScreenshotResponse:
 
     req.app._db.lock()
     exec_instance = ExecInstance(uuid=exec_uuid)
@@ -120,7 +120,7 @@ def get_execinstance_thumbnails(req : Request, exec_uuid : uuid.UUID, name : str
         raise HTTPException(404, "Screenshot not found")
 
 @router.get('/{exec_uuid}/screenshot/{name}')
-def get_execinstance_screenshot(req : Request, exec_uuid : uuid.UUID, name : str):
+def get_execinstance_screenshot(req : Request, exec_uuid : uuid.UUID, name : str) -> ScreenshotResponse:
 
     req.app._db.lock()
     exec_instance = ExecInstance(uuid=exec_uuid)
