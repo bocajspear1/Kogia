@@ -60,22 +60,19 @@ def submit_sample(req : Request,
         new_submission.description = description
         new_submission.name = name
 
-        for file_uuid in file_uuids:
+        with req.app._db.lock:
+            for file_uuid in file_uuids:
 
-            req.app._db.lock()
-            resubmit_file = SubmissionFile(uuid=file_uuid, filestore=req.app._filestore)
-            resubmit_file.load(req.app._db)
-            if resubmit_file.uuid is None:
-                req.app._db.unlock()
-                raise HTTPException(404, detail=f"File {file_uuid} not found")
-            else:
-                new_submission.add_file(resubmit_file)
 
-            req.app._db.unlock()
+                resubmit_file = SubmissionFile(uuid=file_uuid, filestore=req.app._filestore)
+                resubmit_file.load(req.app._db)
+                if resubmit_file.uuid is None:
+                    raise HTTPException(404, detail=f"File {file_uuid} not found")
+                else:
+                    new_submission.add_file(resubmit_file)
 
-        req.app._db.lock()
-        new_submission.save(req.app._db)
-        req.app._db.unlock()
+            new_submission.save(req.app._db)
+        
 
         return NewSubmissionResponse(submission_uuid=str(new_submission.uuid))
 
@@ -95,38 +92,34 @@ def submit_sample(req : Request,
         new_submission.description = description
         new_submission.name = name
 
-        req.app._db.lock()
-        new_submission.load_files(req.app._db, req.app._filestore)
-        req.app._db.unlock()
+        with req.app._db.lock:
+            new_submission.load_files(req.app._db, req.app._filestore)
 
-        for uploaded_file in file_list:
-            filename = secure_filename(uploaded_file.filename)
-            new_file = new_submission.generate_file(filename)
+            for uploaded_file in file_list:
+                filename = secure_filename(uploaded_file.filename)
+                new_file = new_submission.generate_file(filename)
 
-            # Save file to filestore
-            file_io = new_file.create_file()
-            shutil.copyfileobj(uploaded_file.file, file_io)
-            new_file.close_file()
+                # Save file to filestore
+                file_io = new_file.create_file()
+                shutil.copyfileobj(uploaded_file.file, file_io)
+                new_file.close_file()
+                
+                new_submission.add_file(new_file)
+                new_file.save(req.app._db)
+                # Don't need to load_metadata, since a generate_file initializes metadata
 
-            req.app._db.lock()
-            
-            new_submission.add_file(new_file)
-            new_file.save(req.app._db)
-            # Don't need to load_metadata, since a generate_file initializes metadata
 
-            req.app._db.unlock()
+        
+            new_submission.save(req.app._db)
 
-        req.app._db.lock()
-        new_submission.save(req.app._db)
-        req.app._db.unlock()
-
-        new_job = Job.new(new_submission, None, req.app._db_factory.new(), req.app._filestore)
-        # No primary is set, since we are just identifying
-        identify_plugins = req.app._manager.get_plugin_list('identify')
-        new_job.add_plugin_list(identify_plugins)
-        unarchive_plugins = req.app._manager.get_plugin_list('unarchive')
-        new_job.add_plugin_list(unarchive_plugins)
-        new_job.save()
+        with req.app._db.lock:
+            new_job = Job.new(new_submission, None, req.app._db_factory.new(), req.app._filestore)
+            # No primary is set, since we are just identifying
+            identify_plugins = req.app._manager.get_plugin_list('identify')
+            new_job.add_plugin_list(identify_plugins)
+            unarchive_plugins = req.app._manager.get_plugin_list('unarchive')
+            new_job.add_plugin_list(unarchive_plugins)
+            new_job.save()
 
         req.app._worker_manager.assign_job(new_job.uuid)
 
@@ -135,16 +128,14 @@ def submit_sample(req : Request,
 @router.get('/list')
 def get_submission_list(req : Request, file : OptionalStrParam = None, skip=0, limit=30) -> SubmissionItemList:
     
-    req.app._db.lock()
-    file_uuid = file
-    submissions = []
-    total_count = 0
-    if file_uuid is not None:
-        submissions, total_count = Submission.list_dict(req.app._db, file_uuid=file_uuid, skip=skip, limit=limit)
-    else:
-        submissions, total_count = Submission.list_dict(req.app._db, skip=skip, limit=limit)
-
-    req.app._db.unlock()
+    with req.app._db.lock:
+        file_uuid = file
+        submissions = []
+        total_count = 0
+        if file_uuid is not None:
+            submissions, total_count = Submission.list_dict(req.app._db, file_uuid=file_uuid, skip=skip, limit=limit)
+        else:
+            submissions, total_count = Submission.list_dict(req.app._db, skip=skip, limit=limit)
 
     ret_list = []
     for submission in submissions:
@@ -159,19 +150,16 @@ def get_submission_list(req : Request, file : OptionalStrParam = None, skip=0, l
 @router.get('/{uuid}/info')
 def get_submission_info(req : Request, uuid : str) -> SubmissionItem:
     submission = Submission(uuid=uuid)
-    req.app._db.lock()
-    submission.load(req.app._db)
-    # "uuid" is set to None is the submission is not found
-    if submission.uuid == None:
-        req.app._db.unlock()
-        raise HTTPException(404, detail="Submission not found")
-        
-    submission.load_files(req.app._db, req.app._filestore)
-    if submission.uuid == None:
-        req.app._db.unlock()
-        raise HTTPException(404, detail="Submission not found")
-    
-    req.app._db.unlock()
+    with req.app._db.lock:
+        submission.load(req.app._db)
+        # "uuid" is set to None is the submission is not found
+        if submission.uuid == None:
+            raise HTTPException(404, detail="Submission not found")
+            
+        submission.load_files(req.app._db, req.app._filestore)
+        if submission.uuid == None:
+            raise HTTPException(404, detail="Submission not found")
+
 
     submission_display = SubmissionItem(**submission.to_dict(files=True))
     return submission_display
@@ -182,16 +170,14 @@ def get_submission_token(req : Request, submission_uuid : str) -> DownloadTokenR
     Get submission download token. Use this token to download a file.
     """
     submission = Submission(uuid=submission_uuid)
-    req.app._db.lock()
-    submission.load(req.app._db)
+    with req.app._db.lock:
+        submission.load(req.app._db)
 
-    # TODO: Perform any file access permissions here, as /download doesn't have the user info
-    
-    if submission.uuid == None:
-        req.app._db.unlock()
-        raise HTTPException(404, detail="Submission not found")
-    
-    req.app._db.unlock()
+        # TODO: Perform any file access permissions here, as /download doesn't have the user info
+        
+        if submission.uuid == None:
+            raise HTTPException(404, detail="Submission not found")
+
     
     new_token = generate_download_token(req.app, submission_uuid)
 
@@ -204,19 +190,16 @@ def download_submission(req : Request, submission_uuid : str, nopassword : Optio
     if hasattr(req.state, "file_uuid") and str(submission_uuid) != str(req.state.file_uuid):
         raise HTTPException(400, detail="File does not match token UUID")
     
-    submission = Submission(uuid=submission_uuid)
-    req.app._db.lock()
-    submission.load(req.app._db)
-    if submission.uuid == None:
-        req.app._db.unlock()
-        raise HTTPException(404, detail="Submission not found")
-    
-    
-
     if nopassword is None:
         nopassword = False
 
-    submission.load_files(req.app._db, req.app._filestore)
+    submission = Submission(uuid=submission_uuid)
+    with req.app._db.lock:
+        submission.load(req.app._db)
+        if submission.uuid == None:
+            raise HTTPException(404, detail="Submission not found")
+
+        submission.load_files(req.app._db, req.app._filestore)
 
     new_zip = None
     out_stream = io.BytesIO()
@@ -235,7 +218,7 @@ def download_submission(req : Request, submission_uuid : str, nopassword : Optio
     new_zip.close()
     out_stream.seek(0)
 
-    req.app._db.unlock()
+    
     out_headers = {'Content-Disposition': f'attachment; filename="{submission.uuid}.zip"'}
     return Response(content=out_stream.read(), media_type='application/zip', headers=out_headers)
 

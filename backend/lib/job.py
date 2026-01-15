@@ -59,6 +59,8 @@ class Job(VertexObject):
                     job_item['primary_name'] = file_data['name']
                 else:
                     job_item['primary_name'] = ""
+            else:
+                job_item['primary_name'] = ""
             new_list.append(job_item)
         
         total_len = 0

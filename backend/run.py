@@ -23,12 +23,9 @@ def run_workers_only(config, workers):
         for worker in workers:
             worker.stop_worker_receivers()
 
-def run_gunicorn(config, workers, address, port):
+def run_uvicorn(config, workers, address, port, insecure):
 
     configure_logging(config)
-
-    import gunicorn.app.base
-    from gunicorn import util
 
     run_worker_receivers(config, workers)
 
@@ -36,38 +33,30 @@ def run_gunicorn(config, workers, address, port):
         return 1
         # return (multiprocessing.cpu_count() * 2) + 1
 
-    options = {
-        'bind': '%s:%s' % (address, port),
-        'workers': number_of_workers(),
-        "accesslog": "./logs/kogia-web.log",
-        "certfile": config['certfile'],
-        "keyfile": config['keyfile'],
-        "timeout": 5*60,
-        # "loglevel": "debug"
-    }
 
-    class StandaloneApplication(gunicorn.app.base.BaseApplication):
+    import uvicorn
 
-        def __init__(self, app_uri, options=None):
-            self.app_uri = app_uri
-            self.options = options
-            super().__init__()
+    app_name = "backend.main:app"
+    access_log_path = "./logs/kogia-web.log"
+    if 'access_log_path' in config:
+        access_log_path = config['access_log_path']
 
-        def load_config(self):
-            config = {key: value for key, value in self.options.items()
-                    if key in self.cfg.settings and value is not None}
-            for key, value in config.items():
-                self.cfg.set(key.lower(), value)
-
-        def load(self):
-            return util.import_app(self.app_uri)
-
-    StandaloneApplication("backend.server:app", options).run()
-
-def run_waitress(config, workers, address, port):
-    from waitress import serve
-    from backend.server import app
-
-    run_worker_receivers(config, workers)
-
-    serve(app, listen='%s:%s' % (address, port))
+    server_config = None
+    if not insecure:
+        server_config = uvicorn.Config(app_name, 
+                                host=address, 
+                                port=port, 
+                                access_log=access_log_path,
+                                workers=number_of_workers(),
+                                ssl_keyfile=config['keyfile'],
+                                ssl_certfile=config['certfile']
+                            )
+    else:
+        server_config = uvicorn.Config(app_name, 
+                                host=address, 
+                                port=port, 
+                                access_log=access_log_path,
+                                workers=number_of_workers()
+                            )
+    server = uvicorn.Server(server_config)
+    server.run()

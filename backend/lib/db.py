@@ -81,11 +81,9 @@ class ArangoConnection():
     def version(self):
         return self._db.version()
 
+    @property
     def lock(self):
-        self._db_lock.acquire()
-
-    def unlock(self):
-        self._db_lock.release()
+        return self._db_lock
 
     def truncate_all_collections(self):
         """

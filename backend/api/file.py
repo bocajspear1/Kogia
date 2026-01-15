@@ -17,15 +17,28 @@ from .types import OptionalStrParam, SubmissionFileItem, SubmissionFileList, Dow
 router = APIRouter(tags=['file'])
 
 #
-# Plugin API endpoints
+# File API endpoints
 #
 
+@router.get('/list')
+def get_file_list(req : Request, skip: int = 0, limit: int = 30, q : OptionalStrParam = None) -> SubmissionFileList:
+    
+    with req.app._db.lock:
+        result_list, file_count = SubmissionFile.list_dict(req.app._db, skip=skip, limit=limit, search=q)
+    
+
+    file_list = []
+    for item in result_list:
+        file_list.append(SubmissionFileItem(**item))
+
+    return SubmissionFileList(files=file_list, total=file_count)
+
 @router.get('/{file_uuid}/info')
-def get_file_info(request : Request, file_uuid : uuid.UUID) -> SubmissionFileItem:
-    file_info = SubmissionFile(uuid=file_uuid, filestore=request.app._filestore)
-    request.app._db.lock()
-    file_info.load(request.app._db)
-    request.app._db.unlock()
+def get_file_info(req : Request, file_uuid : uuid.UUID) -> SubmissionFileItem:
+    file_info = SubmissionFile(uuid=file_uuid, filestore=req.app._filestore)
+    with req.app._db.lock:
+        file_info.load(request.app._db)
+    
 
     if not file_info.found:
         raise HTTPException(404, detail="File not found")
@@ -33,20 +46,17 @@ def get_file_info(request : Request, file_uuid : uuid.UUID) -> SubmissionFileIte
     return SubmissionFileItem(**file_info.to_dict())
 
 @router.get('/{file_uuid}/gettoken')
-def get_file_token(request : Request, file_uuid : uuid.UUID) -> DownloadTokenResponse:
-    file_info = SubmissionFile(uuid=file_uuid, filestore=request.app._filestore)
-    request.app._db.lock()
-    file_info.load(request.app._db)
+def get_file_token(req : Request, file_uuid : uuid.UUID) -> DownloadTokenResponse:
+    file_info = SubmissionFile(uuid=file_uuid, filestore=req.app._filestore)
+    with req.app._db.lock:
+        file_info.load(req.app._db)
 
     # TODO: Perform any file access permissions here, as /download doesn't have the user info
     
-
     if not file_info.found:
-        request.app._db.unlock()
         raise HTTPException(404, detail="File not found")
     
-    new_token = generate_download_token(request.app, file_info.uuid)
-    request.app._db.unlock()
+    new_token = generate_download_token(req.app, file_info.uuid)
 
     return DownloadTokenResponse(download_token=new_token)
 
@@ -57,12 +67,11 @@ def download_file(req : Request, file_uuid : uuid.UUID, format: str):
         raise HTTPException(400, detail="File does not match token UUID")
 
     file_info = SubmissionFile(uuid=file_uuid, filestore=req.app._filestore)
-    req.app._db.lock()
-    file_info.load(req.app._db)
-    
-    if not file_info.found:
-        req.app._db.unlock()
-        raise HTTPException(404, detail="File not found")
+    with req.app._db.lock:
+        file_info.load(req.app._db)
+        
+        if not file_info.found:
+            raise HTTPException(404, detail="File not found")
 
 
     if format is None or format not in ('raw', 'zip', 'enczip', 'hex'):
@@ -85,15 +94,12 @@ def download_file(req : Request, file_uuid : uuid.UUID, format: str):
 
         new_zip.close()
         out_stream.seek(0)
-        req.app._db.unlock()
 
         out_headers = {'Content-Disposition': f'attachment; filename="{file_info.name}.zip"'}
         return Response(content=out_stream.read(), media_type='application/zip', headers=out_headers)
 
     elif format == 'raw' or format == 'hex':
         if format == 'raw':
-            req.app._db.unlock()
-
             out_headers = {'Content-Disposition': f'attachment; filename="{file_info.name}_"'}
             return Response(content=raw_file.read(), media_type='application/octet-stream', headers=out_headers)
         else:
@@ -110,15 +116,13 @@ def download_file(req : Request, file_uuid : uuid.UUID, format: str):
 
 
 @router.get('/{file_uuid}/metadata/list')
-def get_file_metadata_types(request : Request, file_uuid : uuid.UUID) -> MetadataMap:
-    file_obj = SubmissionFile(uuid=file_uuid, filestore=request.app._filestore)
-    request.app._db.lock()
-    file_obj.load(request.app._db)
-    if not file_obj.found:
-        request.app._db.unlock()
-        raise HTTPException(404, detail="File not found")
-    file_obj.load_metadata(request.app._db)
-    request.app._db.unlock()
+def get_file_metadata_types(req : Request, file_uuid : uuid.UUID) -> MetadataMap:
+    file_obj = SubmissionFile(uuid=file_uuid, filestore=req.app._filestore)
+    with req.app._db.lock:
+        file_obj.load(req.app._db)
+        if not file_obj.found:
+            raise HTTPException(404, detail="File not found")
+        file_obj.load_metadata(req.app._db)
 
     return_map = {}
 
@@ -131,16 +135,14 @@ def get_file_metadata_types(request : Request, file_uuid : uuid.UUID) -> Metadat
     return return_map
 
 @router.get('/{file_uuid}/metadata/{metatype}/list')
-def get_file_metadata_list(request : Request, file_uuid : uuid.UUID, metatype: str, filter: OptionalStrParam = None, skip: int = 0, limit: int = 30) -> MetadataList:
+def get_file_metadata_list(req : Request, file_uuid : uuid.UUID, metatype: str, filter: OptionalStrParam = None, skip: int = 0, limit: int = 30) -> MetadataList:
 
-    file_obj = SubmissionFile(uuid=file_uuid, filestore=request.app._filestore)
-    request.app._db.lock()
-    file_obj.load(request.app._db)
-    if not file_obj.found:
-        request.app._db.unlock()
-        raise HTTPException(404, detail="File not found")
-    file_obj.load_metadata(request.app._db, mtype=metatype.strip(), skip=skip, limit=limit, filter=filter, as_dict=True)
-    request.app._db.unlock()
+    file_obj = SubmissionFile(uuid=file_uuid, filestore=req.app._filestore)
+    with req.app._db.lock:
+        file_obj.load(req.app._db)
+        if not file_obj.found:
+            raise HTTPException(404, detail="File not found")
+        file_obj.load_metadata(req.app._db, mtype=metatype.strip(), skip=skip, limit=limit, filter=filter, as_dict=True)
 
     metadata_list = []
 

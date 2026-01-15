@@ -65,7 +65,7 @@ import Notifications from '@/components/general/Notifications.vue'
                             {{ file.name }}
                         </div>
                         <div class="list-item-description">
-                            <span>{{  file.hash  }}</span>
+                            <span class="is-size-7">{{  file.hash  }}</span>
                             <span class="tag m-1" v-if="file.exec_arch != ''">
                                 <strong>Architecture:</strong>&nbsp;{{ file.exec_arch }}
                             </span>
@@ -291,21 +291,24 @@ export default {
                 }
             )
         } else {
-            api.get_search(new_value, self.search_type, 
-                function(data) {
-                    console.log(data)
-                    if (self.search_type == 'metadata') {
-                        self.metadata_list = data['results'];
-                    } else if (self.search_type == 'files') {
-                        self.file_list = data['results'];
+
+            
+            
+
+            if (self.search_type == "files") {
+                api.get_file_list(0, 30, new_value, 
+                    function(data) {
+                        self.file_list = data.files;
+                        self.is_loading = false;
+                    },
+                    function(status, data) {
+                        self.is_loading = false;
+                        self.$refs.notifications.addNotification("error", "Error: " + data);
                     }
-                    self.is_loading = false;
-                },
-                function(status, data) {
-                    self.is_loading = false;
-                    self.$refs.notifications.addNotification("error", "Upload Error: " + data);
-                }
-            )
+                );
+            } else if (self.search_type == 'metadata') {
+
+            }
         }
         
 

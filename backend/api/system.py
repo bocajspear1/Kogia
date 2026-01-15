@@ -23,13 +23,12 @@ def version() -> VersionResponse:
 
 
 @router.get('/stats')
-def stats(request: Request) -> StatsResponse:
+def stats(req: Request) -> StatsResponse:
 
-    request.app._db.lock()
-    submission_count = request.app._db.count('submissions')
-    file_count = request.app._db.count('files')
-    job_count = request.app._db.count('jobs')
-    request.app._db.unlock()
+    with req.app._db.lock:
+        submission_count = req.app._db.count('submissions')
+        file_count = req.app._db.count('files')
+        job_count = req.app._db.count('jobs')
 
     stats_resp = StatsResponse(
         version=VERSION,
@@ -42,11 +41,11 @@ def stats(request: Request) -> StatsResponse:
 
 
 @router.get('/usage')
-def usage(request: Request) -> UsageResponse:
+def usage(req: Request) -> UsageResponse:
 
     system_string = get_system_string()
     memory_total, memory_used = get_memory_usage()
-    storage_total, storage_used = request.app._filestore.get_space()
+    storage_total, storage_used = req.app._filestore.get_space()
     local_storage_total, local_storage_used = get_local_storage()
 
     usage = UsageResponse(
@@ -63,11 +62,10 @@ def usage(request: Request) -> UsageResponse:
     return usage
 
 @router.get('/runners')
-def runners(request: Request) -> RunnersResponse:
+def runners(req: Request) -> RunnersResponse:
 
-    request.app._db.lock()
-    runner_data = request.app._db.all('runners')
-    request.app._db.unlock()
+    with req.app._db.lock:
+        runner_data = req.app._db.all('runners')
 
     runners = RunnersResponse(runners=list(runner_data))
 

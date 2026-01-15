@@ -11,11 +11,11 @@ router = APIRouter(tags=['report'])
 
 @router.get('/{uuid}')
 def get_report(req : Request, uuid : str) -> ReportItem:
-    req.app._db.lock()
-    report = Report(uuid=uuid)
-    report.load(req.app._db)
-    req.app._db.unlock()
-    if not report.found:
-        raise HTTPException(404, detail="Report not found")
+    with req.app._db.lock:
+        report = Report(uuid=uuid)
+        report.load(req.app._db)
+
+        if not report.found:
+            raise HTTPException(404, detail="Report not found")
 
     return ReportItem(**report.to_dict())

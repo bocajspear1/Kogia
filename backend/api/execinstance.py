@@ -21,16 +21,14 @@ router = APIRouter(tags=['exec_instance'])
 def get_exec_instance(req : Request, uuid : uuid.UUID) -> ExecInstanceItem:
 
     exec_instance = ExecInstance(uuid=uuid)
-    req.app._db.lock()
-    
-    exec_instance.load(req.app._db)
-    
-    if not exec_instance.found:
-        req.app._db.unlock()
-        raise HTTPException(404, "Execution instance not found")
 
-    exec_instance.load_processes(req.app._db)
-    req.app._db.unlock()
+    with req.app._db.lock:
+        exec_instance.load(req.app._db)
+        
+        if not exec_instance.found:
+            raise HTTPException(404, "Execution instance not found")
+
+        exec_instance.load_processes(req.app._db)
 
     exec_inst_dict = exec_instance.to_dict(full=True)
 
@@ -41,16 +39,16 @@ def get_exec_instance(req : Request, uuid : uuid.UUID) -> ExecInstanceItem:
 def get_execinstance_metadata_list(req : Request, uuid : uuid.UUID, metatype: str, filter: OptionalStrParam = None, skip: int = 0, limit: int = 50) -> MetadataList:
    
 
-    req.app._db.lock()
+   
     exec_instance = ExecInstance(uuid=uuid)
-    exec_instance.load(req.app._db)
 
-    if not exec_instance.found:
-        req.app._db.unlock()
-        raise HTTPException(404, "Execution instance not found")
+    with req.app._db.lock:
+        exec_instance.load(req.app._db)
 
-    exec_instance.load_metadata(req.app._db, mtype=metatype.strip(), skip=skip, limit=limit, filter=filter, as_dict=True)
-    req.app._db.unlock()
+        if not exec_instance.found:
+            raise HTTPException(404, "Execution instance not found")
+
+        exec_instance.load_metadata(req.app._db, mtype=metatype.strip(), skip=skip, limit=limit, filter=filter, as_dict=True)
 
     metadata_list = []
 
@@ -61,36 +59,35 @@ def get_execinstance_metadata_list(req : Request, uuid : uuid.UUID, metatype: st
 
 @router.get('/{exec_uuid}/metadata/list')
 def get_execinstance_metadata_types(req : Request, exec_uuid : uuid.UUID) -> MetadataMap:
-    req.app._db.lock()
-    exec_instance = ExecInstance(uuid=exec_uuid)
-    exec_instance.load(req.app._db)
-
-    if not exec_instance.found:
-        req.app._db.unlock()
-        raise HTTPException(404, "Execution instance not found")
     
-    exec_instance.load_metadata(req.app._db)
-    req.app._db.unlock()
+    exec_instance = ExecInstance(uuid=exec_uuid)
 
-    return_map = exec_instance.get_metadata_types()
+    with req.app._db.lock:
+        exec_instance.load(req.app._db)
+
+        if not exec_instance.found:
+            raise HTTPException(404, "Execution instance not found")
+        
+        exec_instance.load_metadata(req.app._db)
+
+        return_map = exec_instance.get_metadata_types()
 
     return return_map
 
 @router.get('/{exec_uuid}/netcomm/list')
 def get_execinstance_netcomm(req : Request, exec_uuid : uuid.UUID, address : OptionalStrParam = None, port : OptionalIntParam = None, skip: int = 0, limit: int = 50):
 
-    req.app._db.lock()
-    exec_instance = ExecInstance(uuid=exec_uuid)
-    exec_instance.load(req.app._db)
+    with req.app._db.lock:
+        exec_instance = ExecInstance(uuid=exec_uuid)
+        exec_instance.load(req.app._db)
 
-    if not exec_instance.found:
-        req.app._db.unlock()
-        raise HTTPException(404, "Execution instance not found")
+        if not exec_instance.found:
+            raise HTTPException(404, "Execution instance not found")
+        
+        
+        exec_instance.load_netcomms(req.app._db, limit=limit, skip=skip, as_dict=True, port_filter=port, address_filter=address)
+        comm_stats = exec_instance.network_comm_statistics
     
-    
-    exec_instance.load_netcomms(req.app._db, limit=limit, skip=skip, as_dict=True, port_filter=port, address_filter=address)
-    comm_stats = exec_instance.network_comm_statistics
-    req.app._db.unlock()
 
     netcomm_list = []
     for item in exec_instance.network_comms:
@@ -101,14 +98,12 @@ def get_execinstance_netcomm(req : Request, exec_uuid : uuid.UUID, address : Opt
 @router.get('/{exec_uuid}/thumbnail/{name}')
 def get_execinstance_thumbnails(req : Request, exec_uuid : uuid.UUID, name : str) -> ScreenshotResponse:
 
-    req.app._db.lock()
-    exec_instance = ExecInstance(uuid=exec_uuid)
-    exec_instance.load(req.app._db)
+    with req.app._db.lock:
+        exec_instance = ExecInstance(uuid=exec_uuid)
+        exec_instance.load(req.app._db)
 
-    if not exec_instance.found:
-        req.app._db.unlock()
-        raise HTTPException(404, "Execution instance not found")
-    req.app._db.unlock()
+        if not exec_instance.found:
+            raise HTTPException(404, "Execution instance not found")
 
     if name in exec_instance.screenshots:
         thumb_name = f"{name}-t"
@@ -122,15 +117,12 @@ def get_execinstance_thumbnails(req : Request, exec_uuid : uuid.UUID, name : str
 @router.get('/{exec_uuid}/screenshot/{name}')
 def get_execinstance_screenshot(req : Request, exec_uuid : uuid.UUID, name : str) -> ScreenshotResponse:
 
-    req.app._db.lock()
-    exec_instance = ExecInstance(uuid=exec_uuid)
-    exec_instance.load(req.app._db)
+    with req.app._db.lock:
+        exec_instance = ExecInstance(uuid=exec_uuid)
+        exec_instance.load(req.app._db)
 
-    if not exec_instance.found:
-        req.app._db.unlock()
-        raise HTTPException(404, "Execution instance not found")
-    
-    req.app._db.unlock()
+        if not exec_instance.found:
+            raise HTTPException(404, "Execution instance not found")
 
     if name in exec_instance.screenshots:
         screenshot_name = f"{name}"

@@ -22,7 +22,10 @@ def get_logging_config(config):
     if 'logpath' in config:
         log_path = config['logpath']
 
+    print(config)
+
     log_level = config.get('log_level', 'info').upper()
+    print(log_level)
     format_str = "%(asctime)s | %(levelname)-8s | %(name)s - %(message)s"
     if log_level == "DEBUG":
         format_str = "%(asctime)s | %(levelname)-8s | %(name)s:%(module)s:%(funcName)s:%(lineno)d - %(message)s"

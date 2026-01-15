@@ -74,7 +74,8 @@ class SubmissionFile(VertexObjectWithMetadata, FilestoreObject):
             filter_tuple = cls.get_search_tuple(search)
         print(search, filter_tuple)
         results = db.find_vertexes(cls.GRAPH_NAME, cls.COLLECTION, filter_tuple=filter_tuple, limit=limit, skip=skip)
-        return results
+        total_len = db.find_vertexes(cls.GRAPH_NAME, cls.COLLECTION, filter_tuple=filter_tuple, count_only=True)[0]
+        return results, total_len
 
     def __init__(self, uuid=None, id=None, filestore=None):
         VertexObjectWithMetadata.__init__(self, self.COLLECTION, 'has_metadata', id)

@@ -18,17 +18,15 @@ router = APIRouter(tags=['export'])
 @router.get('/{export_uuid}/download')
 def get_export(req: Request, export_uuid: uuid.UUID):
 
-    if hasattr(req.app, "file_uuid") and export_uuid != req.app.file_uuid:
+    if hasattr(req.state, "file_uuid") and str(export_uuid) != str(req.state.file_uuid):
         raise HTTPException(400, detail="File does not match token UUID")
 
     
-    req.app._db.lock()
-    export_file = ExportFile(uuid=export_uuid, filestore=req.app._filestore, db=req.app._db)
-    export_file.load(req.app._manager)
-    if not export_file.found:
-        raise HTTPException(404, detail="Export not found")
-
-    req.app._db.unlock()
+    with req.app._db.lock:
+        export_file = ExportFile(uuid=export_uuid, filestore=req.app._filestore, db=req.app._db)
+        export_file.load(req.app._manager)
+        if not export_file.found:
+            raise HTTPException(404, detail="Export not found")
 
     raw_file = export_file.open_file()
 

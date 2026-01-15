@@ -51,13 +51,10 @@ class PluginDisplay(BaseModel):
 class PluginDisplayList(BaseModel):
     plugins: List[PluginDisplay]
 
+# SubmissionFile
 
-class FileDisplay(BaseModel):
-    _key: str
-    uuid: str
+class SubmissionFileItem(BaseModel):
     name: str
-    file_id: str
-    dropped: bool
     mime_type: str
     unpacked_archive: bool
     exec_format: str
@@ -68,9 +65,14 @@ class FileDisplay(BaseModel):
     exec_packer: str
     target_os: str
     hash: str
-        
-class FileDisplayList(BaseModel):
-    submissions: List[FileDisplay]
+    dropped: bool
+    uuid: uuid.UUID
+
+class SubmissionFileList(BaseModel):
+    files: List[SubmissionFileItem]
+    total: int
+
+# Submission
 
 class SubmissionItem(BaseModel):
     _key: str
@@ -79,7 +81,7 @@ class SubmissionItem(BaseModel):
     submit_time: int
     name: str
     description: str
-    files: Optional[List[FileDisplay]]
+    files: Optional[List[SubmissionFileItem]]
         
 class SubmissionItemList(BaseModel):
     submissions: List[SubmissionItem]
@@ -112,6 +114,7 @@ class JobItem(BaseModel):
     _key: str
     user: str
     primary: Union[uuid.UUID, None]
+    primary_name: Union[str, None] = None
     submission: SubmissionItem
     start_time: int
     complete_time: int
@@ -148,25 +151,6 @@ class JobExportResponse(BaseModel):
     download_token: str
     export_uuid: uuid.UUID
 
-# SubmissionFile
-
-class SubmissionFileItem(BaseModel):
-    mime_type: str
-    unpacked_archive: bool
-    exec_format: str
-    exec_type: str
-    exec_arch: str
-    exec_bits: str
-    exec_interpreter: str
-    exec_packer: str
-    target_os: str
-    hash: str
-    dropped: bool
-    uuid: uuid.UUID
-
-class SubmissionFileList(BaseModel):
-    jobs: List[SubmissionFileItem]
-    total: int
 
 # Logs
 

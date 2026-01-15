@@ -1,0 +1,27 @@
+{
+    "certfile": "cert.pem",
+    "keyfile": "key.pem",
+    "db":{
+        "host": "localhost",
+        "port": 8529,
+        "user": "kogia",
+        "password": "XWFZ9z6HzrM69YtaAKVL",
+        "db_name": "kogia"
+    },
+    "auth": {
+        "DBAuth": {}
+    },
+    "filestore": {
+        "FileStoreFS": {
+            "dir": "./submissions-test"
+        }
+    },
+    "worker": {
+        "WorkerThread": {
+            "max_file": 3
+        }
+    },
+    "default_zip_password": "infected",
+    "docs_dir": "./docs",
+    "plugin_dirs": ["test_plugins"]
+}

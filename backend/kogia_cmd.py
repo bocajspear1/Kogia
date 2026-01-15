@@ -59,22 +59,20 @@ def run_group():
     pass
 
 @run_group.command('web')
-@click.option('--port', "-p", help="Port to bind to", default=4000)
+@click.option('--port', "-p", help="Port to bind to", default=8000)
 @click.option('--addr', "-a", help="Set address to bind to", default="0.0.0.0")
+@click.option('--insecure', "-i",  is_flag=True, help="Run as HTTP")
 @click.option("--debug", is_flag=True, help="Run in debug mode")
 @click.option("--noworkers", is_flag=True, help="Don't run workers too")
-@click.option("--waitress", is_flag=True, help="Run with Waitress instead of the default gunicorn")
 @click.pass_obj
-def web_cmd(ctx, port, addr, debug, noworkers, waitress):
+def web_cmd(ctx, port, addr, insecure, debug, noworkers):
+    server_config = ctx.config
     if debug is True:
-        ctx.config['loglevel'] = 'debug'
+        server_config['log_level'] = 'debug'
+    print(type(server_config))
     try:
-        if not waitress:
-            from backend.run import run_gunicorn
-            run_gunicorn(ctx.config, ctx.workers, addr, int(port))
-        else:
-            from backend.run import run_waitress
-            run_waitress(ctx.config, ctx.workers, addr, int(port))
+        from backend.run import run_uvicorn
+        run_uvicorn(server_config, ctx.workers, addr, int(port), insecure)
     except KeyboardInterrupt:
         print("Stopping...")
 

@@ -136,6 +136,13 @@ export default  {
     get_job_details: function(job_uuid, on_succeeded, on_failed) {
         this.api_call("/job/" + job_uuid + "/details", on_succeeded, on_failed);
     },
+    get_file_list: function(skip, limit, q, on_succeeded, on_failed) {
+        var url_string = "/file/list?skip=" + skip.toString() + "&limit=" + limit.toString()
+        if (q != "" && q != null) {
+            url_string += "&q=" + q;;
+        }
+        this.api_call(url_string, on_succeeded, on_failed);
+    },
     get_file_info: function(file_uuid, on_succeeded, on_failed) {
         this.api_call("/file/" + file_uuid + "/info", on_succeeded, on_failed);
     },

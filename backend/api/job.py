@@ -22,28 +22,26 @@ router = APIRouter(tags=['job'])
 
 @router.get('/list')
 def get_job_list(req : Request, submission_uuid : OptionalStrParam = None, skip=0, limit=30):
-    req.app._db.lock()
+    with req.app._db.lock:
 
-    if submission_uuid is not None:
-        if submission_uuid != "":
-            print(submission_uuid)
-            try:
-                uuid.UUID(submission_uuid)
-            except ValueError:
-                raise HTTPException(400, "Invalid UUID")
-        elif submission_uuid.strip() == "":
-            submission_uuid = None
+        if submission_uuid is not None:
+            if submission_uuid != "":
+                print(submission_uuid)
+                try:
+                    uuid.UUID(submission_uuid)
+                except ValueError:
+                    raise HTTPException(400, "Invalid UUID")
+            elif submission_uuid.strip() == "":
+                submission_uuid = None
 
+            
+        job_list = []
+        total_len = 0
         
-    job_list = []
-    total_len = 0
-    
-    if submission_uuid is None:
-        total_len, job_list = Job.list_dict(req.app._db, skip=skip, limit=limit)
-    else:
-        total_len, job_list = Job.list_dict(req.app._db, skip=skip, limit=limit, submission_uuid=submission_uuid)
-        
-    req.app._db.unlock()
+        if submission_uuid is None:
+            total_len, job_list = Job.list_dict(req.app._db, skip=skip, limit=limit)
+        else:
+            total_len, job_list = Job.list_dict(req.app._db, skip=skip, limit=limit, submission_uuid=submission_uuid)
 
     item_list = []
     for job in job_list:
@@ -56,39 +54,37 @@ def get_job_list(req : Request, submission_uuid : OptionalStrParam = None, skip=
 
 @router.get('/{uuid}/info')
 def get_job_info(req : Request, uuid : uuid.UUID):
-    req.app._db.lock()
-    job = Job(req.app._db, req.app._filestore, uuid=uuid)
-    job.load(req.app._manager)
-    if not job.found:
-        req.app._db.unlock()
-        raise HTTPException(404, "Job not found")
+    with req.app._db.lock:
+        job = Job(req.app._db, req.app._filestore, uuid=uuid)
+        job.load(req.app._manager)
+        if not job.found:
+            raise HTTPException(404, "Job not found")
     
-    resp = job.to_dict(full_dict=True)
+        resp = job.to_dict(full_dict=True)
 
-    submission = SubmissionItem(**resp['submission'])
-    resp['submission'] = submission
-    
-    signature_list = job.get_signatures()
-    resp['signature_count'] = len(signature_list)
-    reports_count, _ = job.get_reports()
-    resp['report_count'] = reports_count
-    exec_inst_count, _ = job.get_exec_instances()
-    resp['exec_inst_count'] = exec_inst_count
-    req.app._db.unlock()
+        submission = SubmissionItem(**resp['submission'])
+        resp['submission'] = submission
+        
+        signature_list = job.get_signatures()
+        resp['signature_count'] = len(signature_list)
+        reports_count, _ = job.get_reports()
+        resp['report_count'] = reports_count
+        exec_inst_count, _ = job.get_exec_instances()
+        resp['exec_inst_count'] = exec_inst_count
+
     return JobItemExtended(**resp)
 
 @router.get('/{uuid}/logs')
 def get_job_logs(req : Request, uuid : uuid.UUID, skip : int=0, limit : int=30):
     
-    req.app._db.lock()
-    job = Job(req.app._db, req.app._filestore, uuid=uuid)
-    job.load(req.app._manager)
-    if not job.found:
-        req.app._db.unlock()
-        raise HTTPException(404, "Job not found")
+    with req.app._db.lock:
+        job = Job(req.app._db, req.app._filestore, uuid=uuid)
+        job.load(req.app._manager)
+        if not job.found:
+            
+            raise HTTPException(404, "Job not found")
 
-    log_count, log_list = job.get_logs(skip=skip, limit=limit)
-    req.app._db.unlock()
+        log_count, log_list = job.get_logs(skip=skip, limit=limit)
 
     ret_list = []
     for item in log_list:
@@ -98,16 +94,14 @@ def get_job_logs(req : Request, uuid : uuid.UUID, skip : int=0, limit : int=30):
 
 @router.get('/{uuid}/reports')
 def get_job_reports(req : Request, uuid : uuid.UUID, file : OptionalStrParam = None, skip : int=0, limit : int=30) -> ReportList:
-    req.app._db.lock()
-    job = Job(req.app._db, req.app._filestore, uuid=uuid)
-    job.load(req.app._manager)
-    if not job.found:
-        req.app._db.unlock()
-        raise HTTPException(404, "Job not found")
+    with req.app._db.lock:
+        job = Job(req.app._db, req.app._filestore, uuid=uuid)
+        job.load(req.app._manager)
+        if not job.found:
+            raise HTTPException(404, "Job not found")
 
-    report_count, reports = job.get_reports(file_uuid=file, skip=skip, limit=limit)
+        report_count, reports = job.get_reports(file_uuid=file, skip=skip, limit=limit)
 
-    req.app._db.unlock()
 
     report_list = []
     for report in reports:
@@ -116,35 +110,31 @@ def get_job_reports(req : Request, uuid : uuid.UUID, file : OptionalStrParam = N
 
 @router.get('/{uuid}/signatures')
 def get_job_signatures(req : Request, uuid : uuid.UUID, file_uuid : OptionalStrParam = None) -> SignatureMatchList:
-    req.app._db.lock()
-    job = Job(req.app._db, req.app._filestore, uuid=uuid)
-    job.load(req.app._manager)
-    job.load_matches()
-    if not job.found:
-        req.app._db.unlock()
-        raise HTTPException(404, "Job not found")
-    matches = job.get_matches(file_uuid=file_uuid)
+    with req.app._db.lock:
+        job = Job(req.app._db, req.app._filestore, uuid=uuid)
+        job.load(req.app._manager)
+        job.load_matches()
+        if not job.found:
+            raise HTTPException(404, "Job not found")
+        matches = job.get_matches(file_uuid=file_uuid)
 
-    signature_list = []
-    for match_item in matches:
-        dict_item = match_item.to_dict(full=True)
-        signature_list.append(SignatureMatchItem(**dict_item, uuid=dict_item['_key']))
+        signature_list = []
+        for match_item in matches:
+            dict_item = match_item.to_dict(full=True)
+            signature_list.append(SignatureMatchItem(**dict_item, uuid=dict_item['_key']))
 
-    req.app._db.unlock()
 
     return SignatureMatchList(signatures=signature_list, total=0)
 
 @router.get('/{uuid}/exec_instances')
 def get_job_exec_instances(req : Request, uuid : uuid.UUID):
-    req.app._db.lock()
-    job = Job(req.app._db, req.app._filestore, uuid=uuid)
-    job.load(req.app._manager)
-    if not job.found:
-        req.app._db.unlock()
-        raise HTTPException(404, "Job not found")
-    inst_count, inst_list = job.get_exec_instances()
 
-    req.app._db.unlock()
+    with req.app._db.lock:
+        job = Job(req.app._db, req.app._filestore, uuid=uuid)
+        job.load(req.app._manager)
+        if not job.found:
+            raise HTTPException(404, "Job not found")
+        inst_count, inst_list = job.get_exec_instances()
 
     ret_list = []
 
@@ -177,61 +167,54 @@ def get_job_exec_instances(req : Request, uuid : uuid.UUID):
 @router.post('/{job_uuid}/export/{plugin_name}')
 def get_job_export_plugin(req : Request, job_uuid : uuid.UUID, plugin_name: str, export_item: JobExportData) -> JobExportResponse:
 
-    req.app._db.lock()
+    with req.app._db.lock:
 
-    # Load the job
-    job = Job(req.app._db, req.app._filestore, uuid=job_uuid)
-    job.load(req.app._manager)
-    job.load_matches()
-    if not job.found:
-        req.app._db.unlock()
-        raise HTTPException(404, "Job not found")
-    
-    
-    # Load the plugin
-    plugin = req.app._manager.get_plugin(plugin_name)
-    if plugin is None:
-        req.app._db.unlock()
-        raise HTTPException(404, "Plugin not found")
-    
-    plugin_args = {}
-    if export_item.export_items.options is not None:
-        plugin_args = export_item.export_items.options
-    # Init plugin
-    init_plugin = plugin(req.app._manager, args=plugin_args)
-    # current_app._manager.initialize_plugins([])[0]
+        # Load the job
+        job = Job(req.app._db, req.app._filestore, uuid=job_uuid)
+        job.load(req.app._manager)
+        job.load_matches()
+        if not job.found:
+            raise HTTPException(404, "Job not found")
+        
+        
+        # Load the plugin
+        plugin = req.app._manager.get_plugin(plugin_name)
+        if plugin is None:
+            raise HTTPException(404, "Plugin not found")
+        
+        plugin_args = {}
+        if export_item.export_items.options is not None:
+            plugin_args = export_item.export_items.options
+            # Init plugin
+            init_plugin = plugin(req.app._manager, args=plugin_args)
+            # current_app._manager.initialize_plugins([])[0]
 
-    export_name, export_type = init_plugin.get_export_metadata()
+            export_name, export_type = init_plugin.get_export_metadata()
 
-    new_export = job.generate_export_file(export_name, plugin_name, export_type, req.app.req_username)
+            new_export = job.generate_export_file(export_name, plugin_name, export_type, req.app.req_username)
 
-    new_export.set_event_filter(export_item.export_items.events)
-    new_export.set_file_filter(export_item.export_items.files)
-    new_export.set_network_filter(export_item.export_items.network)
+            new_export.set_event_filter(export_item.export_items.events)
+            new_export.set_file_filter(export_item.export_items.files)
+            new_export.set_network_filter(export_item.export_items.network)
 
-    # Run plugin
-    export_ok, export_data = init_plugin.export(job, new_export)
+            # Run plugin
+            export_ok, export_data = init_plugin.export(job, new_export)
 
 
-    if export_ok == True:
-    
-        req.app._db.unlock()
+        if export_ok == True:
+            # Save file to filestore
+            file_io = new_export.create_file()
+            file_io.write(export_data)
+            new_export.close_file()
 
-        # Save file to filestore
-        file_io = new_export.create_file()
-        file_io.write(export_data)
-        new_export.close_file()
+            new_export.save()
 
-        req.app._db.lock()
-        new_export.save()
-        req.app._db.unlock()
+            new_token = generate_download_token(req.app, new_export.uuid)
+            return JobExportResponse(download_token=new_token, export_uuid=new_export.uuid)
 
-        new_token = generate_download_token(req.app, new_export.uuid)
-        return JobExportResponse(download_token=new_token, export_uuid=new_export.uuid)
-
-    else:
-        raise HTTPException(500, "Export plugin failed: " + export_ok)
-        return json_resp_invalid()
+        else:
+            raise HTTPException(500, "Export plugin failed: " + export_ok)
+            return json_resp_invalid()
 
 
 # @job_endpoints.route('/<uuid>/export/<export_uuid>', methods=['POST'])

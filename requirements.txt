@@ -1,8 +1,7 @@
 charset-normalizer==2.0.10
 click==8.1.7
 docker==7.0.0
-Flask==3.0.3
-gunicorn==22.0.0
+uvicorn==0.33.0
 idna==3.3
 itsdangerous==2.2.0
 Jinja2==3.1.4

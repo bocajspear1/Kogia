@@ -12,35 +12,34 @@ router = APIRouter(tags=['plugin'])
 #
 
 @router.get('/list')
-def get_plugin_list(request : Request, type : OptionalStrParam = None) -> PluginDisplayList:
+def get_plugin_list(req : Request, type : OptionalStrParam = None) -> PluginDisplayList:
 
     plugin_type = "*"
     if type is not None:
         plugin_type = type
     
-    request.app._db.lock()
-    plugins = request.app._manager.get_plugin_list(plugin_type)
-    init_plugins = request.app._manager.initialize_plugins(plugins)
+    with req.app._db.lock:
+        plugins = req.app._manager.get_plugin_list(plugin_type)
+        init_plugins = req.app._manager.initialize_plugins(plugins)
+
     ret_list = []
     for plugin in init_plugins:
         if not plugin.enabled:
             continue
         display = PluginDisplay(**plugin.to_dict())
         ret_list.append(display)
-    request.app._db.unlock()
+    
     return PluginDisplayList(plugins=ret_list)
 
 @router.get('/{plugin_name}/info')
-def get_plugin(request : Request, plugin_name : str):
+def get_plugin(req : Request, plugin_name : str):
     
-    request.app._db.lock()
-    plugin = request.app._manager.get_plugin(plugin_name)
-    if plugin is None:
-        raise HTTPException(404, detail="Invalid plugin name")
-    init_plugins = request.app._manager.initialize_plugins([plugin])
-    plugin = init_plugins[0]
-
-    request.app._db.unlock()
+    with req.app._db.lock:
+        plugin = req.app._manager.get_plugin(plugin_name)
+        if plugin is None:
+            raise HTTPException(404, detail="Invalid plugin name")
+        init_plugins = req.app._manager.initialize_plugins([plugin])
+        plugin = init_plugins[0]
 
     plugin_data = PluginDisplay(**plugin.to_dict())
 

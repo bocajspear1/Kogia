@@ -1,40 +1,30 @@
-from flask import Blueprint, Flask, g, jsonify, current_app, request, send_file, send_from_directory, abort
 from backend.lib.objects import Metadata
 from backend.lib.submission import SubmissionFile
-from backend.api.helpers import get_pagination, json_resp_invalid, json_resp_not_found, json_resp_ok
 
-explore_endpoints = Blueprint('explore_endpoints', __name__)
+from fastapi import APIRouter, Request, HTTPException
+
+router = APIRouter(tags=['explore'])
 
 #
 # Explore API endpoints
 #
 
-@explore_endpoints.route('/search', methods=['GET'])
-def explore_search():
+@router.get('/search')
+def explore_search(req : Request, q : str, t : str, skip: int = 0, limit: int = 30):
 
-    skip_int = 0
-    limit_int = 50
-    try:
-        limit_int, skip_int = get_pagination(request)
-    except ValueError:
-        return json_resp_invalid('Invalid pagination')
 
-    query = request.args.get('q')
-    item_type = request.args.get('type')
+    with req.app._db.lock:
 
-    current_app._db.lock()
+        results = []
+        if t == 'files':
+            results = SubmissionFile.list_dict(req.app._db, skip=skip, limit=limit, search=q) 
+        elif t == 'metadata':
+            results = Metadata.list_dict(req.app._db, skip=skip, limit=limit, search=q)
+        elif t == 'metadata':
+            pass
+        else:
+            raise HTTPException(400, "Invalid search type")
 
-    results = []
-    if item_type == 'files':
-        results = SubmissionFile.list_dict(current_app._db, skip=skip_int, limit=limit_int, search=query) 
-    elif item_type == 'metadata':
-        results = Metadata.list_dict(current_app._db, skip=skip_int, limit=limit_int, search=query)
-    elif item_type == 'metadata':
-        pass
-    else:
-        return json_resp_invalid('Invalid type')
-
-    current_app._db.unlock()
 
 
     return json_resp_ok({
