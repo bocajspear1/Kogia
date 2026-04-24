@@ -64,6 +64,7 @@ export default {
       submissions: []
     }
   },
+  props: ["file_uuid"],
   mounted() {
     this.getSubmissions();
   },
@@ -72,7 +73,12 @@ export default {
 
       var self = this;
 
-      api.get_submission_list("",
+      var file_item = "";
+      if (self.file_uuid != null) {
+        file_item = self.file_uuid;
+      }
+
+      api.get_submission_list(file_item,
           function(resp_data){
               for (var i in resp_data['submissions']) {
                   var item = resp_data['submissions'][i];

@@ -30,6 +30,7 @@ import backend.api.analysis
 import backend.api.execinstance
 import backend.api.docs
 import backend.api.export
+import backend.api.explore
 
 
 from backend.auth.db import DBAuth
@@ -63,7 +64,7 @@ async def handle_api_key(req: Request, key: str = Security(api_key)):
     elif 'download_token' in req.query_params and req.method == "GET" and req.url.path.endswith("/download"):
         download_token = req.query_params['download_token']
         req.app._download_tokens_lock.acquire()
-        if download_token in app._download_tokens:
+        if download_token in req.app._download_tokens:
             # Pass to API endpoint the file UUID to ensure we aren't downloading a different file
             # TODO: Check if this is thread safe
             req.state.file_uuid = download_token.split(":")[1]
@@ -219,6 +220,13 @@ def create_app(config_path="./config.json"):
     app.include_router(
         backend.api.export.router,
         prefix="/api/v1/export",
+        dependencies=[
+            Depends(handle_api_key),
+        ]
+    )
+    app.include_router(
+        backend.api.explore.router,
+        prefix="/api/v1/explore",
         dependencies=[
             Depends(handle_api_key),
         ]

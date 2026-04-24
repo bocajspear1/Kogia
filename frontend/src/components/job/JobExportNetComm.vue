@@ -112,7 +112,7 @@ export default {
         self.select_map[self.exec_instances[i].uuid] = true;
         self.show_map[self.exec_instances[i].uuid] = true;
         if (self.all_checked) {
-            self.netcomm_map[self.exec_instances[i].uuid] = [];
+            self.netcomm_map[self.exec_instances[i].uuid] = ["*"];
         }
     }
     if (self.all_checked) {

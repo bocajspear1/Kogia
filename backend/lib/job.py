@@ -179,6 +179,8 @@ class Job(VertexObject):
     def to_dict(self, full_dict=False):
         plugin_list = []
         for plugin in self._plugins:
+            if plugin is None:
+                continue
             plugin_list.append(plugin.__name__)
 
         ret_dict =  {
@@ -479,7 +481,6 @@ class Job(VertexObject):
             load_match.from_dict(match)
             load_match.load_signature(self._db)
             self._matches.append(load_match)
-        # print(self._matches)
 
     def add_to_error(self, error_message):
         self._error.append(error_message)
@@ -505,8 +506,6 @@ class Job(VertexObject):
     def get_logs(self, skip=0, limit=30):
         count = len(self._db.get_list_by_match("logs", "job_uuid", self._uuid))
         return count, self._db.get_list_by_match("logs", "job_uuid", self._uuid, skip=skip, limit=limit)
-
-
 
 class ExportFile(CollectionObject, FilestoreObject):
 
@@ -646,15 +645,14 @@ class ExportFile(CollectionObject, FilestoreObject):
             if file_obj.uuid in self._file_filters:
                 yield file_obj
 
-    def events(self):
+    def filtered_processes(self):
         for instance_uuid in self._event_filters:
-            exec_instance = ExecInstance(uuid=instance_uuid)
+            exec_instance = ExecInstance(uuid=safe_uuid(instance_uuid))
             exec_instance.load(self._db)
             # Skip if we couldn't load execution instance
             if exec_instance.uuid is None:
                 continue
             
-
             exec_inst_dict = self._event_filters[instance_uuid]
 
             # Yield once with just the execution instance if told not to produce
@@ -662,60 +660,105 @@ class ExportFile(CollectionObject, FilestoreObject):
             if len(exec_inst_dict.keys()) == 0:
                 yield exec_instance, None, None
                 return
-
+            
             process_list = []
-            all_processes = False
-            all_events = False
-
-                     
             if len(exec_inst_dict.keys()) == 1 and "*" in exec_inst_dict:
                 exec_instance.load_processes(self._db)
                 process_list = exec_instance.process_list
                 all_processes = True
             else:
                 for proc_uuid in self._event_filters[instance_uuid].keys():
-                    process = Process(uuid=proc_uuid)
+                    process = Process(uuid=safe_uuid(proc_uuid))
                     process.load(self._db)
                     process.load_child_processes(self._db)
                     if process.uuid is None:
                         continue
-                    process_list.append(process)
-                
-                
+                    process_list.append(process)  
 
-            for process in process_list:     
-                process_dict_list = []
-                
-                if not all_processes:
-                    process_dict_list = self._event_filters[instance_uuid][process.uuid]
-                else:
-                    process_dict_list = self._event_filters[instance_uuid]["*"]
+            for process in process_list:
+                yield exec_instance, process
 
-                if len(process_dict_list) == 0:
-                    yield exec_instance, process, None
-                    return
 
-                event_list = []
-                if len(process_dict_list) == 1 and process_dict_list[0] == "*":
-                    process.load_events(self._db)
-                    event_list = process.events
-                else:
-                    for event_uuid in process_dict_list:
-                        event = Event(uuid=event_uuid)
-                        event.load(self._db)
-                        event_list.append(event)
+    def _get_events(self, instance_uuid, proc):
+        instance_filter = self._event_filters[instance_uuid]
+        proc_filter = None
+        if "*" in instance_filter:
+            proc_filter = instance_filter['*']
+        else:
+            proc_filter = instance_filter[proc.uuid]
+        
+        event_list = []
+        if len(proc_filter) > 0 and proc_filter[0] == "*":
+            proc.load_events(self._db)
+            event_list = proc.events
+        else:
+            for event_uuid in proc_filter:
+                event = Event(uuid=safe_uuid(event_uuid))
+                event.load(self._db)
+                event_list.append(event)
+        
+        return event_list
+
+    def filtered_events(self, process=None, exec_instance=None):
+
+        if process is None:
+            for exec_instance, proc in self.filtered_processes():
+                instance_uuid = exec_instance.uuid
+                event_list = self._get_events(instance_uuid, proc)
 
                 for event in event_list:
                     yield exec_instance, process, event
+        else:
+            instance_uuid = exec_instance.uuid
+            event_list = self._get_events(instance_uuid, process)     
+
+            for event in event_list:
+                yield exec_instance, process, event
+
+    # def events(self):
+        
+
+    #         process_list = []
+    #         all_processes = False
+    #         all_events = False
+
+                     
+                 
+    #             process_dict_list = []
+                
+    #             if not all_processes:
+    #                 process_dict_list = self._event_filters[instance_uuid][process.uuid]
+    #             else:
+    #                 process_dict_list = self._event_filters[instance_uuid]["*"]
+
+    #             if len(process_dict_list) == 0:
+    #                 yield exec_instance, process, None
+    #                 return
+
+    #             event_list = []
+    #             if len(process_dict_list) == 1 and process_dict_list[0] == "*":
+    #                 process.load_events(self._db)
+    #                 event_list = process.events
+    #             else:
+    #                 for event_uuid in process_dict_list:
+    #                     event = Event(uuid=safe_uuid(event_uuid))
+    #                     event.load(self._db)
+    #                     event_list.append(event)
+
+    #             for event in event_list:
+    #                 yield exec_instance, process, event
     
     def network_comms(self):
         _, exec_instances = self._job.get_exec_instances(as_obj=True)
+        
 
         for exec_inst in exec_instances:
             if not exec_inst.uuid in self._network_filters:
                 continue
             exec_inst.load_netcomms(self._db)
             for network_comm in exec_inst.network_comms:
-                if self._network_filters[exec_inst.uuid] == "*" or network_comm.uuid in self._network_filters[exec_inst.uuid]:
+                if len(self._network_filters[exec_inst.uuid]) == 0:
+                    continue
+                if self._network_filters[exec_inst.uuid][0] == "*" or network_comm.uuid in self._network_filters[exec_inst.uuid]:
                     yield exec_inst, network_comm
             

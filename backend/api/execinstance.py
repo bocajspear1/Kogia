@@ -36,10 +36,8 @@ def get_exec_instance(req : Request, uuid : uuid.UUID) -> ExecInstanceItem:
 
 
 @router.get('/{uuid}/metadata/{metatype}/list')
-def get_execinstance_metadata_list(req : Request, uuid : uuid.UUID, metatype: str, filter: OptionalStrParam = None, skip: int = 0, limit: int = 50) -> MetadataList:
-   
-
-   
+def get_execinstance_metadata_list(req : Request, uuid : uuid.UUID, metatype: str, 
+                                   filter: OptionalStrParam = None, skip: int = 0, limit: int = 50) -> MetadataList:
     exec_instance = ExecInstance(uuid=uuid)
 
     with req.app._db.lock:
@@ -75,7 +73,8 @@ def get_execinstance_metadata_types(req : Request, exec_uuid : uuid.UUID) -> Met
     return return_map
 
 @router.get('/{exec_uuid}/netcomm/list')
-def get_execinstance_netcomm(req : Request, exec_uuid : uuid.UUID, address : OptionalStrParam = None, port : OptionalIntParam = None, skip: int = 0, limit: int = 50):
+def get_execinstance_netcomm(req : Request, exec_uuid : uuid.UUID, 
+                             address : OptionalStrParam = None, port : OptionalIntParam = None, skip: int = 0, limit: int = 50) -> NetCommList:
 
     with req.app._db.lock:
         exec_instance = ExecInstance(uuid=exec_uuid)

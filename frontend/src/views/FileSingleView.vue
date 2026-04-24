@@ -46,7 +46,7 @@ import TabMenu from '@/components/menu/TabMenu.vue';
         File not found
     </div>
     <template v-if="data_done && (tab == 'submissions')">
-      <SubmissionList :submissions="submissions"></SubmissionList>
+      <SubmissionList :file_uuid="file_uuid"></SubmissionList>
     </template>
     <template v-if="data_done && (tab == 'metadata')">
       <MetadataTable :file_uuid="getFileUUID()"></MetadataTable>
@@ -76,12 +76,14 @@ export default {
       tab: "",
       submissions: [],
       hexdata: "",
-      hexdata_width: 32
+      hexdata_width: 32,
+      file_uuid: ""
     }
   },
   mounted() {
     this.getFile();
     this.setTab("submissions");
+    this.file_uuid = this.$route.params.file_uuid;
   },
   methods: {
     fileClicked(uuid, data) {

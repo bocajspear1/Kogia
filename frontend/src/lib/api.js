@@ -268,6 +268,6 @@ export default  {
         this.api_call("/explore/search?q=" + query + "&type=" + item_type, on_succeeded, on_failed);
     },
     get_search_with_start: function(query, item_type, start_uuid, start_type, on_succeeded, on_failed) {
-        this.api_call("/explore/connected/" + start_type + "/"+ start_uuid + "?q=" + query + "&type=" + item_type, on_succeeded, on_failed)
+        this.api_call("/explore/connected/" + start_type + "/"+ start_uuid + "?q=" + query + "&endtype=" + item_type, on_succeeded, on_failed)
     },
 }

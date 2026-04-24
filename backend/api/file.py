@@ -37,7 +37,7 @@ def get_file_list(req : Request, skip: int = 0, limit: int = 30, q : OptionalStr
 def get_file_info(req : Request, file_uuid : uuid.UUID) -> SubmissionFileItem:
     file_info = SubmissionFile(uuid=file_uuid, filestore=req.app._filestore)
     with req.app._db.lock:
-        file_info.load(request.app._db)
+        file_info.load(req.app._db)
     
 
     if not file_info.found:

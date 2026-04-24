@@ -286,3 +286,6 @@ class NetCommList(BaseModel):
 class DocsResponse(BaseModel):
     page: str
     navigation: List[dict]
+
+
+ExploreResponse = Union[MetadataList, SignatureMatchList, SubmissionFileList]

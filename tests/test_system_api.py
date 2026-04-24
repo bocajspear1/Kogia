@@ -32,3 +32,15 @@ def test_api_version(client):
     response = client.get("/api/v1/system/version")
     assert response.status_code == 200, response.text
     assert response.json()['version'] is not None, response.json()
+
+def test_api_upload(client):
+    files = {
+        "file": ("abc123.pdf", b"data123", "application/pdf")
+    }
+    data = {
+        "name": "TestPDF",
+        "description": "Test description"
+    }
+    response = client.post("/api/v1/submission/new", data=data, files=files)
+    assert response.status_code == 200, response.text
+    # assert response.json()['version'] is not None, response.json()
