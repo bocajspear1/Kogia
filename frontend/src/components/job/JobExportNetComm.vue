@@ -17,7 +17,7 @@ import NetworkCommTable from "@/components/host/NetworkCommTable.vue";
                 </div>
                 <div class="list-item-description">
                     <div class="field is-grouped">
-                        <p class="control">
+                        <div class="control">
                             <div class="select">
                                 <select @change="onIncludeNetCommSelect(exec_instance, $event.target.value)">
                                     <option selected value="all">Include NO network communications</option>
@@ -25,13 +25,13 @@ import NetworkCommTable from "@/components/host/NetworkCommTable.vue";
                                     <option value="some">Include SOME network communications</option>
                                 </select>
                             </div>
-                        </p>
-                        <p class="control">
+                        </div>
+                        <div class="control">
                             <button class="button is-link" @click="toggleNetCommList(exec_instance.uuid)" v-if="select_map[exec_instance.uuid] != undefined && select_map[exec_instance.uuid] == 'some'">
                                 <span v-if="show_map[exec_instance.uuid]">Hide communications list</span>
                                 <span v-if="!show_map[exec_instance.uuid]">Show communications list</span>
                             </button>
-                        </p>
+                        </div>
                     </div>
 
                     <template v-if="select_map[exec_instance.uuid] != undefined && select_map[exec_instance.uuid] == 'some'">

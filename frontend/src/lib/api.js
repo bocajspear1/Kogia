@@ -24,16 +24,31 @@ export default  {
         data.headers['X-Kogia-API-Auth'] = api_key;
         
         let full_path = getFullPath(path);
-        axios.get(full_path, data).then(function(resp){
-            var resp_data = resp['data'];
-            on_succeeded(resp_data);
+
+        fetch(full_path, data).then(function(resp){
+            
+            if (resp.status == 401) {
+                router.push({ name: 'LoginPage'});
+            } else {
+                resp.json().then(function(resp_json) {
+                    if (resp.status != 200) {
+                        on_failed(resp.status, resp_json);
+                    } else {
+                        on_succeeded(resp_json);
+                    } 
+                });
+            }
+
+            
+
+            
         }).catch(function(resp){
             if (resp.response != undefined && resp.response != null) {
-                if (resp.response.status == 401) {
+                if (resp.status == 401) {
                     router.push({ name: 'LoginPage'});
                 } else {
                     console.log(resp);
-                    on_failed(resp.response.status, resp.message);
+                    
                 }
             } else {
                 console.log(resp);
@@ -56,32 +71,48 @@ export default  {
     },
     api_post_raw(path, start_headers, post_data, on_succeeded, on_failed) {
         let config_data = {
-            headers: start_headers
+            method: "POST",
+            headers: start_headers,
+            body: post_data
         }
+
         let full_path = getFullPath(path);
 
         let session = useUserSession();
         let api_key = session.api_key;
         config_data.headers['X-Kogia-API-Auth'] = api_key;
+        console.log("post", config_data)
         
-        axios.post(full_path, post_data, 
+        fetch(full_path,
             config_data
         ).then(function (resp) {
-            var resp_data = resp['data'];
-            on_succeeded(resp_data);
+            console.log(resp)
+            
+            resp.json().then(function(resp_json) {
+                if (resp.status == 200) {
+                    on_succeeded(resp_json);
+                } else {
+                    on_failed(resp.status, resp_json);
+                }
+                
+            }).catch(function(resp){
+                console.log("uh oh")
+            })
+
         }).catch(function (resp) {
-            on_failed(resp.response.status, resp.message);
+            console.log(resp)
+            on_failed(resp.status, resp.message);
         });
     },
     api_post_json(path, post_data, on_succeeded, on_failed) {
         this.api_post_raw(path, { 
             'Content-Type': 'application/json'
-        }, post_data, on_succeeded, on_failed);
+        }, JSON.stringify(post_data), on_succeeded, on_failed);
     },
-    api_post_form(path, post_data, on_succeeded, on_failed) {
+    api_post_form(path, form_data, on_succeeded, on_failed) {
         this.api_post_raw(path, { 
-            'Content-Type': 'multipart/form-data'
-        }, post_data, on_succeeded, on_failed);
+            // 'Content-Type': `multipart/form-data`
+        }, form_data, on_succeeded, on_failed);
     },
     do_login: function(username, password, on_succeeded, on_failed){
         this.api_post_json('/authenticate/password', {
@@ -204,7 +235,9 @@ export default  {
         this.api_call("/plugin/" + plugin_name + "/info", on_succeeded, on_failed);
     },
     get_plugin_action: function(plugin_name, action, on_succeeded, on_failed) {
-        this.api_call("/plugin/" + plugin_name + "/action/" + action, on_succeeded, on_failed);
+        this.api_call("/plugin/" + plugin_name + "/action/" + action, function(ret_data){
+            on_succeeded(plugin_name + "." + action, ret_data);
+        }, on_failed);
     },
     get_instance_data: function(instance_uuid, on_succeeded, on_failed) {
         this.api_call("/exec_instance/" + instance_uuid, on_succeeded, on_failed);

@@ -1,4 +1,4 @@
-FROM alpine:3.15
+FROM alpine:3.22
 
 RUN apk add -U python3 py3-pip 
 RUN pip3 install pyelftools pefile

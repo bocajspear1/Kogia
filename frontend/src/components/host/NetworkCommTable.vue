@@ -5,7 +5,7 @@ import Paginator from "../general/Paginator.vue";
 <template>
 <div class="container p-2">
     <div class="field is-grouped m-2" v-if="Object.keys(netcomm_stats).length > 0">
-        <p class="control">
+        <div class="control">
             <div class="select" v-if="Object.keys(netcomm_stats.addresses).length > 0" >
                 <select ref="addressSelect" @change="onAddressSelect">
                     <option selected value="">No address filter</option>
@@ -14,8 +14,8 @@ import Paginator from "../general/Paginator.vue";
                     </template>
                 </select>
             </div>
-        </p>
-        <p class="control">
+        </div>
+        <div class="control">
             <div class="select" v-if="Object.keys(netcomm_stats.ports).length > 0" >
                 <select ref="portSelect" @change="onPortSelect">
                     <option selected value="">No port filter</option>
@@ -24,7 +24,7 @@ import Paginator from "../general/Paginator.vue";
                     </template>
                 </select>
             </div>
-        </p>
+        </div>
     </div>
     
     <template v-if="done">

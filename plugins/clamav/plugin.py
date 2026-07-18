@@ -42,5 +42,5 @@ class ClamAVPlugin(DockerPluginBase):
 
     def action_get_version(self):
         version = self.run_image_with_cmd("clamscan -V").decode("utf-8").strip()
-        return [{"ClamAV Version": version}]
+        return {"ClamAV Version": version}
 __PLUGIN__ = ClamAVPlugin

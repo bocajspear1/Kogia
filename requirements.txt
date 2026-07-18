@@ -4,7 +4,6 @@ docker==7.0.0
 uvicorn==0.33.0
 idna==3.3
 itsdangerous==2.2.0
-Jinja2==3.1.4
 MarkupSafe==2.1.5
 requests==2.31.0
 urllib3==1.26.8
@@ -14,6 +13,10 @@ pyzipper==0.3.6
 python-arango==7.8.1
 colorama==0.4.6
 psutil==5.9.6
+fastapi-offline==1.7.4
+fastapi==0.116.1
+Werkzeug==2.0.3
+python-multipart==0.0.20
 
 ## Docs
 mkdocs==1.6.0

@@ -16,17 +16,16 @@ class UnipackerPlugin(DockerPluginBase):
         self.run_image(submission.submission_dir, job, file_obj)
         self.wait_and_stop()
         
-        tmp_dir = self.extract("/tmp/out")
+        tmp_dir = self.extract(f"/tmp/out")
         out_dir = os.path.join(tmp_dir, "out")
         items = os.listdir(out_dir)
 
         uuid_list = []
         for item in items:
-            shutil.move(os.path.join(out_dir, item), submission.submission_dir)
             new_file = submission.generate_file(item)
-            new_file.set_parent(file_obj)
-            submission.add_file(new_file)
+            new_file.copy_file_from(os.path.join(out_dir, item))
             uuid_list.append(new_file.uuid)
+            submission.add_file(new_file)
 
         self.remove_tmp_dirs()
 

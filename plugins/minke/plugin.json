@@ -1,7 +1,7 @@
 {
-    "host": "127.0.0.1:5051",
-    "ssl": true,
+    "host": "127.0.0.1:8888",
+    "ssl": false,
     "ssl_verify": false,
     "apikey": "thisisakey",
-    "enabled": false
+    "enabled": true
 }

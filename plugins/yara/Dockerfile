@@ -1,4 +1,4 @@
-FROM alpine:3.18
+FROM alpine:3.22
 
 WORKDIR /
 RUN apk add -U --repository http://dl-cdn.alpinelinux.org/alpine/edge/community yara

@@ -20,7 +20,7 @@ import TabMenu from '@/components/menu/TabMenu.vue';
                 </div>
                 <div class="list-item-description">
                     <div class="field is-grouped">
-                        <p class="control">
+                        <div class="control">
                             <div class="select">
                                 <select @change="onIncludeProcessSelect(exec_instance, $event.target.value)">
                                     <option selected value="none">Include NO processes</option>
@@ -35,10 +35,10 @@ import TabMenu from '@/components/menu/TabMenu.vue';
                                     <option value="some">Include SOME processes</option>
                                 </select>
                             </div>
-                        </p>
-                        <p class="control">
+                        </div>
+                        <div class="control">
                             
-                        </p>
+                        </div>
                     </div>
 
                     <div class="card" v-show="inserted == 'some'">

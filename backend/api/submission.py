@@ -33,10 +33,12 @@ router = APIRouter(tags=['submission'])
 @router.post('/new')
 def submit_sample(req : Request, 
                   name: Annotated[str, Form()],
-                  files: Union[None, List[UploadFile], List[str]] = None, 
-                  file: Union[None, UploadFile, str] = None,
+                  files: Annotated[Union[None, List[UploadFile], List[str]], Form()] = None, 
+                  file: Annotated[Union[None, UploadFile, str], Form()] = None,
                   file_uuids: Annotated[Union[None, List[str]], Form()] = None,
                   description: Annotated[Union[None, str], Form()] = None) -> NewSubmissionResponse:
+    
+    print(files, file)
     
     if files is not None and files[0] == "":
         files = None
@@ -44,7 +46,7 @@ def submit_sample(req : Request,
     if file_uuids is not None and file_uuids[0] == "":
         file_uuids = None
 
-    if (files is None and file is None and file_uuids is None) and files[0] == "":   
+    if (files is None and file is None and file_uuids is None) or (files is not None and files[0] == ""):   
         raise HTTPException(400, detail="Files not submitted")
 
     if file_uuids is not None and len(file_uuids) > 0:
@@ -119,6 +121,8 @@ def submit_sample(req : Request,
             new_job.add_plugin_list(identify_plugins)
             unarchive_plugins = req.app._manager.get_plugin_list('unarchive')
             new_job.add_plugin_list(unarchive_plugins)
+            unpack_plugins = req.app._manager.get_plugin_list('unpack')
+            new_job.add_plugin_list(unpack_plugins)
             new_job.save()
 
         req.app._worker_manager.assign_job(new_job.uuid)

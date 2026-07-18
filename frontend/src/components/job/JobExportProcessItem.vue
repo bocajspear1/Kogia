@@ -20,7 +20,7 @@ import TabMenu from '@/components/menu/TabMenu.vue';
                 </TabMenu>
                 <div class="m-5 p-2" v-show="current_tab == 'events'">
                     <div class="field is-grouped">
-                        <p class="control">
+                        <div class="control">
                             <div class="select">
                                 <select @change="onEventSelect($event.target.value)">
                                     <option selected value="none">Include NO events</option>
@@ -28,13 +28,13 @@ import TabMenu from '@/components/menu/TabMenu.vue';
                                     <option value="some">Include SOME events</option>
                                 </select>
                             </div>
-                        </p>
-                        <p class="control">
+                        </div>
+                        <div class="control">
                             <button class="button is-link" @click="toggleEventList" v-if="event_select_option =='some'">
                                 <span v-if="show_events">Hide event list</span>
                                 <span v-if="!show_events">Show event list</span>
                             </button>
-                        </p>
+                        </div>
                     </div>
                     <div>
                         <EventTable v-show="show_events" :selectable="true" :process_uuid="process.uuid" @event_checked="onEventChecked"></EventTable>
@@ -43,7 +43,7 @@ import TabMenu from '@/components/menu/TabMenu.vue';
                 </div>
                 <div class="m-5 p-2" v-show="current_tab == 'syscalls'">
                     <div class="field is-grouped">
-                        <p class="control">
+                        <div class="control">
                             <div class="select">
                                 <select @change="onSyscallSelect($event.target.value)">
                                     <option selected value="none">Include NO syscalls</option>
@@ -51,13 +51,13 @@ import TabMenu from '@/components/menu/TabMenu.vue';
                                     <option value="some">Include SOME syscalls</option>
                                 </select>
                             </div>
-                        </p>
-                        <p class="control">
+                        </div>
+                        <div class="control">
                             <button class="button is-link" @click="toggleSyscallList" v-if="syscall_select_option =='some'">
                                 <span v-if="show_syscalls">Hide syscall list</span>
                                 <span v-if="!show_syscalls">Show syscall list</span>
                             </button>
-                        </p>
+                        </div>
                     </div>
                     <div>
                         <SyscallTable v-show="show_syscalls" :selectable="true" :process_uuid="process.uuid" @syscallChecked="onSyscallChecked"></SyscallTable>

@@ -9,7 +9,7 @@
         </a>
       </div>
 
-      <div id="navbarBasicExample" class="navbar-menu">
+      <div id="menu-bar" class="navbar-menu">
         <div class="navbar-start">
           <div class="navbar-item">
             <div class="buttons">

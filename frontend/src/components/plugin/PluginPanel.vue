@@ -24,56 +24,62 @@ import GenericTable from '@/components/generic/GenericTable.vue'
 import api from "@/lib/api";
 
 export default {
-  data() {
+    data() {
     return {
-      panel_contents: []
+        panel_contents: []
     }
-  },
-  props: ["panel_data", "plugin_name"],
-  mounted() {
+    },
+    props: ["panel_data", "plugin_name"],
+    mounted() {
     var self = this;
 
     for (var i in this.panel_data.items) {
         var item = this.panel_data.items[i];
+        console.log(item)
         var type_obj = null;
         if (item['type'] == 'databar') {
-          type_obj = shallowRef(GenericDataBar);
+            type_obj = shallowRef(GenericDataBar);
         } else if (item['type'] == 'table') {
-          type_obj = shallowRef(GenericDataBar);
+            type_obj = shallowRef(GenericDataBar);
         }
 
+        var id = self.plugin_name + "." + item['action'];
         var new_item = {
-          "type": type_obj,
-          "loadon": item['on'],
-          "plugin_name": self.plugin_name, 
-          "data": null
+            "type": type_obj,
+            "loadon": item['on'],
+            "id": id, 
+            "data": null
         }
 
         this.panel_contents.push(new_item);
 
         if (item['on'] == 'load') {
-            api.get_plugin_action(self.plugin_name, item['action'], function(result) {
 
-            for (var j in self.panel_contents) {
-                if (self.panel_contents[j]['plugin_name'] == self.plugin_name) {
-                    self.panel_contents[j]['data'] = result;
+            var load_func = function(action_id, result) {
+
+                for (var j in self.panel_contents) {
+                    console.log(action_id)
+                    if (self.panel_contents[j]['id'] == action_id) {
+                        self.panel_contents[j]['data'] = result;
+                    }
                 }
-            }
 
-            console.log(self.panel_contents)
+                console.log(self.panel_contents)
 
-            }, function(status, error) {
+            };
+            load_func.id = id;
+            api.get_plugin_action(self.plugin_name, item['action'], load_func, function(status, error) {
             console.log('FAILURE!!', status, error);
             })
         }
 
         
     }
-    
-    
-  },
-  methods: {
-    
-  }
+
+
+    },
+    methods: {
+
+    }
 }
 </script>

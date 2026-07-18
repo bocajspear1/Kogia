@@ -278,6 +278,8 @@ def process_job(runner_name, config, new_job : Job, pm, db, filestore, logger):
             subjob.add_plugin_list(identify_plugins)
             unarchive_plugins = pm.get_plugin_list('unarchive')
             subjob.add_plugin_list(unarchive_plugins)
+            unpack_plugins = pm.get_plugin_list('unpack')
+            subjob.add_plugin_list(unpack_plugins)
             subjob.save()
 
             # Now lets run our identify job

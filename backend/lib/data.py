@@ -657,8 +657,9 @@ class Event(VertexObject):
         insert_events = []
         for event in insert_objs:
             if isinstance(event, Event) and event.id is None:
-                insert_events.append(event.to_dict())
+                insert_events.append(event.to_dict(full=False))
 
+        
         return db.insert_bulk(Event.COLLECTION_NAME, insert_events, requery=False)
 
     def __init__(self, id=None, uuid=None):
@@ -721,6 +722,12 @@ class Event(VertexObject):
         if document is not None:
             self.from_dict(document)
 
+    @property
+    def uuid(self):
+        if self._uuid == "":
+            self._gen_uuid()
+        return self._uuid
+    
     @property
     def key(self):
         return self._key
@@ -891,9 +898,18 @@ class Process(VertexObjectWithMetadata):
         # Save events in bulk, then add edges after
         new_items = Event.bulk_insert(db, self._events)
 
+
+
         for event_data in new_items:
             event = Event(event_data['_id'])
             event.from_dict(event_data)
+
+            # Find evnet in the unsaved events to get the right time
+            # Time is NOT saved in the event so events can be cross referenced
+            for old_event in self._events:
+                if old_event.uuid == event.uuid:
+                    event.time = old_event.time
+           
             self.insert_edge(db, 'has_event', event.id, data={
                 "event_time": event.time
             })
@@ -995,7 +1011,7 @@ class Process(VertexObjectWithMetadata):
         
         self._event_total = self.count_connected_to(db, 'events', filter_edges=['has_event'], filter_vertices=filter_obj, direction='out', max=1)
         
-        self._event_counter = self._event_total
+        self._event_counter = self._event_total + 1
     
     def load_syscalls(self, db : ArangoConnection, skip=0, limit=20):
         logger.debug("Loading syscalls for process %s, PID=%s", self._path, str(self._pid))

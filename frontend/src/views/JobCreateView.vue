@@ -16,16 +16,13 @@ import Notifications from '@/components/general/Notifications.vue';
       </div>
   </div>
   <h3 class="subtitle is-spaced is-3">Select primary file:</h3>
-  <p>
     The "primary file" is the file executed during dynamic analysis.
-    <div class="control m-2">
-      <label class="checkbox has-text-weight-bold">
-        <input type="checkbox" checked v-model="ignore_dropped">
-        Ignore dropped files
-      </label>
-    </div>
-    
-  </p>
+  <div class="control m-2">
+    <label class="checkbox has-text-weight-bold">
+      <input type="checkbox" checked v-model="ignore_dropped">
+      Ignore dropped files
+    </label>
+  </div>
   <FileList v-if="submission != null" :toggle="true" :files="submission.files" @file_clicked="fileClicked"></FileList>
   <h3 class="subtitle is-spaced is-3">Select plugins:</h3>
   <div class="columns" id="plugin-columns">

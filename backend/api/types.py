@@ -51,6 +51,9 @@ class PluginDisplay(BaseModel):
 class PluginDisplayList(BaseModel):
     plugins: List[PluginDisplay]
 
+class PluginActionResult(BaseModel):
+    result: Dict
+
 # SubmissionFile
 
 class SubmissionFileItem(BaseModel):
