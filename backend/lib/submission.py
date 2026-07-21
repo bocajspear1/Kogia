@@ -381,7 +381,8 @@ class Submission(VertexObject):
         """
         new_file.update_hash()
         for file in self._files:
-            if new_file.hash == file.hash:
+            print(new_file.name, file.name)
+            if new_file.hash == file.hash and new_file.name == file.name:
                 return file
         new_file.dropped = dropped
         self._files.append(new_file)

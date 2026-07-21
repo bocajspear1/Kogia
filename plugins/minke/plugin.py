@@ -1,5 +1,5 @@
 from backend.lib.plugin_base import HTTPPluginBase
-import shutil
+import base64
 import ast
 import time
 from datetime import datetime
@@ -223,7 +223,6 @@ class MinkePlugin(HTTPPluginBase):
 
     def _add_child_process(self, process_list, operating_system, exec_instance=None, parent_proc=None):
         for process in process_list:
-            print(process['path'], process['pid'])
 
             if exec_instance is not None:
                 new_proc = exec_instance.add_process(process['path'], process['pid'], process['command_line'])
@@ -244,8 +243,6 @@ class MinkePlugin(HTTPPluginBase):
         
         minke_uuid = self.args.get("uuid", '')
 
-        print(minke_uuid)
-
         if minke_uuid.strip() == '':
 
             file_data = None
@@ -263,12 +260,12 @@ class MinkePlugin(HTTPPluginBase):
                     if extra_file.hash != file_obj.hash:
                         file_data.append(('samples', (extra_file.name, extra_file.open_file(), 'application/octet-stream')))
             
-            print('file_data', file_data)
+            
             resp = self.post("/api/v1/samples/submit", files=file_data, data={
                 'exec': file_obj.name
             })
 
-            print(resp.json())
+            
             resp_json = resp.json()
             if resp_json['ok'] == True:
                 minke_uuid = resp_json['result']['job_id']
@@ -298,6 +295,36 @@ class MinkePlugin(HTTPPluginBase):
                 new_exec.end_time = info_json['result']['info']['end_time']
 
                 self._add_child_process(process_data, resp_json['result']['operating_system'], exec_instance=new_exec)
+
+                resp_json = self.get(f"/api/v1/jobs/{minke_uuid}/info").json() 
+                if resp_json['ok'] != True: 
+                    job.error_log(self.name, "Unable to get execution into")
+                    return []
+                exec_info = resp_json['result']['info']
+                
+                resp_json = self.get(f"/api/v1/jobs/{minke_uuid}/networking").json() 
+                if resp_json['ok'] == True: 
+                    results = resp_json['result']
+                    for net_data_key in results['net_data']:
+                        net_data_split = net_data_key.split("|")
+                        for connection in results['net_data'][net_data_key]:
+                            if connection[0] != "":
+                                new_exec.add_network_comm(net_data_split[0], exec_info['ip_addr'], 5555, net_data_split[1], int(net_data_split[2]), base64.b64decode(connection[0]).decode())
+                            if connection[1] != "":
+                                new_exec.add_network_comm(net_data_split[0], net_data_split[1], int(net_data_split[2]), exec_info['ip_addr'], 5555, base64.b64decode(connection[1]).decode())
+
+                if len(exec_info['written_files']) > 0:
+                    for dropped_name in exec_info['written_files']:
+                        dropped = job.submission.generate_file(dropped_name)
+                        dropped.create_file()
+
+                        dropped_resp = self.get(f"/api/v1/jobs/{minke_uuid}/dropped/{dropped_name}")
+                        if dropped_resp.status_code != 404:
+                            dropped.write_to_file(dropped_resp.content)
+                            job.submission.add_file(dropped, dropped=True)
+                            job.info_log(self.name, f"Adding dropped file {dropped_name}")
+                        else:
+                            job.error_log(self.name, f"Unable to get file {dropped_name}")
 
 
 
